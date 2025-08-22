@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Авторизация - RNode Server</title>
+    <title>Authentication - RNode Server</title>
     <style>
         * {
             margin: 0;
@@ -254,69 +254,69 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🔐 Авторизация</h1>
-            <p>Войдите в систему или зарегистрируйтесь</p>
+            <h1>🔐 Authentication</h1>
+            <p>Log in or register</p>
         </div>
 
         <div class="content">
-            <!-- Форма авторизации -->
+            <!-- Authentication form -->
             <div class="auth-section">
-                <h2>Вход в систему</h2>
+                <h2>Log In</h2>
                 <div id="loginStatus" class="status hidden"></div>
                 
                 <form id="loginForm">
                     <div class="form-group">
                         <label for="loginEmail">Email:</label>
-                        <input type="email" id="loginEmail" required placeholder="Введите email">
+                        <input type="email" id="loginEmail" required placeholder="Enter email">
                     </div>
                     <div class="form-group">
-                        <label for="loginPassword">Пароль:</label>
-                        <input type="password" id="loginPassword" required placeholder="Введите пароль">
+                        <label for="loginPassword">Password:</label>
+                        <input type="password" id="loginPassword" required placeholder="Enter password">
                     </div>
                     <button type="submit" class="btn btn-primary" id="loginBtn">
                         <span class="spinner hidden"></span>
-                        Войти
+                        Log In
                     </button>
                 </form>
 
-                <h2 style="margin-top: 40px;">Регистрация</h2>
+                <h2 style="margin-top: 40px;">Registration</h2>
                 <div id="registerStatus" class="status hidden"></div>
                 
                 <form id="registerForm">
                     <div class="form-group">
-                        <label for="registerUsername">Имя пользователя:</label>
-                        <input type="text" id="registerUsername" required placeholder="Введите имя пользователя">
+                        <label for="registerUsername">Username:</label>
+                        <input type="text" id="registerUsername" required placeholder="Enter username">
                     </div>
                     <div class="form-group">
                         <label for="registerEmail">Email:</label>
-                        <input type="email" id="registerEmail" required placeholder="Введите email">
+                        <input type="email" id="registerEmail" required placeholder="Enter email">
                     </div>
                     <div class="form-group">
-                        <label for="registerPassword">Пароль:</label>
-                        <input type="password" id="registerPassword" required placeholder="Введите пароль">
+                        <label for="registerPassword">Password:</label>
+                        <input type="password" id="registerPassword" required placeholder="Enter password">
                     </div>
                     <button type="submit" class="btn btn-primary" id="registerBtn">
                         <span class="spinner hidden"></span>
-                        Зарегистрироваться
+                        Register
                     </button>
                 </form>
             </div>
 
-            <!-- Профиль пользователя -->
+            <!-- User profile -->
             <div class="profile-section">
-                <h2>👤 Профиль</h2>
+                <h2>👤 Profile</h2>
                 <div id="profileStatus" class="status info">
-                    Войдите в систему для просмотра профиля
+                    Please log in to view profile
                 </div>
                 
                 <div id="profileInfo" class="profile-info hidden">
-                    <h3>Информация о пользователе</h3>
+                    <h3>User Information</h3>
                     <div class="profile-field">
                         <span class="label">ID:</span>
                         <span class="value" id="profileId">-</span>
                     </div>
                     <div class="profile-field">
-                        <span class="label">Имя пользователя:</span>
+                        <span class="label">Username:</span>
                         <span class="value" id="profileUsername">-</span>
                     </div>
                     <div class="profile-field">
@@ -324,21 +324,21 @@
                         <span class="value" id="profileEmail">-</span>
                     </div>
                     <div class="profile-field">
-                        <span class="label">Дата регистрации:</span>
+                        <span class="label">Registration date:</span>
                         <span class="value" id="profileCreatedAt">-</span>
                     </div>
                     <div class="profile-field">
-                        <span class="label">Последнее обновление:</span>
+                        <span class="label">Last update:</span>
                         <span class="value" id="profileUpdatedAt">-</span>
                     </div>
                     
                     <button class="btn btn-secondary" id="logoutBtn" style="margin-top: 20px;">
-                        Выйти из системы
+                        Log Out
                     </button>
                 </div>
 
                 <div class="nav-links">
-                    <a href="../index.html">← Вернуться на главную</a>
+                    <a href="../index.html">← Back to Home</a>
                 </div>
             </div>
         </div>

@@ -15,115 +15,288 @@ A high-performance HTTP server built with Rust and Node.js, featuring Express-li
 - **Router Support** - Modular routing with nested routers
 - **TypeScript Support** - Full TypeScript definitions
 
+## Installation
+
+### Using npm
+```bash
+npm install rnode-server
+```
+
+### Using pnpm
+```bash
+pnpm add rnode-server
+```
+
+### Using yarn
+```bash
+yarn add rnode-server
+```
+
 ## Quick Start
 
-```bash
-# Install dependencies
-npm install
+```javascript
+import { createApp, Router } from 'rnode-server';
 
-# Build Rust backend
-npm run build
+const app = createApp();
+const port = 4546;
 
-# Run demo server
-cd playground
-npm run start
+// Load static files into memory
+app.static('./public');
+
+// ===== CREATE USERS ROUTER =====
+
+// Create router for users
+const usersRouter = Router();
+
+// Middleware for users router
+usersRouter.use((req, res, next) => {
+  console.log('👥 Users Router Middleware:', req.method, req.url);
+  req.setParam('routerName', 'users');
+  next();
+});
+
+// POST route for creating a user
+usersRouter.post('', (req, res) => {
+  console.log('=== POST /api/users ===');
+  console.log('Body:', req.body);
+
+  try {
+    // Parse body if it's JSON
+    let userData = req.body;
+    if (typeof req.body === 'string') {
+      try {
+        userData = JSON.parse(req.body);
+      } catch (e) {
+        userData = { name: req.body, email: '', age: null };
+      }
+    }
+
+    // Check required fields
+    if (!userData.name || !userData.email) {
+      return res.json({
+        success: false,
+        message: 'Name and email are required'
+      });
+    }
+
+    // Here you would typically save to your database
+    // For this example, we'll just return success
+    res.json({
+      success: true,
+      message: 'User created successfully',
+      userId: Date.now(),
+      user: userData
+    });
+  } catch (error) {
+    res.json({
+      success: false,
+      message: `Error: ${error.message}`
+    });
+  }
+});
+
+// GET route for getting all users
+usersRouter.get('', (req, res) => {
+  console.log('=== GET /api/users ===');
+
+  // Here you would typically fetch from your database
+  // For this example, we'll return empty array
+  res.json({ users: [] });
+});
+
+app.useRouter('/api/users', usersRouter);
+
+app.get('/hello', (req, res) => {
+  console.log('👋 Hello handler - parameters from global middleware:', req.getParams());
+
+  // Add custom parameters
+  req.setParam('handlerName', 'hello');
+  req.setParam('message', 'Hello World!');
+
+  res.json({
+    message: 'Hello World!',
+    globalParams: req.getParams(),
+    info: 'This response contains parameters from global middleware',
+    auth: {
+      isAuthenticated: req.getParam('isAuthenticated'),
+      user: req.getParam('user'),
+      userId: req.getParam('userId')
+    }
+  });
+});
+
+app.get('/posts/{postId}/comments/{commentId}', (req, res) => {
+  const { postId, commentId } = req.params;
+  console.log('Request params:', req.params);
+  res.json({ postId, commentId, message: 'Comment details' });
+});
+
+// Start server
+app.listen(port, () => {
+  console.log(`🚀 Server started on port ${port}`);
+  console.log(`🔗 API endpoints:`);
+  console.log(`   📝 Users:`);
+  console.log(`      POST   /api/users - create user`);
+  console.log(`      GET    /api/users - get all users`);
+});
 ```
 
-Server will start on port 4546.
+## API Reference
 
-## Demo Examples
+### App Methods
 
-All demo examples are located in the `playground/` directory:
+#### HTTP Methods
+- **`app.get(path, handler)`** - Register GET route handler
+- **`app.post(path, handler)`** - Register POST route handler  
+- **`app.put(path, handler)`** - Register PUT route handler
+- **`app.delete(path, handler)`** - Register DELETE route handler
+- **`app.patch(path, handler)`** - Register PATCH route handler
+- **`app.options(path, handler)`** - Register OPTIONS route handler
 
-### From playground directory
-```bash
-cd playground
+#### Middleware & Routing
+- **`app.use(path, middleware)`** - Register route-specific middleware
+- **`app.use(middleware)`** - Register global middleware
+- **`app.useRouter(path, router)`** - Mount router at specific path
+- **`app.listen(port, host?, callback?)`** - Start server
 
-# Run main RNode server demo
-npm run start
+#### Static Files
+- **`app.static(path, options?)`** - Serve static files from directory
+- **`app.static(paths[], options?)`** - Serve static files from multiple directories
+- **`app.clearStaticCache()`** - Clear static files cache
+- **`app.getStaticStats()`** - Get static files statistics
 
-# Run TypeScript RNode demo
-npm run start:rnode
+#### File Operations
+- **`app.saveFile(filename, base64Data, uploadsDir)`** - Save file to directory
+- **`app.deleteFile(filename, uploadsDir)`** - Delete file from directory
+- **`app.listFiles(uploadsDir)`** - List files in directory
+- **`app.getFileContent(filename, uploadsDir)`** - Get file content as base64
+- **`app.fileExists(filename, uploadsDir)`** - Check if file exists
+- **`app.download(path, options)`** - Register file download route
+- **`app.upload(path, options)`** - Register file upload route
 
-# Run static files demo  
-npm run start:static
+### Router Methods
 
-# Run multipart upload demo
-npm run start:multipart
+#### HTTP Methods
+- **`router.get(path, handler)`** - Register GET route handler
+- **`router.post(path, handler)`** - Register POST route handler
+- **`router.put(path, handler)`** - Register PUT route handler
+- **`router.delete(path, handler)`** - Register DELETE route handler
+- **`router.patch(path, handler)`** - Register PATCH route handler
+- **`router.options(path, handler)`** - Register OPTIONS route handler
 
-# Run Express.js comparison demo
-npm run start:express
+#### Middleware
+- **`router.use(path, middleware)`** - Register route-specific middleware
+- **`router.use(middleware)`** - Register global middleware for router
+- **`router.getHandlers()`** - Get all registered handlers
+- **`router.getMiddlewares()`** - Get all registered middlewares
 
-# Development mode with auto-restart
-npm run dev
-npm run dev:rnode
-npm run dev:express
+### Request Object Methods
 
-# Build TypeScript
-npm run build
-npm run build:watch
-```
+#### Parameter Management
+- **`req.setParam(name, value)`** - Set custom parameter
+- **`req.getParam(name)`** - Get custom parameter value
+- **`req.hasParam(name)`** - Check if parameter exists
+- **`req.getParams()`** - Get all custom parameters
 
-### From root directory (using pnpm workspace)
-```bash
-# Run playground demos
-pnpm playground:start
-pnpm playground:rnode
-pnpm playground:static
-pnpm playground:multipart
-pnpm playground:express
+#### File Handling
+- **`req.getFile(fieldName)`** - Get uploaded file by field name
+- **`req.getFiles()`** - Get all uploaded files
+- **`req.hasFile(fieldName)`** - Check if file exists
+- **`req.getFileCount()`** - Get number of uploaded files
 
-# Development mode
-pnpm playground:dev
-pnpm playground:dev:rnode
-pnpm playground:dev:static
-pnpm playground:dev:multipart
-pnpm playground:dev:express
+#### Headers & Cookies
+- **`req.getHeader(name)`** - Get request header value
+- **`req.hasHeader(name)`** - Check if header exists
+- **`req.getHeaders()`** - Get all request headers
+- **`req.getCookie(name)`** - Get cookie value by name
+- **`req.hasCookie(name)`** - Check if cookie exists
+- **`req.getCookies()`** - Get all cookies as object
 
-# Build playground
-pnpm playground:build
-pnpm playground:build:watch
-```
+#### Request Properties
+- **`req.method`** - HTTP method
+- **`req.url`** - Request URL
+- **`req.params`** - Route parameters
+- **`req.query`** - Query string parameters
+- **`req.body`** - Request body
+- **`req.files`** - Uploaded files
+- **`req.contentType`** - Content-Type header
+- **`req.headers`** - Request headers
+- **`req.cookies`** - Request cookies
 
-## Demo Applications
+### Response Object Methods
 
-### Multipart Upload Demo (`playground/src/multipart_example.ts`)
-Complete file upload application demonstrating advanced multipart handling:
+#### HTTP Response
+- **`res.status(code)`** - Set HTTP status code
+- **`res.setHeader(name, value)`** - Set response header
+- **`res.getHeader(name)`** - Get response header
+- **`res.getHeaders()`** - Get all response headers
 
-- **Wildcard Routes**: Upload to any subfolder using `{*subfolder}` patterns
-- **File Management**: Upload, download, list, and delete files with subfolder support
-- **Security**: Configurable file size limits, allowed extensions, and MIME types
-- **Web Interface**: Built-in HTML forms for single and multiple file uploads
-- **File Operations**: Rust backend methods for file system operations
-- **Subfolder Support**: Organize files in nested directory structures
+#### Content Types
+- **`res.json(data)`** - Send JSON response
+- **`res.html(content)`** - Send HTML response
+- **`res.text(content)`** - Send plain text response
+- **`res.xml(content)`** - Send XML response
+- **`res.send(data)`** - Send generic response
+- **`res.end(data?)`** - End response
 
-**Features:**
-- Single file upload with subfolder selection
-- Multiple file upload (up to 10 files)
-- Wildcard subfolder patterns (`documents/*`, `images/*`, `files/*`)
-- File listing with folder hierarchy
-- File download from any subfolder
-- File deletion with path support
-- Static file serving for web interface
+#### File Operations
+- **`res.sendFile(file)`** - Send uploaded file
+- **`res.sendFiles(files)`** - Send multiple files
+- **`res.sendBuffer(buffer, contentType?, size?)`** - Send binary data
+- **`res.sendMultipart(data)`** - Send multipart data
+- **`res.download(filepath, filename?)`** - Trigger file download
+- **`res.attachment(filename?)`** - Set attachment header
 
-**Usage:**
-```bash
-cd playground
-npm run start:multipart
-# Server runs on http://localhost:4540
-# Web interface: http://localhost:4540
-# Upload files to: http://localhost:4540/upload
-# Download files from: http://localhost:4540/download/{*name}
-```
+#### Redirects
+- **`res.redirect(url, status?)`** - Redirect to URL
+
+#### Cookies
+- **`res.setCookie(name, value, options?)`** - Set response cookie
+- **`res.getCookie(name)`** - Get response cookie
+- **`res.getCookies()`** - Get all response cookies
+
+### Static File Options
+
+- **`cache`** - Enable file caching (default: true)
+- **`maxAge`** - Cache lifetime in seconds (default: 3600)
+- **`maxFileSize`** - Maximum file size in bytes (default: 10MB)
+- **`etag`** - Generate ETag headers (default: true)
+- **`lastModified`** - Add Last-Modified headers (default: true)
+- **`gzip`** - Enable Gzip compression (default: true)
+- **`brotli`** - Enable Brotli compression (default: false)
+- **`allowHiddenFiles`** - Allow hidden files (default: false)
+- **`allowSystemFiles`** - Allow system files (default: false)
+- **`allowedExtensions`** - Whitelist file extensions
+- **`blockedPaths`** - Block specific paths
+
+### Upload Options
+
+- **`folder`** - Upload directory path
+- **`allowedSubfolders`** - Allowed subfolder patterns (supports wildcards)
+- **`maxFileSize`** - Maximum file size in bytes
+- **`allowedExtensions`** - Allowed file extensions
+- **`allowedMimeTypes`** - Allowed MIME types
+- **`multiple`** - Allow multiple file uploads
+- **`maxFiles`** - Maximum number of files
+- **`overwrite`** - Allow overwriting existing files
+
+### Download Options
+
+- **`folder`** - Directory to serve files from
+- **`maxFileSize`** - Maximum file size in bytes
+- **`allowedExtensions`** - Allowed file extensions
+- **`blockedPaths`** - Blocked file paths
+- **`allowHiddenFiles`** - Allow hidden files
+- **`allowSystemFiles`** - Allow system files
 
 ## Code Examples
 
 ### Basic Server Setup
 ```javascript
-import { createApp, Router } from './lib/index.cjs';
+import { createApp } from 'rnode-server';
 
 const app = createApp();
-const port = 4546;
+const port = 3000;
 
 // Simple route
 app.get('/hello', (req, res) => {
@@ -152,6 +325,8 @@ app.use('/api', (req, res, next) => {
 
 ### Router System
 ```javascript
+import { Router } from 'rnode-server';
+
 const userRouter = Router();
 
 userRouter.get('/', (req, res) => {
@@ -205,41 +380,6 @@ app.static('./admin', {
 });
 ```
 
-#### Basic Options
-- `cache: boolean` - Enable file caching (default: `true`)
-- `maxAge: number` - Cache lifetime in seconds (default: `3600`)
-
-#### File Size Limits
-- `maxFileSize: number` - Maximum file size in bytes (default: `10MB`)
-
-#### HTTP Headers
-- `etag: boolean` - Generate ETag headers (default: `true`)
-- `lastModified: boolean` - Add Last-Modified headers (default: `true`)
-####
-### Compression
-- `gzip: boolean` - Enable Gzip compression (default: `true`)
-- `brotli: boolean` - Enable Brotli compression (default: `false`)
-
-####### Security Options
-- `allowHiddenFiles: boolean` - Allow hidden files (default: `false`)
-- `allowSystemFiles: boolean` - Allow system files (default: `false`)
-- `allowedExtensions: string[]` - Whitelist file extensions (default: `['html', 'css', 'js', 'json', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'ico', 'woff', 'woff2', 'ttf', 'eot']`)
-- `blockedPaths: string[]` - Block specific paths (default: `['.git', '.env', '.htaccess', 'thumbs.db', '.ds_store', 'desktop.ini']`)
-
-
-### Host Binding
-```javascript
-// Bind to specific host
-app.listen(port, '0.0.0.0', () => {
-  console.log('Server running on all interfaces');
-});
-
-// Bind to localhost (default)
-app.listen(port, () => {
-  console.log('Server running on localhost');
-});
-```
-
 ### File Upload & Multipart Forms
 
 #### Simple Upload Example
@@ -277,88 +417,6 @@ app.post('/upload-multiple', (req, res) => {
 });
 ```
 
-#### Frontend Upload Example (HTML + JavaScript)
-```html
-<!-- Simple file upload form -->
-<form id="uploadForm" enctype="multipart/form-data">
-  <input type="file" name="avatar" accept="image/*" required>
-  <select name="subfolder" id="subfolderSelect">
-    <option value="">Root folder</option>
-    <option value="documents">Documents</option>
-    <option value="images">Images</option>
-    <option value="documents/2024">Documents/2024</option>
-  </select>
-  <button type="submit">Upload File</button>
-</form>
-
-<div id="results"></div>
-```
-
-```javascript
-// JavaScript for handling file upload
-document.getElementById('uploadForm').addEventListener('submit', async function(e) {
-  e.preventDefault();
-  
-  const formData = new FormData(this);
-  const subfolder = document.getElementById('subfolderSelect').value;
-  
-  // Add subfolder to form data if selected
-  if (subfolder) {
-    formData.append('subfolder', subfolder);
-  }
-  
-  try {
-    const response = await fetch('/upload', {
-      method: 'POST',
-      body: formData
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-    
-    const result = await response.json();
-    
-    if (result.success) {
-      const uploadedFiles = result.uploadedFiles || [];
-      const totalFiles = result.totalFiles || 0;
-      
-      // Display upload results
-      let resultHtml = `
-        <div class="result success">
-          <h3>✅ File uploaded successfully</h3>
-          <p><strong>Files uploaded:</strong> ${totalFiles}</p>
-          <p><strong>Subfolder:</strong> ${subfolder || 'Root folder'}</p>
-          
-          <h4>Uploaded files:</h4>
-          <div class="uploaded-files">`;
-      
-      uploadedFiles.forEach(file => {
-        resultHtml += `
-          <div class="file-details">
-            <p><strong>Name:</strong> ${file.name}</p>
-            <p><strong>Size:</strong> ${file.size} bytes</p>
-            <p><strong>Type:</strong> ${file.mime_type}</p>
-            <p><strong>Path:</strong> ${file.relative_path}</p>
-          </div>`;
-      });
-      
-      resultHtml += `
-          </div>
-        </div>`;
-      
-      document.getElementById('results').innerHTML = resultHtml;
-    } else {
-      document.getElementById('results').innerHTML = 
-        `<div class="result error">❌ Upload failed: ${result.error}</div>`;
-    }
-  } catch (error) {
-    document.getElementById('results').innerHTML = 
-      `<div class="result error">❌ Network error: ${error.message}</div>`;
-  }
-});
-```
-
 #### Advanced Upload with Wildcard Routes
 ```typescript
 // Upload to specific subfolder with wildcard support
@@ -383,33 +441,6 @@ app.upload('/upload-multiple/{*subfolder}', {
 });
 ```
 
-#### File Download with Wildcard Routes
-```typescript
-// Download files from any subfolder
-app.download('/download/{*name}', {
-  folder: './uploads',
-  maxFileSize: 100 * 1024 * 1024, // 100 MB
-  allowedExtensions: ['.png', '.jpg', '.jpeg', '.gif', '.pdf', '.txt', '.docx'],
-  allowHiddenFiles: false,
-  allowSystemFiles: false
-});
-```
-
-#### Content Type Responses
-```typescript
-app.get('/page', (req, res) => {
-  res.html('<h1>HTML Page</h1><p>Content</p>');
-});
-
-app.get('/data.xml', (req, res) => {
-  res.xml('<?xml version="1.0"?><data><item>value</item></data>');
-});
-
-app.get('/redirect', (req, res) => {
-  res.redirect('/new-location');
-});
-```
-
 ### Route Parameters and Wildcards
 
 #### Named Parameters
@@ -424,12 +455,6 @@ app.get('/users/{id}', (req, res) => {
 app.get('/posts/{postId}/comments/{commentId}', (req, res) => {
   const { postId, commentId } = req.params;
   res.json({ postId, commentId, message: 'Comment details' });
-});
-
-// Mixed syntax is also supported
-app.get('/articles/{articleId}/reviews/{reviewId}', (req, res) => {
-  const { articleId, reviewId } = req.params;
-  res.json({ articleId, reviewId, message: 'Review details' });
 });
 ```
 
@@ -448,13 +473,6 @@ app.post('/upload/{*subfolder}', (req, res) => {
   // subfolder can be: "documents", "documents/2024", "documents/2024/january", etc.
   res.json({ subfolder, message: 'Upload to subfolder' });
 });
-
-// Wildcard for downloads
-app.get('/download/{*name}', (req, res) => {
-  const filename = req.params.name;
-  // filename can be: "report.pdf", "documents/report.pdf", "documents/2024/report.pdf", etc.
-  res.download(`./uploads/${filename}`);
-});
 ```
 
 #### Query Parameters
@@ -467,13 +485,6 @@ app.get('/search', (req, res) => {
     page: parseInt(page) || 1, 
     limit: parseInt(limit) || 10 
   });
-});
-
-// Upload with query parameter for subfolder
-app.post('/upload', (req, res) => {
-  const subfolder = req.query.dir; // ?dir=documents/2024
-  // Use subfolder for file organization
-  res.json({ subfolder, message: 'Upload completed' });
 });
 ```
 
@@ -518,10 +529,220 @@ app.post('/upload', (req, res) => {
 - **HTTP Headers**: ETag, Last-Modified, Cache-Control support
 
 ### CORS & Headers
-- Configurable CORS policies
-- Custom header management
-- Preflight request handling
-- Security headers (XSS, CSRF protection)
+- **CORS Support** - Implement CORS policies through middleware
+- **Custom Headers** - Set custom response headers
+- **Security Headers** - Add security headers for XSS and CSRF protection
+- **Preflight Handling** - Handle OPTIONS preflight requests
+
+#### CORS Middleware Example
+```javascript
+app.use('/api', (req, res, next) => {
+  console.log('🌐 CORS middleware for API:', req.method, req.url);
+
+  // Allow all origins (can be restricted for production)
+  res.setHeader('Access-Control-Allow-Origin', '*');
+
+  // Allow all methods
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+
+  // Allow all headers
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Custom-Header');
+
+  // Allow credentials (cookies, authorization headers)
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+
+  // Maximum preflight request caching time
+  res.setHeader('Access-Control-Max-Age', '86400'); // 24 hours
+
+  // Set Content-Type with encoding for all API responses
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+
+  // Additional headers for better compatibility
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+
+  // Handle preflight OPTIONS requests
+  if (req.method === 'OPTIONS') {
+    // Send empty JSON response instead of res.end()
+    res.json({ success: true, message: 'Preflight OK' });
+    return;
+  }
+
+  // Continue execution for other requests
+  next();
+});
+```
+
+#### Rate Limiting Middleware Example
+```javascript
+// Simple in-memory rate limiting (use Redis for production)
+const rateLimitStore = new Map();
+
+app.use('/api', (req, res, next) => {
+  const clientIP = req.getHeader('x-forwarded-for') || req.getHeader('x-real-ip') || 'unknown';
+  const now = Date.now();
+  const windowMs = 15 * 60 * 1000; // 15 minutes
+  const maxRequests = 100; // max 100 requests per window
+
+  // Get client data from store
+  let clientData = rateLimitStore.get(clientIP);
+  
+  if (!clientData) {
+    clientData = { requests: [], resetTime: now + windowMs };
+    rateLimitStore.set(clientIP, clientData);
+  }
+
+  // Clean old requests outside the window
+  clientData.requests = clientData.requests.filter(time => time > now - windowMs);
+
+  // Check if limit exceeded
+  if (clientData.requests.length >= maxRequests) {
+    return res.status(429).json({
+      success: false,
+      message: 'Rate limit exceeded. Try again later.',
+      retryAfter: Math.ceil((clientData.resetTime - now) / 1000)
+    });
+  }
+
+  // Add current request
+  clientData.requests.push(now);
+
+  // Set rate limit headers
+  res.setHeader('X-RateLimit-Limit', maxRequests);
+  res.setHeader('X-RateLimit-Remaining', maxRequests - clientData.requests.length);
+  res.setHeader('X-RateLimit-Reset', clientData.resetTime);
+
+  next();
+});
+
+// Clean up expired entries every hour
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, data] of rateLimitStore.entries()) {
+    if (data.resetTime < now) {
+      rateLimitStore.delete(ip);
+    }
+  }
+}, 60 * 60 * 1000);
+```
+
+#### Security Headers Middleware Example
+```javascript
+app.use((req, res, next) => {
+  // XSS Protection
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  
+  // Prevent clickjacking
+  res.setHeader('X-Frame-Options', 'DENY');
+  
+  // Content Security Policy
+  res.setHeader('Content-Security-Policy', [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: https:",
+    "font-src 'self'",
+    "connect-src 'self'",
+    "media-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'"
+  ].join('; '));
+  
+  // Prevent MIME type sniffing
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  
+  // Referrer Policy
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  
+  // Permissions Policy
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+  
+  // HSTS (HTTPS Strict Transport Security)
+  if (req.getHeader('x-forwarded-proto') === 'https') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+
+  next();
+});
+```
+
+#### Session Management Middleware Example
+```javascript
+// Global middleware for session management
+app.use((req, res, next) => {
+  // Set request ID and timestamp
+  req.setParam('requestId', Math.random().toString(36).substr(2, 9));
+  req.setParam('timestamp', Date.now());
+
+  // Get session ID from cookies
+  const sessionId = req.getCookie('sessionId');
+  
+  if (sessionId) {
+    // Here you would validate the session against your database/Redis
+    // For this example, we'll use a simple validation
+    try {
+      // Validate session (replace with your session validation logic)
+      const sessionData = validateSession(sessionId);
+      
+      if (sessionData) {
+        req.setParam('userId', sessionData.userId);
+        req.setParam('user', sessionData.user);
+        req.setParam('isAuthenticated', true);
+        req.setParam('sessionId', sessionId);
+      } else {
+        req.setParam('isAuthenticated', false);
+        // Clear invalid session cookie
+        res.setCookie('sessionId', '', { maxAge: 0, path: '/' });
+      }
+    } catch (error) {
+      console.error('Session validation error:', error);
+      req.setParam('isAuthenticated', false);
+      res.setCookie('sessionId', '', { maxAge: 0, path: '/' });
+    }
+  } else {
+    req.setParam('isAuthenticated', false);
+  }
+
+  next();
+});
+
+// Authentication middleware for protected routes
+app.use('/api/protected', (req, res, next) => {
+  if (!req.getParam('isAuthenticated')) {
+    return res.status(401).json({
+      success: false,
+      message: 'Authentication required. Please log in.',
+      error: 'Unauthorized'
+    });
+  }
+  
+  next();
+});
+
+// Helper function for session validation (replace with your implementation)
+function validateSession(sessionId) {
+  // This is a placeholder - implement your session validation logic
+  // You might check against Redis, database, or JWT token
+  
+  // Example Redis check:
+  // return redisClient.get(`session:${sessionId}`);
+  
+  // Example database check:
+  // return db.query('SELECT * FROM sessions WHERE id = ? AND expires_at > NOW()', [sessionId]);
+  
+  // For demo purposes, return mock data
+  if (sessionId && sessionId.length > 10) {
+    return {
+      userId: 'user123',
+      user: { username: 'demo_user', email: 'demo@example.com' }
+    };
+  }
+  
+  return null;
+}
+```
 
 ### Cookie Management
 - Secure cookie setting

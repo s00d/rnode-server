@@ -3,7 +3,7 @@ import * as console from "node:console";
 
 const app = createApp();
 
-  // Регистрируем роут для скачивания файлов (поддерживает подпапки)
+  // Register route for downloading files (supports subfolders)
   app.download('/download/{*name}', {
     folder: './uploads',
     maxFileSize: 100 * 1024 * 1024, // 100 MB
@@ -12,10 +12,10 @@ const app = createApp();
     allowSystemFiles: false
   });
 
-// Роут для загрузки файлов в корневую папку
+// Route for uploading files to root folder
 app.upload('/upload', {
   folder: './uploads',
-  allowedSubfolders: ['documents/*', 'images/*', 'files/*'], // Разрешенные подпапки с wildcard
+  allowedSubfolders: ['documents/*', 'images/*', 'files/*'], // Allowed subfolders with wildcard
   maxFileSize: 50 * 1024 * 1024, // 50 MB
   allowedExtensions: ['.png', '.jpg', '.jpeg', '.gif', '.pdf', '.txt', '.docx'],
   allowedMimeTypes: ['image/png', 'image/jpeg', 'image/gif', 'application/pdf', 'text/plain', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
@@ -23,10 +23,10 @@ app.upload('/upload', {
   overwrite: true
 });
 
-// Роут для загрузки файлов в любую подпапку (wildcard)
+// Route for uploading files to any subfolder (wildcard)
 app.upload('/upload/{*subfolder}', {
   folder: './uploads',
-  allowedSubfolders: ['*'], // Разрешаем любую подпапку
+  allowedSubfolders: ['*'], // Allow any subfolder
   maxFileSize: 50 * 1024 * 1024, // 50 MB
   allowedExtensions: ['.png', '.jpg', '.jpeg', '.gif', '.pdf', '.txt', '.docx'],
   allowedMimeTypes: ['image/png', 'image/jpeg', 'image/gif', 'application/pdf', 'text/plain', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
@@ -34,10 +34,10 @@ app.upload('/upload/{*subfolder}', {
   overwrite: true
 });
 
-// Роут для множественной загрузки файлов в корневую папку
+// Route for multiple file upload to root folder
 app.upload('/upload-multiple', {
   folder: './uploads',
-  allowedSubfolders: ['documents/*', 'images/*', 'files/*'], // Разрешенные подпапки с wildcard
+  allowedSubfolders: ['documents/*', 'images/*', 'files/*'], // Allowed subfolders with wildcard
   maxFileSize: 50 * 1024 * 1024, // 50 MB
   allowedExtensions: ['.png', '.jpg', '.jpeg', '.gif'],
   allowedMimeTypes: ['image/png', 'image/jpeg', 'image/gif'],
@@ -46,10 +46,10 @@ app.upload('/upload-multiple', {
   overwrite: true
 });
 
-// Роут для множественной загрузки файлов в любую подпапку (wildcard)
+// Route for multiple file upload to any subfolder (wildcard)
 app.upload('/upload-multiple/{*subfolder}', {
   folder: './uploads',
-  allowedSubfolders: ['*'], // Разрешаем любую подпапку
+  allowedSubfolders: ['*'], // Allow any subfolder
   maxFileSize: 50 * 1024 * 1024, // 50 MB
   allowedExtensions: ['.png', '.jpg', '.jpeg', '.gif'],
   allowedMimeTypes: ['image/png', 'image/jpeg', 'image/gif'],
@@ -58,7 +58,7 @@ app.upload('/upload-multiple/{*subfolder}', {
   overwrite: true
 });
 
-// Статические файлы для веб-интерфейса
+// Static files for web interface
 app.static('./upload-demo', {
   cache: true,
   maxAge: 3600,
@@ -68,17 +68,17 @@ app.static('./upload-demo', {
   brotli: true
 });
 
-// Папка для сохранения загруженных файлов (пример)
+// Folder for saving uploaded files (example)
 app.static('./uploads', {
-  cache: false, // Не кешируем загруженные файлы
+  cache: false, // Don't cache uploaded files
   maxAge: 0,
-  maxFileSize: 50 * 1024 * 1024, // 50MB для загруженных файлов
+  maxFileSize: 50 * 1024 * 1024, // 50MB for uploaded files
   allowHiddenFiles: false,
   allowedExtensions: ['jpg', 'png', 'gif', 'pdf', 'txt', 'docx'],
   blockedPaths: ['.git', '.env', 'node_modules']
 });
 
-// Маршрут для главной страницы с формой загрузки
+// Route for main page with upload form
 app.get('/', (req, res) => {
   try {
     const path = require('path');
@@ -87,20 +87,20 @@ app.get('/', (req, res) => {
     let filesList = '';
     let totalFiles = 0;
     
-    // Используем Rust метод для получения списка файлов с подпапками
+    // Use Rust method to get file list with subfolders
     try {
       const listResult = app.listFiles(uploadsDir);
       if (listResult.success) {
         let allFiles = [];
         
-        // Добавляем все файлы с определением папки
+        // Add all files with folder identification
         if (listResult.files && listResult.files.length > 0) {
           allFiles.push(...listResult.files.map(file => {
-            let folder = 'Корневая папка';
+            let folder = 'Root folder';
             if (file.relative_path.includes('/')) {
               const pathParts = file.relative_path.split('/');
               if (pathParts.length >= 2) {
-                // Показываем полный путь к папке (например, "documents/2024/january")
+                // Show full folder path (e.g., "documents/2024/january")
                 folder = pathParts.slice(0, -1).join('/');
               } else {
                 folder = pathParts[0];
@@ -115,7 +115,7 @@ app.get('/', (req, res) => {
             const fileSize = (file.size / 1024).toFixed(2); // KB
             const createdDate = new Date(parseInt(file.created)).toLocaleString('ru-RU');
             const modifiedDate = new Date(parseInt(file.modified)).toLocaleString('ru-RU');
-            const folderInfo = file.folder !== 'Корневая папка' ? `<span class="file-folder">📁 ${file.folder}</span>` : '';
+            const folderInfo = file.folder !== 'Root folder' ? `<span class="file-folder">📁 ${file.folder}</span>` : '';
             
             return `
               <div class="file-item">
@@ -123,13 +123,13 @@ app.get('/', (req, res) => {
                   <span class="file-name">${file.name}</span>
                   ${folderInfo}
                   <span class="file-size">${fileSize} KB</span>
-                  <span class="file-date">Создан: ${createdDate}</span>
-                  <span class="file-date">Изменен: ${modifiedDate}</span>
+                  <span class="file-date">Created: ${createdDate}</span>
+                  <span class="file-date">Modified: ${modifiedDate}</span>
                   <span class="file-mime">${file.mime_type}</span>
                 </div>
                 <div class="file-actions">
-                  <a href="/download/${file.relative_path}" class="download-btn" download>📥 Скачать</a>
-                  <button class="delete-btn" onclick="deleteFile('${file.relative_path}')">🗑️ Удалить</button>
+                  <a href="/download/${file.relative_path}" class="download-btn" download>📥 Download</a>
+                  <button class="delete-btn" onclick="deleteFile('${file.relative_path}')">🗑️ Delete</button>
                 </div>
               </div>
             `;
@@ -140,8 +140,8 @@ app.get('/', (req, res) => {
         }
       }
     } catch (rustError) {
-      console.error('❌ Ошибка получения файлов через Rust:', rustError);
-      // Fallback к пустому списку
+      console.error('❌ Error getting files via Rust:', rustError);
+      // Fallback to empty list
     }
     
     res.html(`
@@ -157,52 +157,52 @@ app.get('/', (req, res) => {
           <h1>RNode Server - File Upload Demo</h1>
           
           <div class="upload-section">
-            <h2>Загрузка одного файла</h2>
-            <p class="upload-info">💡 Теперь используется wildcard путь для лучшей SEO!</p>
+            <h2>Single File Upload</h2>
+            <p class="upload-info">💡 Now uses wildcard path for better SEO!</p>
             <form id="singleUpload" enctype="multipart/form-data">
               <input type="file" name="avatar" accept="image/*" required>
-              <input type="text" name="description" placeholder="Описание файла">
+              <input type="text" name="description" placeholder="File description">
               <select id="singleSubfolder" required>
-                <option value="">Выберите папку</option>
-                <option value="documents">📁 Документы</option>
-                <option value="documents/2024">📁 Документы/2024</option>
-                <option value="documents/2024/january">📁 Документы/2024/Январь</option>
-                <option value="images">🖼️ Изображения</option>
-                <option value="images/thumbnails">🖼️ Изображения/Миниатюры</option>
-                <option value="files">📄 Файлы</option>
-                <option value="files/archives">📄 Файлы/Архивы</option>
+                <option value="">Select folder</option>
+                <option value="documents">📁 Documents</option>
+                <option value="documents/2024">📁 Documents/2024</option>
+                <option value="documents/2024/january">📁 Documents/2024/January</option>
+                <option value="images">🖼️ Images</option>
+                <option value="images/thumbnails">🖼️ Images/Thumbnails</option>
+                <option value="files">📄 Files</option>
+                <option value="files/archives">📄 Files/Archives</option>
               </select>
-              <button type="submit">Загрузить файл</button>
+              <button type="submit">Upload File</button>
             </form>
           </div>
           
           <div class="upload-section">
-            <h2>Загрузка нескольких файлов</h2>
-            <p class="upload-info">💡 Теперь используется wildcard путь для лучшей SEO!</p>
+            <h2>Multiple Files Upload</h2>
+            <p class="upload-info">💡 Now uses wildcard path for better SEO!</p>
             <form id="multipleUpload" enctype="multipart/form-data">
               <input type="file" name="documents" multiple accept=".pdf,.txt,.docx">
-              <input type="text" name="category" placeholder="Категория файлов">
+              <input type="text" name="category" placeholder="File category">
               <select id="multipleSubfolder" required>
-                <option value="">Выберите папку</option>
-                <option value="documents">📁 Документы</option>
-                <option value="documents/2024">📁 Документы/2024</option>
-                <option value="documents/2024/january">📁 Документы/2024/Январь</option>
-                <option value="images">🖼️ Изображения</option>
-                <option value="images/thumbnails">🖼️ Изображения/Миниатюры</option>
-                <option value="files">📄 Файлы</option>
-                <option value="files/archives">📄 Файлы/Архивы</option>
+                <option value="">Select folder</option>
+                <option value="documents">📁 Documents</option>
+                <option value="documents/2024">📁 Documents/2024</option>
+                <option value="documents/2024/january">📁 Documents/2024/January</option>
+                <option value="images">🖼️ Images</option>
+                <option value="images/thumbnails">🖼️ Images/Thumbnails</option>
+                <option value="files">📄 Files</option>
+                <option value="files/archives">📄 Files/Archives</option>
               </select>
-              <button type="submit">Загрузить файлы</button>
+              <button type="submit">Upload Files</button>
             </form>
           </div>
           
           <div class="files-section">
-            <h2>Загруженные файлы (${totalFiles})</h2>
+            <h2>Uploaded Files (${totalFiles})</h2>
             ${totalFiles > 0 ? 
               `<div class="files-list">${filesList}</div>` : 
-              '<p class="no-files">Файлы еще не загружены</p>'
+              '<p class="no-files">No files uploaded yet</p>'
             }
-            <button onclick="refreshFiles()" class="refresh-btn">🔄 Обновить список</button>
+            <button onclick="refreshFiles()" class="refresh-btn">🔄 Refresh List</button>
           </div>
           
           <div id="results"></div>
@@ -211,8 +211,8 @@ app.get('/', (req, res) => {
         <script src="/upload.js"></script>
         <script>
           function deleteFile(filepath) {
-            if (confirm('Удалить файл "' + filepath + '"?')) {
-              // Кодируем путь для безопасной передачи в URL
+            if (confirm('Delete file "' + filepath + '"?')) {
+              // Encode path for safe URL transmission
               const encodedPath = encodeURIComponent(filepath);
               fetch('/delete/' + encodedPath, { method: 'DELETE' })
                 .then(response => response.json())
@@ -220,11 +220,11 @@ app.get('/', (req, res) => {
                   if (data.success) {
                     location.reload();
                   } else {
-                    alert('Ошибка удаления: ' + data.error);
+                    alert('Delete error: ' + data.error);
                   }
                 })
                 .catch(error => {
-                  alert('Ошибка: ' + error);
+                  alert('Error: ' + error);
                 });
             }
           }
@@ -237,65 +237,65 @@ app.get('/', (req, res) => {
       </html>
     `);
   } catch (error) {
-    console.error('❌ Ошибка при загрузке главной страницы:', error);
-    res.status(500).html('<h1>Ошибка сервера</h1><p>Не удалось загрузить страницу</p>');
+    console.error('❌ Error loading main page:', error);
+    res.status(500).html('<h1>Server Error</h1><p>Failed to load page</p>');
   }
 });
 
-// API для удаления файла (поддерживает подпапки)
+// API for deleting file (supports subfolders)
 app.delete('/delete/{*filepath}', (req, res) => {
-  // Получаем полный путь к файлу из URL и декодируем его
+  // Get full file path from URL and decode it
   let filepath = req.params.filepath;
   
-  // Декодируем URL-encoded параметр
+  // Decode URL-encoded parameter
   try {
     filepath = decodeURIComponent(filepath);
   } catch (error) {
-    console.error('❌ Ошибка декодирования URL:', error);
+    console.error('❌ URL decoding error:', error);
     return res.status(400).json({ 
       success: false, 
       error: 'Invalid URL encoding' 
     });
   }
   
-  console.log(`🔍 Попытка удаления файла: ${filepath}`);
+  console.log(`🔍 Attempting to delete file: ${filepath}`);
   
   const path = require('path');
   const uploadsDir = path.join(__dirname, '../uploads');
   
   try {
-    // Используем Rust метод для удаления файла
+    // Use Rust method to delete file
     const deleteResult = app.deleteFile(filepath, uploadsDir);
     
     if (deleteResult.success) {
-      console.log(`🗑️ Файл удален через Rust: ${filepath}`);
+      console.log(`🗑️ File deleted via Rust: ${filepath}`);
       res.json({ 
         success: true, 
         message: deleteResult.message 
       });
     } else {
-      console.log(`❌ Файл не найден для удаления: ${filepath}`);
+      console.log(`❌ File not found for deletion: ${filepath}`);
       res.status(404).json({ 
         success: false, 
         error: deleteResult.error 
       });
     }
   } catch (error) {
-    console.error(`❌ Ошибка удаления файла ${filepath}:`, error);
+    console.error(`❌ File deletion error ${filepath}:`, error);
     res.status(500).json({ 
       success: false, 
-      error: 'Ошибка удаления файла' 
+      error: 'File deletion error' 
     });
   }
 });
 
-// API для получения списка загруженных файлов
+// API for getting list of uploaded files
 app.get('/files', (req, res) => {
   try {
     const path = require('path');
     const uploadsDir = path.join(__dirname, '../uploads');
     
-    // Используем Rust метод для получения списка файлов
+    // Use Rust method to get file list
     const listResult = app.listFiles(uploadsDir);
     
     if (listResult.success) {
@@ -307,21 +307,21 @@ app.get('/files', (req, res) => {
       });
     }
   } catch (error) {
-    console.error('❌ Ошибка получения списка файлов:', error);
+    console.error('❌ Error getting file list:', error);
     res.status(500).json({ 
       success: false, 
-      error: 'Ошибка получения списка файлов' 
+      error: 'Error getting file list' 
     });
   }
 });
 
-// Тестирование различных типов ответов
+// Testing different response types
 app.get('/demo/html', (req, res) => {
-  res.html('<h1>HTML Response</h1><p>Это HTML контент от сервера</p>');
+  res.html('<h1>HTML Response</h1><p>This is HTML content from server</p>');
 });
 
 app.get('/demo/text', (req, res) => {
-  res.text('Это простой текстовый ответ от сервера');
+  res.text('This is a simple text response from server');
 });
 
 app.get('/demo/xml', (req, res) => {
@@ -333,11 +333,11 @@ app.get('/demo/redirect', (req, res) => {
 });
 
 app.get('/demo/download', (req, res) => {
-  // Пример загрузки файла (в реальном приложении файл должен существовать)
+  // Example file download (in real app file should exist)
   res.download('./upload-demo/sample.txt', 'downloaded_file.txt');
 });
 
-// API информация
+// API information
 app.get('/api/info', (req, res) => {
   res.json({
     server: 'RNode Server',
@@ -361,7 +361,7 @@ app.get('/api/info', (req, res) => {
   });
 });
 
-// Запускаем сервер
+// Start server
 app.listen(4540, () => {
   console.log('🚀 Multipart Demo Server running on port 4540');
   console.log('📁 File upload functionality enabled');

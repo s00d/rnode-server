@@ -2,12 +2,12 @@ const express = require('express');
 const path = require('path');
 
 const app = express();
-const port = 4547; // Используем другой порт чтобы не конфликтовать
+const port = 4547; // Use different port to avoid conflicts
 
-// Middleware для парсинга JSON
+// Middleware for JSON parsing
 app.use(express.json());
 
-// Middleware для CORS
+// Middleware for CORS
 app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH');
@@ -15,26 +15,26 @@ app.use((req, res, next) => {
     next();
 });
 
-// Статические файлы
+// Static files
 app.use(express.static(path.join(__dirname, 'public')));
 
-// GET маршрут
+// GET route
 app.get('/hello', (req, res) => {
     res.send('Hello World!');
 });
 
-// POST маршрут
+// POST route
 app.post('/api/users', (req, res) => {
     res.json({ message: 'User created successfully' });
 });
 
-// GET маршрут с параметрами
+// GET route with parameters
 app.get('/api/users/:id', (req, res) => {
     const userId = req.params.id;
     res.json({ userId, message: 'User found' });
 });
 
-// Запуск сервера
+// Start server
 app.listen(port, () => {
     console.log(`Express app listening on port ${port}`);
     console.log(`Static files served from: ${path.join(__dirname, 'public')}`);

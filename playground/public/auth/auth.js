@@ -1,7 +1,7 @@
-// API базовый URL
+// API base URL
 const API_BASE = '/api';
 
-// Класс для управления авторизацией
+// Class for managing authorization
 class AuthManager {
     constructor() {
         this.isAuthenticated = false;
@@ -15,25 +15,25 @@ class AuthManager {
     }
 
     bindEvents() {
-        // Форма входа
+        // Login form
         document.getElementById('loginForm').addEventListener('submit', (e) => {
             e.preventDefault();
             this.login();
         });
 
-        // Форма регистрации
+        // Registration form
         document.getElementById('registerForm').addEventListener('submit', (e) => {
             e.preventDefault();
             this.register();
         });
 
-        // Кнопка выхода
+        // Logout button
         document.getElementById('logoutBtn').addEventListener('click', () => {
             this.logout();
         });
     }
 
-    // Проверка статуса авторизации при загрузке страницы
+    // Check authorization status on page load
     async checkAuthStatus() {
         try {
             const response = await fetch(`${API_BASE}/auth/profile`, {
@@ -52,18 +52,18 @@ class AuthManager {
                 this.setUnauthenticated();
             }
         } catch (error) {
-            console.error('Ошибка при проверке статуса авторизации:', error);
+            console.error('Error checking authorization status:', error);
             this.setUnauthenticated();
         }
     }
 
-    // Вход в систему
+    // Login to system
     async login() {
         const email = document.getElementById('loginEmail').value;
         const password = document.getElementById('loginPassword').value;
 
         if (!email || !password) {
-            this.showStatus('loginStatus', 'error', 'Заполните все поля');
+            this.showStatus('loginStatus', 'error', 'Fill in all fields');
             return;
         }
 
@@ -85,35 +85,35 @@ class AuthManager {
                 this.showStatus('loginStatus', 'success', data.message);
                 this.setAuthenticated(data.user);
                 
-                // Очищаем форму
+                // Clear form
                 document.getElementById('loginForm').reset();
                 
-                // Обновляем профиль
+                // Update profile
                 await this.loadProfile();
             } else {
                 this.showStatus('loginStatus', 'error', data.message);
             }
         } catch (error) {
-            console.error('Ошибка при входе:', error);
-            this.showStatus('loginStatus', 'error', 'Ошибка сервера при входе');
+            console.error('Login error:', error);
+            this.showStatus('loginStatus', 'error', 'Server error during login');
         } finally {
             this.setLoading('loginBtn', false);
         }
     }
 
-    // Регистрация пользователя
+    // User registration
     async register() {
         const username = document.getElementById('registerUsername').value;
         const email = document.getElementById('registerEmail').value;
         const password = document.getElementById('registerPassword').value;
 
         if (!username || !email || !password) {
-            this.showStatus('registerStatus', 'error', 'Заполните все поля');
+            this.showStatus('registerStatus', 'error', 'Fill in all fields');
             return;
         }
 
         if (password.length < 6) {
-            this.showStatus('registerStatus', 'error', 'Пароль должен содержать минимум 6 символов');
+            this.showStatus('registerStatus', 'error', 'Password must contain at least 6 characters');
             return;
         }
 
@@ -135,23 +135,23 @@ class AuthManager {
                 this.showStatus('registerStatus', 'success', data.message);
                 this.setAuthenticated(data.user);
                 
-                // Очищаем форму
+                // Clear form
                 document.getElementById('registerForm').reset();
                 
-                // Обновляем профиль
+                // Update profile
                 await this.loadProfile();
             } else {
                 this.showStatus('registerStatus', 'error', data.message);
             }
         } catch (error) {
-            console.error('Ошибка при регистрации:', error);
-            this.showStatus('registerStatus', 'error', 'Ошибка сервера при регистрации');
+            console.error('Registration error:', error);
+            this.showStatus('registerStatus', 'error', 'Server error during registration');
         } finally {
             this.setLoading('registerBtn', false);
         }
     }
 
-    // Выход из системы
+    // Logout from system
     async logout() {
         try {
             const response = await fetch(`${API_BASE}/auth/logout`, {
@@ -163,16 +163,16 @@ class AuthManager {
 
             if (data.success) {
                 this.setUnauthenticated();
-                this.showStatus('profileStatus', 'info', 'Вы успешно вышли из системы');
+                this.showStatus('profileStatus', 'info', 'You have successfully logged out');
             } else {
-                console.error('Ошибка при выходе:', data.message);
+                console.error('Logout error:', data.message);
             }
         } catch (error) {
-            console.error('Ошибка при выходе:', error);
+            console.error('Logout error:', error);
         }
     }
 
-    // Загрузка профиля пользователя
+    // Load user profile
     async loadProfile() {
         try {
             const response = await fetch(`${API_BASE}/auth/profile`, {
@@ -187,45 +187,45 @@ class AuthManager {
                 }
             }
         } catch (error) {
-            console.error('Ошибка при загрузке профиля:', error);
+            console.error('Profile loading error:', error);
         }
     }
 
-    // Установка состояния авторизованного пользователя
+    // Set authenticated user state
     setAuthenticated(user) {
         this.isAuthenticated = true;
         this.currentUser = user;
         
-        // Обновляем UI
+        // Update UI
         document.getElementById('profileStatus').classList.add('hidden');
         document.getElementById('profileInfo').classList.remove('hidden');
         
-        // Обновляем профиль
+        // Update profile
         this.updateProfileDisplay(user);
         
-        // Показываем уведомление
-        this.showStatus('profileStatus', 'success', `Добро пожаловать, ${user.username}!`);
+        // Show notification
+        this.showStatus('profileStatus', 'success', `Welcome, ${user.username}!`);
         setTimeout(() => {
             document.getElementById('profileStatus').classList.add('hidden');
         }, 3000);
     }
 
-    // Установка состояния неавторизованного пользователя
+    // Set unauthenticated user state
     setUnauthenticated() {
         this.isAuthenticated = false;
         this.currentUser = null;
         
-        // Обновляем UI
+        // Update UI
         document.getElementById('profileStatus').classList.remove('hidden');
-        document.getElementById('profileStatus').textContent = 'Войдите в систему для просмотра профиля';
+        document.getElementById('profileStatus').textContent = 'Please log in to view profile';
         document.getElementById('profileStatus').className = 'status info';
         document.getElementById('profileInfo').classList.add('hidden');
         
-        // Очищаем поля профиля
+        // Clear profile fields
         this.clearProfileDisplay();
     }
 
-    // Обновление отображения профиля
+    // Update profile display
     updateProfileDisplay(profile) {
         document.getElementById('profileId').textContent = profile.id;
         document.getElementById('profileUsername').textContent = profile.username;
@@ -234,7 +234,7 @@ class AuthManager {
         document.getElementById('profileUpdatedAt').textContent = this.formatDate(profile.updatedAt);
     }
 
-    // Очистка отображения профиля
+    // Clear profile display
     clearProfileDisplay() {
         document.getElementById('profileId').textContent = '-';
         document.getElementById('profileUsername').textContent = '-';
@@ -243,7 +243,7 @@ class AuthManager {
         document.getElementById('profileUpdatedAt').textContent = '-';
     }
 
-    // Форматирование даты
+    // Date formatting
     formatDate(dateString) {
         if (!dateString) return '-';
         
@@ -261,20 +261,20 @@ class AuthManager {
         }
     }
 
-    // Показ статуса
+    // Show status
     showStatus(elementId, type, message) {
         const element = document.getElementById(elementId);
         element.textContent = message;
         element.className = `status ${type}`;
         element.classList.remove('hidden');
         
-        // Автоматически скрываем через 5 секунд
+        // Automatically hide after 5 seconds
         setTimeout(() => {
             element.classList.add('hidden');
         }, 5000);
     }
 
-    // Установка состояния загрузки для кнопки
+    // Set loading state for button
     setLoading(buttonId, isLoading) {
         const button = document.getElementById(buttonId);
         const spinner = button.querySelector('.spinner');
@@ -289,30 +289,30 @@ class AuthManager {
     }
 }
 
-// Инициализация при загрузке страницы
+// Initialize when page loads
 document.addEventListener('DOMContentLoaded', () => {
     new AuthManager();
 });
 
-// Дополнительные утилиты
+// Additional utilities
 class Utils {
-    // Валидация email
+    // Email validation
     static isValidEmail(email) {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return emailRegex.test(email);
     }
 
-    // Валидация пароля
+    // Password validation
     static isValidPassword(password) {
         return password.length >= 6;
     }
 
-    // Валидация имени пользователя
+    // Username validation
     static isValidUsername(username) {
         return username.length >= 3 && username.length <= 20;
     }
 
-    // Безопасное отображение текста
+    // Safe text display
     static escapeHtml(text) {
         const div = document.createElement('div');
         div.textContent = text;
@@ -320,11 +320,11 @@ class Utils {
     }
 }
 
-// Глобальные функции для отладки
+// Global functions for debugging
 window.authManager = null;
 window.utils = Utils;
 
-// Экспорт для использования в других модулях
+// Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { AuthManager, Utils };
 }

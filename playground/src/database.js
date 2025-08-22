@@ -12,7 +12,7 @@ class UserDatabase {
   }
 
   init() {
-    // Создаем таблицу пользователей
+    // Create users table
     const createTable = `
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -25,10 +25,10 @@ class UserDatabase {
     `;
     
     this.db.exec(createTable);
-    console.log('✅ База данных инициализирована');
+    console.log('✅ Database initialized');
   }
 
-  // Создать пользователя
+  // Create user
   createUser(userData) {
     try {
       const stmt = this.db.prepare(`
@@ -41,23 +41,23 @@ class UserDatabase {
       return {
         success: true,
         id: result.lastInsertRowid,
-        message: 'Пользователь создан успешно'
+        message: 'User created successfully'
       };
     } catch (error) {
       if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
         return {
           success: false,
-          message: 'Пользователь с таким email уже существует'
+          message: 'User with this email already exists'
         };
       }
       return {
         success: false,
-        message: `Ошибка создания пользователя: ${error.message}`
+        message: `Error creating user: ${error.message}`
       };
     }
   }
 
-  // Получить всех пользователей
+  // Get all users
   getAllUsers() {
     try {
       const stmt = this.db.prepare('SELECT * FROM users ORDER BY created_at DESC');
@@ -71,14 +71,14 @@ class UserDatabase {
     } catch (error) {
       return {
         success: false,
-        message: `Ошибка получения пользователей: ${error.message}`,
+        message: `Error getting users: ${error.message}`,
         users: [],
         count: 0
       };
     }
   }
 
-  // Получить пользователя по ID
+  // Get user by ID
   getUserById(id) {
     try {
       const stmt = this.db.prepare('SELECT * FROM users WHERE id = ?');
@@ -92,18 +92,18 @@ class UserDatabase {
       } else {
         return {
           success: false,
-          message: 'Пользователь не найден'
+          message: 'User not found'
         };
       }
     } catch (error) {
       return {
         success: false,
-        message: `Ошибка получения пользователя: ${error.message}`
+        message: `Error getting user: ${error.message}`
       };
     }
   }
 
-  // Обновить пользователя
+  // Update user
   updateUser(id, userData) {
     try {
       const stmt = this.db.prepare(`
@@ -117,23 +117,23 @@ class UserDatabase {
       if (result.changes > 0) {
         return {
           success: true,
-          message: 'Пользователь обновлен успешно'
+          message: 'User updated successfully'
         };
       } else {
         return {
           success: false,
-          message: 'Пользователь не найден'
+          message: 'User not found'
         };
       }
     } catch (error) {
       return {
         success: false,
-        message: `Ошибка обновления пользователя: ${error.message}`
+        message: `Error updating user: ${error.message}`
       };
     }
   }
 
-  // Удалить пользователя
+  // Delete user
   deleteUser(id) {
     try {
       const stmt = this.db.prepare('DELETE FROM users WHERE id = ?');
@@ -142,23 +142,23 @@ class UserDatabase {
       if (result.changes > 0) {
         return {
           success: true,
-          message: 'Пользователь удален успешно'
+          message: 'User deleted successfully'
         };
       } else {
         return {
           success: false,
-          message: 'Пользователь не найден'
+          message: 'User not found'
         };
       }
     } catch (error) {
       return {
         success: false,
-        message: `Ошибка удаления пользователя: ${error.message}`
+        message: `Error deleting user: ${error.message}`
       };
     }
   }
 
-  // Поиск пользователей по имени или email
+  // Search users by name or email
   searchUsers(query) {
     try {
       const stmt = this.db.prepare(`
@@ -179,7 +179,7 @@ class UserDatabase {
     } catch (error) {
       return {
         success: false,
-        message: `Ошибка поиска пользователей: ${error.message}`,
+        message: `Error searching users: ${error.message}`,
         users: [],
         count: 0,
         query: query
@@ -187,10 +187,10 @@ class UserDatabase {
     }
   }
 
-  // Закрыть соединение с базой
+  // Close database connection
   close() {
     this.db.close();
-    console.log('🔒 Соединение с базой данных закрыто');
+    console.log('🔒 Database connection closed');
   }
 }
 

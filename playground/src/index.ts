@@ -3,72 +3,72 @@ import { createApp, Router, Request, Response } from 'rnode-server';
 const app = createApp();
 const port = 4546;
 
-// Создаем роутер для API
+// Create API router
 const apiRouter = Router();
 
-// GET маршрут для получения данных
+// GET route for retrieving data
 apiRouter.get('/data', (req: Request, res: Response) => {
   res.json({
     success: true,
-    message: 'Данные получены успешно',
+    message: 'Data retrieved successfully',
     timestamp: new Date().toISOString(),
     params: req.getParams()
   });
 });
 
-// POST маршрут для создания данных
+// POST route for creating data
 apiRouter.post('/data', (req: Request, res: Response) => {
   res.json({
     success: true,
-    message: 'Данные созданы успешно',
+    message: 'Data created successfully',
     receivedData: req.body,
     timestamp: new Date().toISOString()
   });
 });
 
-// PUT маршрут для обновления данных
+// PUT route for updating data
 apiRouter.put('/data/{id}', (req: Request, res: Response) => {
   res.json({
     success: true,
-    message: 'Данные обновлены успешно',
+    message: 'Data updated successfully',
     id: req.params.id,
     updatedData: req.body,
     timestamp: new Date().toISOString()
   });
 });
 
-// DELETE маршрут для удаления данных
+// DELETE route for deleting data
 apiRouter.delete('/data/{id}', (req: Request, res: Response) => {
   res.json({
     success: true,
-    message: 'Данные удалены успешно',
+    message: 'Data deleted successfully',
     id: req.params.id,
     timestamp: new Date().toISOString()
   });
 });
 
-// Простой маршрут для тестирования
+// Simple test route
 app.get('/hello', (req: Request, res: Response) => {
   res.json({
-    message: 'Привет от RNode сервера!',
+    message: 'Hello from RNode server!',
     timestamp: new Date().toISOString()
   });
 });
 
-// Регистрируем API роутер
+// Register API router
 app.useRouter('/api', apiRouter);
 
-// Загружаем статические файлы
+// Load static files
 app.static('./public');
 
-// Запускаем сервер
+// Start server
 app.listen(port, () => {
-  console.log(`🚀 RNode сервер запущен на порту ${port}`);
-  console.log(`📝 Доступные маршруты:`);
-  console.log(`   GET  /hello - приветствие`);
-  console.log(`   GET  /api/data - получение данных`);
-  console.log(`   POST /api/data - создание данных`);
-  console.log(`   PUT  /api/data/:id - обновление данных`);
-  console.log(`   DELETE /api/data/:id - удаление данных`);
-  console.log(`🌐 Откройте http://localhost:${port}/hello для тестирования`);
+  console.log(`🚀 RNode server started on port ${port}`);
+  console.log(`📝 Available routes:`);
+  console.log(`   GET  /hello - greeting`);
+  console.log(`   GET  /api/data - get data`);
+  console.log(`   POST /api/data - create data`);
+  console.log(`   PUT  /api/data/:id - update data`);
+  console.log(`   DELETE /api/data/:id - delete data`);
+  console.log(`🌐 Open http://localhost:${port}/hello for testing`);
 });

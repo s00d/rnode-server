@@ -3,10 +3,10 @@
 document.addEventListener('DOMContentLoaded', function() {
   const resultsContainer = document.getElementById('results');
   
-  // Добавляем демо ссылки
+  // Add demo links
   addDemoLinks();
   
-  // Обработчик для загрузки одного файла
+  // Handler for single file upload
   document.getElementById('singleUpload').addEventListener('submit', async function(e) {
     e.preventDefault();
     
@@ -15,27 +15,27 @@ document.addEventListener('DOMContentLoaded', function() {
     const subfolderSelect = document.getElementById('singleSubfolder');
     
     if (!fileInput.files.length) {
-      showResult('error', 'Пожалуйста, выберите файл');
+      showResult('error', 'Please select a file');
       return;
     }
     
     if (!subfolderSelect.value) {
-      showResult('error', 'Пожалуйста, выберите папку');
+      showResult('error', 'Please select a folder');
       return;
     }
     
-    showLoading('Загрузка файла...');
+    showLoading('Uploading file...');
     
     try {
-      // Формируем URL с wildcard путем или query параметром
+      // Form URL with wildcard path or query parameter
       let uploadUrl;
       if (subfolderSelect.value) {
-        // Используем wildcard путь для лучшей SEO и читаемости
+        // Use wildcard path for better SEO and readability
         uploadUrl = `/upload/${subfolderSelect.value}`;
       } else {
         uploadUrl = '/upload';
       }
-      console.log('📤 Загружаем файл в папку:', subfolderSelect.value, 'URL:', uploadUrl);
+      console.log('📤 Uploading file to folder:', subfolderSelect.value, 'URL:', uploadUrl);
       
       const response = await fetch(uploadUrl, {
         method: 'POST',
@@ -53,57 +53,57 @@ document.addEventListener('DOMContentLoaded', function() {
         throw new Error(`Failed to parse response: ${parseError.message}`);
       }
       
-      console.log('🔍 Upload response:', result); // Для отладки
-      console.log('🔍 Тип result:', typeof result);
+      console.log('🔍 Upload response:', result); // For debugging
+      console.log('🔍 Result type:', typeof result);
       console.log('🔍 result.success:', result?.success);
       console.log('🔍 result.uploadedFiles:', result?.uploadedFiles);
       
-      // Проверяем что result является объектом
+      // Check that result is an object
       if (!result || typeof result !== 'object') {
         throw new Error('Invalid response format');
       }
       
       if (result.success) {
-        // Проверяем что поля существуют перед использованием
+        // Check that fields exist before using
         const uploadedFiles = result.uploadedFiles || [];
         const totalFiles = result.totalFiles || 0;
         const formFields = result.formFields || {};
         
-        // Сохраняем результат для отображения деталей
+        // Save result for displaying details
         window.lastUploadResult = result;
         
-        // Определяем подпапку из относительного пути
-        let subfolder = 'Корневая папка';
+        // Determine subfolder from relative path
+        let subfolder = 'Root folder';
         if (uploadedFiles.length > 0 && uploadedFiles[0].relative_path && uploadedFiles[0].relative_path.includes('/')) {
           const pathParts = uploadedFiles[0].relative_path.split('/');
           if (pathParts.length >= 2) {
-            // Показываем полный путь к папке (например, "documents/2024/january")
+            // Show full folder path (e.g., "documents/2024/january")
             subfolder = pathParts.slice(0, -1).join('/');
           } else {
             subfolder = pathParts[0];
           }
         }
         
-        // Отображаем результат загрузки
+        // Display upload result
         let resultHtml = `
           <div class="result success">
-            <h3>✅ Файл успешно загружен</h3>
-            <p><strong>Количество файлов:</strong> ${totalFiles}</p>
-            <p><strong>Подпапка:</strong> ${subfolder}</p>
+            <h3>✅ File uploaded successfully</h3>
+            <p><strong>File count:</strong> ${totalFiles}</p>
+            <p><strong>Subfolder:</strong> ${subfolder}</p>
             
-            <h4>Загруженные файлы:</h4>
+            <h4>Uploaded files:</h4>
             <div class="uploaded-files">`;
         
-        // Цикл по загруженным файлам
+        // Loop through uploaded files
         uploadedFiles.forEach((file, index) => {
           resultHtml += `
             <div class="file-details">
-              <p><strong>Файл ${index + 1}:</strong></p>
+              <p><strong>File ${index + 1}:</strong></p>
               <ul>
-                <li><strong>Имя:</strong> ${file.name || 'Без имени'}</li>
-                <li><strong>Размер:</strong> ${formatFileSize(file.size || 0)}</li>
-                <li><strong>MIME тип:</strong> ${file.mime_type || 'Неизвестно'}</li>
-                <li><strong>Относительный путь:</strong> ${file.relative_path || 'Неизвестно'}</li>
+                <li><strong>Name:</strong> ${file.name || 'No name'}</li>
+                <li><strong>Size:</strong> ${formatFileSize(file.size || 0)}</li>
+                <li><strong>MIME type:</strong> ${file.mime_type || 'Unknown'}</li>
+                <li><strong>Relative path:</strong> ${file.relative_path || 'Unknown'}</li>
               </ul>
             </div>`;
         });
@@ -111,16 +111,16 @@ document.addEventListener('DOMContentLoaded', function() {
         resultHtml += `
             </div>
             
-            <h4>Поля формы:</h4>
+            <h4>Form Fields:</h4>
             <div class="form-fields">`;
         
-        // Цикл по полям формы
+        // Loop through form fields
         if (Object.keys(formFields).length > 0) {
           Object.entries(formFields).forEach(([key, value]) => {
             resultHtml += `<p><strong>${key}:</strong> ${value}</p>`;
           });
         } else {
-          resultHtml += '<p>Нет полей формы</p>';
+          resultHtml += '<p>No form fields</p>';
         }
         
         resultHtml += `
@@ -129,16 +129,16 @@ document.addEventListener('DOMContentLoaded', function() {
         
         resultsContainer.innerHTML = resultHtml;
       } else {
-        showResult('error', result.message || 'Ошибка загрузки файла');
+        showResult('error', result.message || 'File upload error');
       }
     } catch (error) {
-      showResult('error', 'Ошибка сети: ' + error.message);
+      showResult('error', 'Network error: ' + error.message);
     }
     
     this.reset();
   });
   
-  // Обработчик для загрузки нескольких файлов
+  // Handler for multiple file upload
   document.getElementById('multipleUpload').addEventListener('submit', async function(e) {
     e.preventDefault();
     
@@ -147,27 +147,27 @@ document.addEventListener('DOMContentLoaded', function() {
     const subfolderSelect = document.getElementById('multipleSubfolder');
     
     if (!fileInput.files.length) {
-      showResult('error', 'Пожалуйста, выберите файлы');
+      showResult('error', 'Please select files');
       return;
     }
     
     if (!subfolderSelect.value) {
-      showResult('error', 'Пожалуйста, выберите папку');
+      showResult('error', 'Please select a folder');
       return;
     }
     
-    showLoading(`Загрузка ${fileInput.files.length} файла(ов)...`);
+    showLoading(`Uploading ${fileInput.files.length} file(s)...`);
     
     try {
-      // Формируем URL с wildcard путем или query параметром
+      // Form URL with wildcard path or query parameter
       let uploadUrl;
       if (subfolderSelect.value) {
-        // Используем wildcard путь для лучшей SEO и читаемости
+        // Use wildcard path for better SEO and readability
         uploadUrl = `/upload-multiple/${subfolderSelect.value}`;
       } else {
         uploadUrl = '/upload-multiple';
       }
-      console.log('📤 Загружаем файлы в папку:', subfolderSelect.value, 'URL:', uploadUrl);
+      console.log('📤 Uploading files to folder:', subfolderSelect.value, 'URL:', uploadUrl);
       
       const response = await fetch(uploadUrl, {
         method: 'POST',
@@ -185,54 +185,54 @@ document.addEventListener('DOMContentLoaded', function() {
         throw new Error(`Failed to parse response: ${parseError.message}`);
       }
       
-      console.log('Multiple upload response:', result); // Для отладки
+      console.log('Multiple upload response:', result); // For debugging
       
-      // Проверяем что result является объектом
+      // Check that result is an object
       if (!result || typeof result !== 'object') {
         throw new Error('Invalid response format');
       }
       
       if (result.success) {
-        // Проверяем что поля существуют перед использованием
+        // Check that fields exist before using
         const uploadedFiles = result.uploadedFiles || [];
         const totalFiles = result.totalFiles || 0;
         const formFields = result.formFields || {};
         
-        // Сохраняем результат для отображения деталей
+        // Save result for displaying details
         window.lastUploadResult = result;
         
-        // Определяем подпапку из относительного пути
-        let subfolder = 'Корневая папка';
+        // Determine subfolder from relative path
+        let subfolder = 'Root folder';
         if (uploadedFiles.length > 0 && uploadedFiles[0].relative_path && uploadedFiles[0].relative_path.includes('/')) {
           const pathParts = uploadedFiles[0].relative_path.split('/');
           if (pathParts.length >= 2) {
-            // Показываем полный путь к папке (например, "documents/2024/january")
+            // Show full folder path (e.g., "documents/2024/january")
             subfolder = pathParts.slice(0, -1).join('/');
           } else {
             subfolder = pathParts[0];
           }
         }
         
-        // Отображаем результат загрузки
+        // Display upload result
         let resultHtml = `
           <div class="result success">
-            <h3>✅ Файлы успешно загружены</h3>
-            <p><strong>Количество файлов:</strong> ${totalFiles}</p>
-            <p><strong>Подпапка:</strong> ${subfolder}</p>
+            <h3>✅ Files uploaded successfully</h3>
+            <p><strong>File count:</strong> ${totalFiles}</p>
+            <p><strong>Subfolder:</strong> ${subfolder}</p>
             
-            <h4>Загруженные файлы:</h4>
+            <h4>Uploaded files:</h4>
             <div class="uploaded-files">`;
         
-        // Цикл по загруженным файлам
+        // Loop through uploaded files
         uploadedFiles.forEach((file, index) => {
           resultHtml += `
             <div class="file-details">
-              <p><strong>Файл ${index + 1}:</strong></p>
+              <p><strong>File ${index + 1}:</strong></p>
               <ul>
-                <li><strong>Имя:</strong> ${file.name || 'Без имени'}</li>
-                <li><strong>Размер:</strong> ${formatFileSize(file.size || 0)}</li>
-                <li><strong>MIME тип:</strong> ${file.mime_type || 'Неизвестно'}</li>
-                <li><strong>Относительный путь:</strong> ${file.relative_path || 'Неизвестно'}</li>
+                <li><strong>Name:</strong> ${file.name || 'No name'}</li>
+                <li><strong>Size:</strong> ${formatFileSize(file.size || 0)}</li>
+                <li><strong>MIME type:</strong> ${file.mime_type || 'Unknown'}</li>
+                <li><strong>Relative path:</strong> ${file.relative_path || 'Unknown'}</li>
               </ul>
             </div>`;
         });
@@ -240,16 +240,16 @@ document.addEventListener('DOMContentLoaded', function() {
         resultHtml += `
             </div>
             
-            <h4>Поля формы:</h4>
+            <h4>Form Fields:</h4>
             <div class="form-fields">`;
         
-        // Цикл по полям формы
+        // Loop through form fields
         if (Object.keys(formFields).length > 0) {
           Object.entries(formFields).forEach(([key, value]) => {
             resultHtml += `<p><strong>${key}:</strong> ${value}</p>`;
           });
         } else {
-          resultHtml += '<p>Нет полей формы</p>';
+          resultHtml += '<p>No form fields</p>';
         }
         
         resultHtml += `
@@ -258,10 +258,10 @@ document.addEventListener('DOMContentLoaded', function() {
         
         resultsContainer.innerHTML = resultHtml;
       } else {
-        showResult('error', result.message || 'Ошибка загрузки файлов');
+        showResult('error', result.message || 'File upload error');
       }
     } catch (error) {
-      showResult('error', 'Ошибка сети: ' + error.message);
+      showResult('error', 'Network error: ' + error.message);
     }
     
     this.reset();
@@ -285,29 +285,29 @@ document.addEventListener('DOMContentLoaded', function() {
     if (details) {
       html += '<div class="file-info">';
       
-      // Показываем общую информацию
+      // Show general information
       for (const [key, value] of Object.entries(details)) {
-        if (key !== 'Загруженные файлы' && key !== 'Размер файлов' && key !== 'MIME типы') {
+        if (key !== 'Uploaded files' && key !== 'File sizes' && key !== 'MIME types') {
           html += `<div class="file-detail"><strong>${key}:</strong> ${value}</div>`;
         }
       }
       
-      // Показываем детальную информацию о файлах
-      if (details['Загруженные файлы'] && details['Загруженные файлы'] !== 'Нет файлов') {
-        html += '<div class="file-detail"><strong>Детали файлов:</strong></div>';
+      // Show detailed file information
+      if (details['Uploaded files'] && details['Uploaded files'] !== 'No files') {
+        html += '<div class="file-detail"><strong>File details:</strong></div>';
         
-                 // Получаем данные о файлах из глобальной переменной
+                 // Get file data from global variable
          if (window.lastUploadResult && window.lastUploadResult.uploadedFiles) {
            window.lastUploadResult.uploadedFiles.forEach((file, index) => {
-             const fileName = file.name || 'Без имени';
+             const fileName = file.name || 'No name';
              const fileSize = file.size || 0;
-             const fileMime = file.mime_type || 'Неизвестно';
-             const filePath = file.relative_path || 'Неизвестно';
+             const fileMime = file.mime_type || 'Unknown';
+             const filePath = file.relative_path || 'Unknown';
              
              html += `
                <div class="file-detail" style="margin-left: 20px; padding: 5px; background: #f5f5f5; border-radius: 3px; margin-bottom: 5px;">
-                 <strong>Файл ${index + 1}:</strong> ${fileName}<br>
-                 <small>Размер: ${formatFileSize(fileSize)} | MIME: ${fileMime} | Путь: ${filePath}</small>
+                 <strong>File ${index + 1}:</strong> ${fileName}<br>
+                 <small>Size: ${formatFileSize(fileSize)} | MIME: ${fileMime} | Path: ${filePath}</small>
                </div>
              `;
            });
@@ -322,8 +322,8 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   
   function formatFileSize(bytes) {
-    console.log('🔢 formatFileSize вызвана с параметром:', bytes);
-    console.log('🔢 Тип bytes:', typeof bytes);
+    console.log('🔢 formatFileSize called with parameter:', bytes);
+    console.log('🔢 bytes type:', typeof bytes);
     
     if (bytes === 0) return '0 Bytes';
     
@@ -332,14 +332,14 @@ document.addEventListener('DOMContentLoaded', function() {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     
     const result = parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-    console.log('🔢 Результат formatFileSize:', result);
+    console.log('🔢 formatFileSize result:', result);
     return result;
   }
   
   function addDemoLinks() {
     const demoLinksHtml = `
       <div class="demo-links">
-        <h3>🔍 Демо функций RNode Server</h3>
+        <h3>🔍 RNode Server Demo Functions</h3>
         <a href="/demo/html" target="_blank">HTML Response</a>
         <a href="/demo/text" target="_blank">Text Response</a>
         <a href="/demo/xml" target="_blank">XML Response</a>

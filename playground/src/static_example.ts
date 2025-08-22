@@ -2,12 +2,12 @@ import { createApp } from 'rnode-server';
 
 const app = createApp();
 
-// Пример 1: Базовая настройка статических файлов
+// Example 1: Basic static files configuration
 app.static('./public');
 
 app.static('./assets', {
   cache: true,
-  maxAge: 3600, // 1 час
+  maxAge: 3600, // 1 hour
   maxFileSize: 5 * 1024 * 1024, // 5MB
   etag: true,
   lastModified: true,
@@ -15,19 +15,19 @@ app.static('./assets', {
   brotli: false
 });
 
-// Загружаем несколько папок с разными настройками
+// Load multiple folders with different settings
 app.static(['./images', './icons'], {
   cache: true,
-  maxAge: 86400, // 24 часа для изображений
+  maxAge: 86400, // 24 hours for images
   maxFileSize: 10 * 1024 * 1024, // 10MB
   etag: true,
   lastModified: true,
-  gzip: false, // Изображения уже сжаты
+  gzip: false, // Images are already compressed
   brotli: false
 });
 app.static(['./css', './styles'], {
   cache: true,
-  maxAge: 1800, // 30 минут для CSS
+  maxAge: 1800, // 30 minutes for CSS
   maxFileSize: 1024 * 1024, // 1MB
   etag: true,
   lastModified: true,
@@ -35,22 +35,22 @@ app.static(['./css', './styles'], {
   brotli: true
 });
 
-// Пример 4: Разные настройки для разных типов контента
+// Example 4: Different settings for different content types
 app.static('./js', {
   cache: true,
-  maxAge: 900, // 15 минут для JavaScript
+  maxAge: 900, // 15 minutes for JavaScript
   gzip: true,
   brotli: true
 });
 
 app.static('./fonts', {
   cache: true,
-  maxAge: 604800, // 1 неделя для шрифтов
+  maxAge: 604800, // 1 week for fonts
   gzip: false,
   brotli: false
 });
 
-// Запускаем сервер
+// Start server
 app.listen(4541, () => {
   console.log('Server running on port 4541');
   console.log('Static files configured with advanced options');

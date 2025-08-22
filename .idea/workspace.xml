@@ -14,18 +14,26 @@
     <list default="true" id="4d8c55b6-5a63-439f-adcf-d024569129f5" name="Changes" comment="init">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/file_operations.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/file_operations.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/handlers.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/handlers.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/lib.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/lib.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/middleware.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/middleware.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/routes.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/routes.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/server.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/server.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/static_files.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/static_files.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/types.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/types.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/utils.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/utils.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/dist/index.d.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/dist/index.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/dist/multipart_example.d.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/dist/multipart_example.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/dist/static_example.d.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/dist/static_example.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/public/app.js" beforeDir="false" afterPath="$PROJECT_DIR$/playground/public/app.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/public/auth/auth.js" beforeDir="false" afterPath="$PROJECT_DIR$/playground/public/auth/auth.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/public/auth/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/playground/public/auth/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/public/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/playground/public/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/src/auth-database.js" beforeDir="false" afterPath="$PROJECT_DIR$/playground/src/auth-database.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/src/database.js" beforeDir="false" afterPath="$PROJECT_DIR$/playground/src/database.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/src/example.js" beforeDir="false" afterPath="$PROJECT_DIR$/playground/src/example.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/src/example_express.js" beforeDir="false" afterPath="$PROJECT_DIR$/playground/src/example_express.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/playground/src/example_m.js" beforeDir="false" afterPath="$PROJECT_DIR$/playground/src/example_m.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/src/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/playground/src/index.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/playground/src/multipart_example.ts" beforeDir="false" afterPath="$PROJECT_DIR$/playground/src/multipart_example.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/index.cts" beforeDir="false" afterPath="$PROJECT_DIR$/src/index.cts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/src/static_example.ts" beforeDir="false" afterPath="$PROJECT_DIR$/playground/src/static_example.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/upload-demo/styles.css" beforeDir="false" afterPath="$PROJECT_DIR$/playground/upload-demo/styles.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/upload-demo/upload.js" beforeDir="false" afterPath="$PROJECT_DIR$/playground/upload-demo/upload.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -107,7 +115,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1755847651115</updated>
-      <workItem from="1755847652223" duration="26979000" />
+      <workItem from="1755847652223" duration="28282000" />
     </task>
     <task id="LOCAL-00001" summary="init">
       <option name="closed" value="true" />
@@ -173,7 +181,15 @@
       <option name="project" value="LOCAL" />
       <updated>1755889018618</updated>
     </task>
-    <option name="localTasksCounter" value="9" />
+    <task id="LOCAL-00009" summary="init">
+      <option name="closed" value="true" />
+      <created>1755891179643</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1755891179643</updated>
+    </task>
+    <option name="localTasksCounter" value="10" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

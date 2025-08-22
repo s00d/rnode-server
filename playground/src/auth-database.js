@@ -15,7 +15,7 @@ class AuthDatabase {
 
   init() {
     try {
-      // Таблица пользователей
+      // Users table
       this.db.exec(`
         CREATE TABLE IF NOT EXISTS users (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -29,7 +29,7 @@ class AuthDatabase {
         )
       `);
 
-      // Таблица сессий
+      // Sessions table
       this.db.exec(`
         CREATE TABLE IF NOT EXISTS sessions (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -42,7 +42,7 @@ class AuthDatabase {
         )
       `);
 
-      // Индексы для производительности
+      // Indexes for performance
       this.db.exec(`
         CREATE INDEX IF NOT EXISTS idx_users_email ON users (email);
         CREATE INDEX IF NOT EXISTS idx_users_username ON users (username);
@@ -57,43 +57,43 @@ class AuthDatabase {
     }
   }
 
-  // Хеширование пароля
+  // Password hashing
   hashPassword(password) {
     const salt = crypto.randomBytes(32).toString('hex');
     const hash = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
     return { hash, salt };
   }
 
-  // Проверка пароля
+  // Password verification
   verifyPassword(password, hash, salt) {
     const hashToCheck = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
     return hash === hashToCheck;
   }
 
-  // Генерация session ID
+  // Session ID generation
   generateSessionId() {
     return crypto.randomBytes(32).toString('hex');
   }
 
-  // Регистрация пользователя
+  // User registration
   registerUser(userData) {
     const { username, email, password } = userData;
 
     try {
-      // Проверяем существование пользователя
+      // Check if user exists
       const existingUser = this.db.prepare('SELECT id FROM users WHERE email = ? OR username = ?').get(email, username);
       
       if (existingUser) {
         return {
           success: false,
-          message: 'Пользователь с таким email или username уже существует'
+          message: 'User with this email or username already exists'
         };
       }
 
-      // Хешируем пароль
+      // Hash password
       const { hash, salt } = this.hashPassword(password);
 
-      // Создаем пользователя
+      // Create user
       const insertUser = this.db.prepare(`
         INSERT INTO users (username, email, password_hash, salt)
         VALUES (?, ?, ?, ?)
@@ -103,23 +103,23 @@ class AuthDatabase {
 
       return {
         success: true,
-        message: 'Пользователь успешно зарегистрирован',
+        message: 'User registered successfully',
         userId: result.lastInsertRowid
       };
 
     } catch (error) {
-      console.error('Ошибка при регистрации:', error);
+      console.error('Registration error:', error);
       return {
         success: false,
-        message: 'Ошибка сервера при регистрации'
+        message: 'Server error during registration'
       };
     }
   }
 
-  // Авторизация пользователя
+  // User authentication
   loginUser(email, password) {
     try {
-      // Находим пользователя
+      // Find user
       const user = this.db.prepare(`
         SELECT id, username, email, password_hash, salt, is_active 
         FROM users 
@@ -129,22 +129,22 @@ class AuthDatabase {
       if (!user || !user.is_active) {
         return {
           success: false,
-          message: 'Неверный email или password'
+          message: 'Invalid email or password'
         };
       }
 
-      // Проверяем пароль
+      // Verify password
       if (!this.verifyPassword(password, user.password_hash, user.salt)) {
         return {
           success: false,
-          message: 'Неверный email или password'
+          message: 'Invalid email or password'
         };
       }
 
-      // Создаем новую сессию
+      // Create new session
       const sessionId = this.generateSessionId();
       const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + 24); // 24 часа
+      expiresAt.setHours(expiresAt.getHours() + 24); // 24 hours
 
       const insertSession = this.db.prepare(`
         INSERT INTO sessions (user_id, session_id, expires_at)
@@ -155,7 +155,7 @@ class AuthDatabase {
 
       return {
         success: true,
-        message: 'Успешная авторизация',
+        message: 'Authentication successful',
         userId: user.id,
         sessionId: sessionId,
         user: {
@@ -166,15 +166,15 @@ class AuthDatabase {
       };
 
     } catch (error) {
-      console.error('Ошибка при авторизации:', error);
+      console.error('Authentication error:', error);
       return {
         success: false,
-        message: 'Ошибка сервера при авторизации'
+        message: 'Server error during authentication'
       };
     }
   }
 
-  // Проверка сессии
+  // Session validation
   validateSession(sessionId) {
     try {
       const session = this.db.prepare(`
@@ -187,21 +187,21 @@ class AuthDatabase {
       if (!session) {
         return {
           success: false,
-          message: 'Сессия не найдена'
+          message: 'Session not found'
         };
       }
 
-      // Проверяем срок действия
+      // Check expiration
       const now = new Date();
       const expiresAt = new Date(session.expires_at);
 
       if (now > expiresAt) {
-        // Деактивируем истекшую сессию
+        // Deactivate expired session
         this.db.prepare('UPDATE sessions SET is_active = 0 WHERE session_id = ?').run(sessionId);
         
         return {
           success: false,
-          message: 'Сессия истекла'
+          message: 'Session expired'
         };
       }
 
@@ -216,15 +216,15 @@ class AuthDatabase {
       };
 
     } catch (error) {
-      console.error('Ошибка при проверке сессии:', error);
+      console.error('Session validation error:', error);
       return {
         success: false,
-        message: 'Ошибка сервера при проверке сессии'
+        message: 'Server error during session validation'
       };
     }
   }
 
-  // Получение профиля пользователя
+  // Get user profile
   getUserProfile(userId) {
     try {
       const user = this.db.prepare(`
@@ -236,7 +236,7 @@ class AuthDatabase {
       if (!user) {
         return {
           success: false,
-          message: 'Пользователь не найден'
+          message: 'User not found'
         };
       }
 
@@ -252,15 +252,15 @@ class AuthDatabase {
       };
 
     } catch (error) {
-      console.error('Ошибка при получении профиля:', error);
+      console.error('Error getting profile:', error);
       return {
         success: false,
-        message: 'Ошибка сервера при получении профиля'
+        message: 'Server error getting profile'
       };
     }
   }
 
-  // Выход из системы (деактивация сессии)
+  // Logout (deactivate session)
   logoutUser(sessionId) {
     try {
       const result = this.db.prepare(`
@@ -270,19 +270,19 @@ class AuthDatabase {
 
       return {
         success: true,
-        message: 'Успешный выход из системы'
+        message: 'Logout successful'
       };
 
     } catch (error) {
-      console.error('Ошибка при выходе:', error);
+      console.error('Logout error:', error);
       return {
         success: false,
-        message: 'Ошибка сервера при выходе'
+        message: 'Server error during logout'
       };
     }
   }
 
-  // Очистка истекших сессий
+  // Cleanup expired sessions
   cleanupExpiredSessions() {
     try {
       const result = this.db.prepare(`
@@ -290,16 +290,16 @@ class AuthDatabase {
         WHERE expires_at < datetime('now') AND is_active = 1
       `).run();
 
-      console.log(`🧹 Очищено истекших сессий: ${result.changes}`);
+      console.log(`🧹 Expired sessions cleaned: ${result.changes}`);
       return result.changes;
 
     } catch (error) {
-      console.error('Ошибка при очистке сессий:', error);
+      console.error('Error cleaning sessions:', error);
       return 0;
     }
   }
 
-  // Получение статистики
+  // Get statistics
   getStats() {
     try {
       const totalUsers = this.db.prepare('SELECT COUNT(*) as count FROM users WHERE is_active = 1').get().count;
@@ -314,7 +314,7 @@ class AuthDatabase {
       };
 
     } catch (error) {
-      console.error('Ошибка при получении статистики:', error);
+      console.error('Error getting statistics:', error);
       return {
         totalUsers: 0,
         activeSessions: 0
@@ -322,7 +322,7 @@ class AuthDatabase {
     }
   }
 
-  // Закрытие соединения
+  // Close connection
   close() {
     if (this.db) {
       this.db.close();

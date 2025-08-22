@@ -13,24 +13,24 @@ class UsersManager {
     }
 
     bindEvents() {
-        // Форма пользователя
+        // User form
         document.getElementById('userForm').addEventListener('submit', (e) => this.handleFormSubmit(e));
         document.getElementById('cancelBtn').addEventListener('click', () => this.cancelEdit());
         document.getElementById('clearBtn').addEventListener('click', () => this.clearForm());
 
-        // Поиск
+        // Search
         document.getElementById('searchBtn').addEventListener('click', () => this.searchUsers());
         document.getElementById('clearSearchBtn').addEventListener('click', () => this.clearSearch());
         document.getElementById('searchQuery').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.searchUsers();
         });
 
-        // Модальное окно удаления
+        // Delete modal
         document.getElementById('confirmDeleteBtn').addEventListener('click', () => this.confirmDelete());
         document.getElementById('cancelDeleteBtn').addEventListener('click', () => this.closeDeleteModal());
     }
 
-    // API методы
+    // API methods
     async apiCall(endpoint, options = {}) {
         try {
             const response = await fetch(`${this.baseUrl}${endpoint}`, {
@@ -48,12 +48,12 @@ class UsersManager {
             return await response.json();
         } catch (error) {
             console.error('API Error:', error);
-            this.showNotification('Ошибка API: ' + error.message, 'error');
+            this.showNotification('API Error: ' + error.message, 'error');
             throw error;
         }
     }
 
-    // Загрузка пользователей
+    // Load users
     async loadUsers() {
         try {
             const result = await this.apiCall('/api/users');
@@ -64,11 +64,11 @@ class UsersManager {
                 this.showNotification(result.message, 'error');
             }
         } catch (error) {
-            this.showNotification('Ошибка загрузки пользователей', 'error');
+            this.showNotification('Error loading users', 'error');
         }
     }
 
-    // Создание/обновление пользователя
+    // Create/update user
     async handleFormSubmit(e) {
         e.preventDefault();
         
@@ -79,20 +79,20 @@ class UsersManager {
         };
 
         if (!userData.name || !userData.email) {
-            this.showNotification('Имя и email обязательны', 'warning');
+            this.showNotification('Name and email are required', 'warning');
             return;
         }
 
         try {
             let result;
             if (this.currentUser) {
-                // Обновление
+                // Update
                 result = await this.apiCall(`/api/users/${this.currentUser.id}`, {
                     method: 'PUT',
                     body: JSON.stringify(userData)
                 });
             } else {
-                // Создание
+                // Create
                 result = await this.apiCall('/api/users', {
                     method: 'POST',
                     body: JSON.stringify(userData)
@@ -107,11 +107,11 @@ class UsersManager {
                 this.showNotification(result.message, 'error');
             }
         } catch (error) {
-            this.showNotification('Ошибка сохранения пользователя', 'error');
+            this.showNotification('User save error', 'error');
         }
     }
 
-    // Удаление пользователя
+    // Delete user
     async deleteUser(userId, userName) {
         this.showDeleteModal(userName, userId);
     }
@@ -131,13 +131,13 @@ class UsersManager {
                 this.showNotification(result.message, 'error');
             }
         } catch (error) {
-            this.showNotification('Ошибка удаления пользователя', 'error');
+            this.showNotification('Error deleting user', 'error');
         }
 
         this.closeDeleteModal();
     }
 
-    // Поиск пользователей
+    // Search users
     async searchUsers() {
         const query = document.getElementById('searchQuery').value.trim();
         if (!query) {
@@ -149,22 +149,22 @@ class UsersManager {
             const result = await this.apiCall(`/api/users/search/${encodeURIComponent(query)}`);
             if (result.success) {
                 this.renderUsersTable(result.users);
-                this.showNotification(`Найдено пользователей: ${result.count}`, 'info');
+                this.showNotification(`Users found: ${result.count}`, 'info');
             } else {
                 this.showNotification(result.message, 'error');
             }
         } catch (error) {
-            this.showNotification('Ошибка поиска', 'error');
+            this.showNotification('Search error', 'error');
         }
     }
 
-    // Очистка поиска
+    // Clear search
     clearSearch() {
         document.getElementById('searchQuery').value = '';
         this.loadUsers();
     }
 
-    // Редактирование пользователя
+    // Edit user
     editUser(user) {
         this.currentUser = user;
         document.getElementById('userId').value = user.id;
@@ -172,34 +172,34 @@ class UsersManager {
         document.getElementById('userEmail').value = user.email;
         document.getElementById('userAge').value = user.age || '';
         
-        document.getElementById('submitBtn').textContent = 'Обновить пользователя';
+        document.getElementById('submitBtn').textContent = 'Update User';
         document.getElementById('cancelBtn').style.display = 'inline-block';
     }
 
-    // Отмена редактирования
+    // Cancel editing
     cancelEdit() {
         this.currentUser = null;
         this.clearForm();
-        document.getElementById('submitBtn').textContent = 'Создать пользователя';
+        document.getElementById('submitBtn').textContent = 'Create User';
         document.getElementById('cancelBtn').style.display = 'none';
     }
 
-    // Очистка формы
+    // Clear form
     clearForm() {
         document.getElementById('userForm').reset();
         document.getElementById('userId').value = '';
         this.currentUser = null;
-        document.getElementById('submitBtn').textContent = 'Создать пользователя';
+        document.getElementById('submitBtn').textContent = 'Create User';
         document.getElementById('cancelBtn').style.display = 'none';
     }
 
-    // Рендеринг таблицы пользователей
+    // Render users table
     renderUsersTable(users) {
         const tbody = document.getElementById('usersTableBody');
         tbody.innerHTML = '';
 
         if (users.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="no-data">Пользователи не найдены</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="no-data">No users found</td></tr>';
             return;
         }
 
@@ -223,12 +223,12 @@ class UsersManager {
             tbody.appendChild(row);
         });
 
-        document.getElementById('usersCount').textContent = `Всего пользователей: ${users.length}`;
+        document.getElementById('usersCount').textContent = `Total users: ${users.length}`;
     }
 
-    // Обновление статистики
+    // Update statistics
     updateStats() {
-        // Загружаем пользователей для подсчета статистики
+        // Load users for statistics calculation
         this.apiCall('/api/users').then(result => {
             if (result.success) {
                 const users = result.users;
@@ -236,7 +236,7 @@ class UsersManager {
                 const avgAge = users.length > 0 ? 
                     Math.round(users.reduce((sum, user) => sum + (user.age || 0), 0) / users.filter(u => u.age).length) : 0;
                 
-                // Пользователи за последние 24 часа
+                // Users in last 24 hours
                 const yesterday = new Date();
                 yesterday.setDate(yesterday.getDate() - 1);
                 const recentUsers = users.filter(user => new Date(user.created_at) > yesterday).length;
@@ -248,7 +248,7 @@ class UsersManager {
         });
     }
 
-    // Модальное окно удаления
+    // Delete modal
     showDeleteModal(userName, userId) {
         this.deleteUserId = userId;
         document.getElementById('deleteUserName').textContent = userName;
@@ -260,7 +260,7 @@ class UsersManager {
         this.deleteUserId = null;
     }
 
-    // Уведомления
+    // Notifications
     showNotification(message, type = 'info') {
         const notifications = document.getElementById('notifications');
         const notification = document.createElement('div');
@@ -269,7 +269,7 @@ class UsersManager {
 
         notifications.appendChild(notification);
 
-        // Автоматическое удаление через 5 секунд
+        // Auto-remove after 5 seconds
         setTimeout(() => {
             if (notification.parentNode) {
                 notification.parentNode.removeChild(notification);
@@ -277,7 +277,7 @@ class UsersManager {
         }, 5000);
     }
 
-    // Вспомогательные методы
+    // Helper methods
     escapeHtml(text) {
         const div = document.createElement('div');
         div.textContent = text;
@@ -287,7 +287,7 @@ class UsersManager {
     formatDate(dateString) {
         if (!dateString) return '-';
         const date = new Date(dateString);
-        return date.toLocaleDateString('ru-RU', {
+        return date.toLocaleDateString('en-US', {
             year: 'numeric',
             month: '2-digit',
             day: '2-digit',
@@ -297,13 +297,13 @@ class UsersManager {
     }
 }
 
-// Инициализация при загрузке страницы
+// Initialize on page load
 let usersManager;
 document.addEventListener('DOMContentLoaded', () => {
     usersManager = new UsersManager();
 });
 
-// Закрытие модального окна при клике вне его
+// Close modal when clicking outside
 window.addEventListener('click', (e) => {
     const modal = document.getElementById('deleteModal');
     if (e.target === modal) {

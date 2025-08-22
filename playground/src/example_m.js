@@ -5,35 +5,35 @@ import AuthDatabase from './auth-database.js';
 const app = createApp();
 const port = 4546;
 
-// Инициализируем базы данных
+// Initialize databases
 const db = new UserDatabase();
 const authDb = new AuthDatabase();
 
-// Очищаем истекшие сессии при запуске
+// Clean up expired sessions on startup
 authDb.cleanupExpiredSessions();
 
-// Загружаем статические файлы в память
+// Load static files into memory
 app.static('./public');
 
-// ===== СОЗДАНИЕ РОУТЕРА ДЛЯ ПОЛЬЗОВАТЕЛЕЙ =====
+// ===== CREATING USERS ROUTER =====
 
-// Создаем роутер для пользователей
+// Create users router
 const usersRouter = Router();
 
-// Middleware для роутера пользователей
+// Middleware for users router
 usersRouter.use((req, res, next) => {
   console.log('👥 Users Router Middleware:', req.method, req.url);
   req.setParam('routerName', 'users');
   next();
 });
 
-// POST маршрут для создания пользователя
+// POST route for creating user
 usersRouter.post('', (req, res) => {
   console.log('=== POST /api/users ===');
   console.log('Body:', req.body);
 
   try {
-    // Парсим body если это JSON
+    // Parse body if it's JSON
     let userData = req.body;
     if (typeof req.body === 'string') {
       try {
@@ -43,15 +43,15 @@ usersRouter.post('', (req, res) => {
       }
     }
 
-    // Проверяем обязательные поля
+    // Check required fields
     if (!userData.name || !userData.email) {
       return res.json({
         success: false,
-        message: 'Имя и email обязательны'
+        message: 'Name and email are required'
       });
     }
 
-    // Создаем пользователя в базе
+    // Create user in database
     const result = db.createUser(userData);
 
     if (result.success) {
@@ -70,12 +70,12 @@ usersRouter.post('', (req, res) => {
   } catch (error) {
     res.json({
       success: false,
-      message: `Ошибка: ${error.message}`
+      message: `Error: ${error.message}`
     });
   }
 });
 
-// GET маршрут для получения всех пользователей
+// GET route for getting all users
 usersRouter.get('', (req, res) => {
   console.log('=== GET /api/users ===');
 
@@ -86,16 +86,16 @@ usersRouter.get('', (req, res) => {
 app.useRouter('/api/users', usersRouter);
 
 app.get('/hello', (req, res) => {
-  console.log('👋 Hello обработчик - параметры из глобального middleware:', req.getParams());
+  console.log('👋 Hello handler - parameters from global middleware:', req.getParams());
 
-  // Добавляем свои параметры
+  // Add our own parameters
   req.setParam('handlerName', 'hello');
   req.setParam('message', 'Hello World!');
 
   res.json({
     message: 'Hello World!',
     globalParams: req.getParams(),
-    info: 'Этот ответ содержит параметры из глобального middleware',
+    info: 'This response contains parameters from global middleware',
     auth: {
       isAuthenticated: req.getParam('isAuthenticated'),
       user: req.getParam('user'),
@@ -106,16 +106,15 @@ app.get('/hello', (req, res) => {
 
 app.get('/posts/{postId}/comments/{commentId}', (req, res) => {
   const { postId, commentId } = req.params;
-  console.log(1111, req)
   res.json({ postId, commentId, message: 'Comment details' });
 });
 
-// Запуск сервера
+// Start server
 app.listen(port, () => {
-  console.log(`🚀 Сервер запущен на порту ${port}`);
-  console.log(`�� База данных SQLite: users.db`);
+  console.log(`🚀 Server started on port ${port}`);
+  console.log(`�� SQLite database: users.db`);
   console.log(`🔗 API endpoints:`);
-  console.log(`   📝 Пользователи:`);
-  console.log(`      POST   /api/users - создать пользователя`);
-  console.log(`      GET    /api/users - получить всех пользователей`);
+  console.log(`   📝 Users:`);
+  console.log(`      POST   /api/users - create user`);
+  console.log(`      GET    /api/users - get all users`);
 });
