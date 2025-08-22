@@ -135,10 +135,57 @@ app.use('/api/auth', (req, res, next) => {
 ```
 
 ### Static Files
-```javascript
-// Serve static files from directory
+```typescript
+// Basic static file serving
 app.static('./public');
-```
+
+// Multiple directories with different settings
+app.static(['./images', './icons'], {
+  cache: true,
+  maxAge: 86400,         // 24 hours
+  maxFileSize: 10 * 1024 * 1024, // 10MB
+  gzip: false,           // Images are already compressed
+  brotli: false
+});
+
+// Full configuration example
+app.static('./admin', {
+  cache: true,
+  maxAge: 1800, // 30 minutes
+  maxFileSize: 5 * 1024 * 1024, // 5MB
+  etag: true,
+  lastModified: true,
+  gzip: true,
+  brotli: true,
+  security: {
+    allowHiddenFiles: false,
+    allowSystemFiles: false,
+    allowedExtensions: ['html', 'css', 'js'],
+    blockedPaths: ['.git', '.env', '.htaccess', 'thumbs.db']
+  }
+});
+
+#### Basic Options
+- `cache: boolean` - Enable file caching (default: `true`)
+- `maxAge: number` - Cache lifetime in seconds (default: `3600`)
+
+#### File Size Limits
+- `maxFileSize: number` - Maximum file size in bytes (default: `10MB`)
+
+#### HTTP Headers
+- `etag: boolean` - Generate ETag headers (default: `true`)
+- `lastModified: boolean` - Add Last-Modified headers (default: `true`)
+####
+### Compression
+- `gzip: boolean` - Enable Gzip compression (default: `true`)
+- `brotli: boolean` - Enable Brotli compression (default: `false`)
+
+####### Security Options
+- `security.allowHiddenFiles: boolean` - Allow hidden files (default: `false`)
+- `security.allowSystemFiles: boolean` - Allow system files (default: `false`)
+- `security.allowedExtensions: string[]` - Whitelist file extensions (default: `['html', 'css', 'js', 'json', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'ico', 'woff', 'woff2', 'ttf', 'eot']`)
+- `security.blockedPaths: string[]` - Block specific paths (default: `['.git', '.env', '.htaccess', 'thumbs.db', '.ds_store', 'desktop.ini']`)
+
 
 ### Host Binding
 ```javascript
@@ -181,10 +228,14 @@ app.listen(port, () => {
 - Search and filtering capabilities
 
 ### Static File Handling
-- In-memory file serving
-- Automatic MIME type detection
-- File caching for performance
-- Directory-based file organization
+- **Advanced Configuration**: Multiple folders with different settings
+- **Smart Caching**: In-memory caching with configurable TTL
+- **Compression**: Automatic Gzip and Brotli compression
+- **Security**: Hidden files, system files, and dangerous paths blocked by default
+- **Performance**: Pre-computed headers and compressed content
+- **Universal**: Works with any folder structure, auto-serves `index.html` for directories
+- **File Limits**: Configurable maximum file sizes
+- **HTTP Headers**: ETag, Last-Modified, Cache-Control support
 
 ### CORS & Headers
 - Configurable CORS policies
