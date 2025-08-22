@@ -9,7 +9,7 @@ use serde_json;
 use std::fs;
 use std::path::Path;
 
-// Структура для информации о файле
+// Structure for file information
 #[derive(Debug, serde::Serialize)]
 struct FileInfo {
     name: String,
@@ -21,13 +21,13 @@ struct FileInfo {
     relative_path: String,
 }
 
-// Функция для сохранения файла
+// Function for saving file
 pub fn save_file(mut cx: FunctionContext) -> JsResult<JsString> {
     let filename = cx.argument::<JsString>(0)?.value(&mut cx);
     let base64_data = cx.argument::<JsString>(1)?.value(&mut cx);
     let uploads_dir = cx.argument::<JsString>(2)?.value(&mut cx);
 
-    // Создаем папку uploads если её нет
+    // Create uploads folder if it doesn't exist
     if !Path::new(&uploads_dir).exists() {
         if let Err(e) = fs::create_dir_all(&uploads_dir) {
             return Ok(cx.string(format!(
@@ -39,7 +39,7 @@ pub fn save_file(mut cx: FunctionContext) -> JsResult<JsString> {
 
     let file_path = format!("{}/{}", uploads_dir, filename);
 
-    // Декодируем Base64 и сохраняем файл
+    // Decode Base64 and save file
     match base64::engine::general_purpose::STANDARD.decode(&base64_data) {
         Ok(file_data) => {
             match fs::write(&file_path, file_data) {
@@ -60,7 +60,7 @@ pub fn save_file(mut cx: FunctionContext) -> JsResult<JsString> {
     }
 }
 
-// Функция для удаления файла
+// Function for deleting file
 pub fn delete_file(mut cx: FunctionContext) -> JsResult<JsString> {
     let filename = cx.argument::<JsString>(0)?.value(&mut cx);
     let uploads_dir = cx.argument::<JsString>(1)?.value(&mut cx);
@@ -88,7 +88,7 @@ pub fn delete_file(mut cx: FunctionContext) -> JsResult<JsString> {
     }
 }
 
-// Функция для получения списка файлов с подпапками
+// Function for getting list of files with subfolders
 pub fn list_files(mut cx: FunctionContext) -> JsResult<JsString> {
     let uploads_dir = cx.argument::<JsString>(0)?.value(&mut cx);
 
@@ -96,7 +96,7 @@ pub fn list_files(mut cx: FunctionContext) -> JsResult<JsString> {
         return Ok(cx.string("{\"success\":true,\"files\":[],\"folders\":[],\"total\":0}"));
     }
 
-    // Рекурсивная функция для обхода директорий
+    // Recursive function for traversing directories
     fn scan_directory(dir_path: &Path, base_dir: &Path) -> Result<Vec<FileInfo>, std::io::Error> {
         let mut files = Vec::new();
 
@@ -108,7 +108,7 @@ pub fn list_files(mut cx: FunctionContext) -> JsResult<JsString> {
                     if path.is_file() {
                         if let Ok(metadata) = fs::metadata(&path) {
                             if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                                // Вычисляем относительный путь от базовой директории
+                                // Calculate relative path from base directory
                                 let relative_path =
                                     if let Ok(rel_path) = path.strip_prefix(base_dir) {
                                         rel_path.to_string_lossy().to_string()
@@ -151,7 +151,7 @@ pub fn list_files(mut cx: FunctionContext) -> JsResult<JsString> {
                             }
                         }
                     } else if path.is_dir() {
-                        // Рекурсивно обходим подпапки
+                        // Recursively traverse subfolders
                         if let Ok(sub_files) = scan_directory(&path, base_dir) {
                             files.extend(sub_files);
                         }
@@ -190,7 +190,7 @@ pub fn list_files(mut cx: FunctionContext) -> JsResult<JsString> {
     }
 }
 
-// Функция для получения содержимого файла
+// Function for getting file content
 pub fn get_file_content(mut cx: FunctionContext) -> JsResult<JsString> {
     let filename = cx.argument::<JsString>(0)?.value(&mut cx);
     let uploads_dir = cx.argument::<JsString>(1)?.value(&mut cx);
@@ -200,13 +200,13 @@ pub fn get_file_content(mut cx: FunctionContext) -> JsResult<JsString> {
     if Path::new(&file_path).exists() {
         match fs::read(&file_path) {
             Ok(content) => {
-                // Кодируем в Base64 для передачи в JavaScript
+                // Encode to Base64 for transfer to JavaScript
                 let base64_content = base64::engine::general_purpose::STANDARD.encode(&content);
-                // Определяем MIME тип из содержимого файла
+                // Determine MIME type from file content
                 let mime_type = if let Some(kind) = infer::get(&content) {
                     kind.mime_type().to_string()
                 } else {
-                    // Fallback к определению по расширению
+                    // Fallback to extension-based detection
                     MimeGuess::from_path(&file_path)
                         .first_or_octet_stream()
                         .to_string()
@@ -232,7 +232,7 @@ pub fn get_file_content(mut cx: FunctionContext) -> JsResult<JsString> {
     }
 }
 
-// Функция для проверки существования файла
+// Function for checking file existence
 pub fn file_exists(mut cx: FunctionContext) -> JsResult<JsBoolean> {
     let filename = cx.argument::<JsString>(0)?.value(&mut cx);
     let uploads_dir = cx.argument::<JsString>(1)?.value(&mut cx);
@@ -243,7 +243,7 @@ pub fn file_exists(mut cx: FunctionContext) -> JsResult<JsBoolean> {
     Ok(cx.boolean(exists))
 }
 
-// Функция для скачивания файла
+// Function for downloading file
 pub fn download_file(mut cx: FunctionContext) -> JsResult<JsString> {
     let filename = cx.argument::<JsString>(0)?.value(&mut cx);
     let uploads_dir = cx.argument::<JsString>(1)?.value(&mut cx);
@@ -253,7 +253,7 @@ pub fn download_file(mut cx: FunctionContext) -> JsResult<JsString> {
     if Path::new(&file_path).exists() {
         match fs::read(&file_path) {
             Ok(content) => {
-                // Возвращаем содержимое файла как base64 строку
+                // Return file content as base64 string
                 let base64_content = base64::engine::general_purpose::STANDARD.encode(&content);
                 Ok(cx.string(base64_content))
             }
@@ -264,12 +264,12 @@ pub fn download_file(mut cx: FunctionContext) -> JsResult<JsString> {
     }
 }
 
-// Функция для регистрации роута скачивания файлов
+// Function for registering file download route
 pub fn register_download_route(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let path = cx.argument::<JsString>(0)?.value(&mut cx);
     let options_json = cx.argument::<JsString>(1)?.value(&mut cx);
 
-    // Парсим опции
+    // Parse options
     if let Ok(options) = serde_json::from_str::<serde_json::Value>(&options_json) {
         let folder = options["folder"]
             .as_str()
@@ -277,7 +277,7 @@ pub fn register_download_route(mut cx: FunctionContext) -> JsResult<JsUndefined>
             .to_string();
         let max_file_size = options["maxFileSize"].as_u64();
 
-        // Парсим массивы
+        // Parse arrays
         let allowed_extensions = options["allowedExtensions"].as_array().map(|arr| {
             arr.iter()
                 .filter_map(|v| v.as_str())
@@ -295,7 +295,7 @@ pub fn register_download_route(mut cx: FunctionContext) -> JsResult<JsUndefined>
         let allow_hidden = options["allowHiddenFiles"].as_bool().unwrap_or(false);
         let allow_system = options["allowSystemFiles"].as_bool().unwrap_or(false);
 
-        // Создаем конфигурацию
+        // Create configuration
         let config = DownloadRouteConfig {
             path: path.clone(),
             folder: folder.clone(),
@@ -306,24 +306,24 @@ pub fn register_download_route(mut cx: FunctionContext) -> JsResult<JsUndefined>
             allow_system_files: allow_system,
         };
 
-        // Сохраняем в глобальное хранилище
+        // Save to global storage
         let download_routes = get_download_routes();
         download_routes
             .write()
             .unwrap()
             .insert(path.clone(), config);
 
-        println!("📥 Регистрируем роут скачивания: {} -> {}", path, folder);
-        println!("   Максимальный размер: {:?} байт", max_file_size);
-        println!("   Разрешенные расширения: {:?}", allowed_extensions);
-        println!("   Заблокированные пути: {:?}", blocked_paths);
-        println!("   Разрешить скрытые файлы: {}", allow_hidden);
-        println!("   Разрешить системные файлы: {}", allow_system);
+        println!("📥 Registering download route: {} -> {}", path, folder);
+        println!("   Max size: {:?} bytes", max_file_size);
+        println!("   Allowed extensions: {:?}", allowed_extensions);
+        println!("   Blocked paths: {:?}", blocked_paths);
+        println!("   Allow hidden files: {}", allow_hidden);
+        println!("   Allow system files: {}", allow_system);
 
-        // Выводим текущие зарегистрированные роуты
+        // Show current registered routes
         let routes = download_routes.read().unwrap();
         println!(
-            "📋 Всего зарегистрировано роутов скачивания: {}",
+            "📋 Total download routes registered: {}",
             routes.len()
         );
         for (route_path, _) in routes.iter() {
@@ -334,12 +334,12 @@ pub fn register_download_route(mut cx: FunctionContext) -> JsResult<JsUndefined>
     Ok(cx.undefined())
 }
 
-// Функция для регистрации роута загрузки файлов (одиночная или множественная)
+// Function for registering file upload route (single or multiple)
 pub fn register_upload_route(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let path = cx.argument::<JsString>(0)?.value(&mut cx);
     let options_json = cx.argument::<JsString>(1)?.value(&mut cx);
 
-    // Парсим опции
+    // Parse options
     if let Ok(options) = serde_json::from_str::<serde_json::Value>(&options_json) {
         let folder = options["folder"]
             .as_str()
@@ -353,7 +353,7 @@ pub fn register_upload_route(mut cx: FunctionContext) -> JsResult<JsUndefined> {
         });
         let max_file_size = options["maxFileSize"].as_u64();
 
-        // Парсим массивы
+        // Parse arrays
         let allowed_extensions = options["allowedExtensions"].as_array().map(|arr| {
             arr.iter()
                 .filter_map(|v| v.as_str())
@@ -372,7 +372,7 @@ pub fn register_upload_route(mut cx: FunctionContext) -> JsResult<JsUndefined> {
         let overwrite = options["overwrite"].as_bool().unwrap_or(false);
         let multiple = options["multiple"].as_bool().unwrap_or(false);
 
-        // Создаем конфигурацию для загрузки файлов
+        // Create configuration for file uploads
         let config = UploadRouteConfig {
             path: path.clone(),
             folder: folder.clone(),
@@ -385,23 +385,23 @@ pub fn register_upload_route(mut cx: FunctionContext) -> JsResult<JsUndefined> {
             overwrite,
         };
 
-        // Сохраняем в глобальное хранилище
+        // Save to global storage
         let upload_routes = get_upload_routes();
         upload_routes.write().unwrap().insert(path.clone(), config);
 
-        println!("📤 Регистрируем роут загрузки: {} -> {}", path, folder);
-        println!("   Разрешенные подпапки: {:?}", allowed_subfolders);
-        println!("   Максимальный размер: {:?} байт", max_file_size);
-        println!("   Разрешенные расширения: {:?}", allowed_extensions);
-        println!("   Разрешенные MIME типы: {:?}", allowed_mime_types);
-        println!("   Максимальное количество файлов: {:?}", max_files);
-        println!("   Разрешить перезапись: {}", overwrite);
-        println!("   Множественная загрузка: {}", multiple);
+        println!("📤 Registering upload route: {} -> {}", path, folder);
+        println!("   Allowed subfolders: {:?}", allowed_subfolders);
+        println!("   Max size: {:?} bytes", max_file_size);
+        println!("   Allowed extensions: {:?}", allowed_extensions);
+        println!("   Allowed MIME types: {:?}", allowed_mime_types);
+        println!("   Max file count: {:?}", max_files);
+        println!("   Allow overwrite: {}", overwrite);
+        println!("   Multiple upload: {}", multiple);
 
-        // Выводим текущие зарегистрированные роуты
+        // Show current registered routes
         let routes = upload_routes.read().unwrap();
         println!(
-            "📋 Всего зарегистрировано роутов загрузки: {}",
+            "📋 Total upload routes registered: {}",
             routes.len()
         );
         for (route_path, _) in routes.iter() {

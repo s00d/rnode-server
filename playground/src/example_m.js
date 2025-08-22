@@ -104,6 +104,12 @@ app.get('/hello', (req, res) => {
   });
 });
 
+app.get('/posts/{postId}/comments/{commentId}', (req, res) => {
+  const { postId, commentId } = req.params;
+  console.log(1111, req)
+  res.json({ postId, commentId, message: 'Comment details' });
+});
+
 // Запуск сервера
 app.listen(port, () => {
   console.log(`🚀 Сервер запущен на порту ${port}`);

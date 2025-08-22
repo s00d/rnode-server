@@ -1,18 +1,18 @@
 use crate::types::{RouteInfo, get_routes};
 use neon::prelude::*;
 
-// Универсальная функция для регистрации маршрутов
+// Universal function for route registration
 fn register_route(method: &str) -> impl Fn(FunctionContext) -> JsResult<JsUndefined> + '_ {
     move |mut cx: FunctionContext| {
         let path = cx.argument::<JsString>(0)?.value(&mut cx);
-        let _handler = cx.argument::<JsFunction>(1)?; // JS функция-обработчик
+        let _handler = cx.argument::<JsFunction>(1)?; // JS handler function
 
         println!("Registering {} route: {}", method, path);
 
-        // Просто сохраняем информацию о маршруте без выполнения обработчика
+        // Just store route information without executing the handler
         let _response_content = format!("Route registered: {} {}", method, path);
 
-        // Генерируем уникальный ID для обработчика
+        // Generate unique handler ID
         let handler_id = format!(
             "{}_{}_{}",
             method,
@@ -20,7 +20,7 @@ fn register_route(method: &str) -> impl Fn(FunctionContext) -> JsResult<JsUndefi
             std::process::id()
         );
 
-        // Добавляем маршрут в глобальное хранилище (синхронно)
+        // Add route to global storage (synchronously)
         let routes = get_routes();
 
         {
@@ -41,7 +41,7 @@ fn register_route(method: &str) -> impl Fn(FunctionContext) -> JsResult<JsUndefi
     }
 }
 
-// Функции-обертки для всех HTTP методов
+// Wrapper functions for all HTTP methods
 pub fn register_get(cx: FunctionContext) -> JsResult<JsUndefined> {
     register_route("GET")(cx)
 }

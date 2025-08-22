@@ -2,21 +2,21 @@ use crate::types::{get_event_queue, get_middleware};
 use neon::prelude::*;
 use serde_json;
 
-// Функция для регистрации middleware
+// Function for middleware registration
 pub fn register_middleware(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let path = cx.argument::<JsString>(0)?.value(&mut cx);
-    let _handler = cx.argument::<JsFunction>(1)?; // JS функция-middleware
+    let _handler = cx.argument::<JsFunction>(1)?; // JS middleware function
 
     println!("Registering middleware for path: {}", path);
 
-    // Генерируем уникальный ID для middleware
+    // Generate unique middleware ID
     let handler_id = format!(
         "middleware_{}_{}",
         path.replace('/', "_"),
         std::process::id()
     );
 
-    // Добавляем middleware в глобальное хранилище
+    // Add middleware to global storage
     let middleware = get_middleware();
     {
         let mut middleware_vec = middleware.write().unwrap();
@@ -34,7 +34,7 @@ pub fn register_middleware(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     Ok(cx.undefined())
 }
 
-// Функция для выполнения middleware
+// Function for middleware execution
 pub async fn execute_middleware(
     request_data: &mut serde_json::Map<String, serde_json::Value>,
 ) -> Result<(), axum::response::Response<axum::body::Body>> {
@@ -45,7 +45,7 @@ pub async fn execute_middleware(
     let middleware = get_middleware();
     let middleware_vec = middleware.read().unwrap();
 
-    // Получаем path из request_data
+    // Get path from request_data
     let actual_path = request_data
         .get("path")
         .and_then(|v| v.as_str())
@@ -53,13 +53,13 @@ pub async fn execute_middleware(
         .to_string();
 
     for middleware_info in middleware_vec.iter() {
-        // Проверяем, подходит ли middleware для данного пути
+        // Check if middleware matches the current path
         if actual_path.starts_with(&middleware_info.path) || middleware_info.path == "*" {
-            // Создаем данные для middleware, добавляя флаг isMiddleware
+            // Create middleware data, adding isMiddleware flag
             let mut middleware_data = request_data.clone();
             middleware_data.insert("isMiddleware".to_string(), serde_json::Value::Bool(true));
 
-            // Добавляем пустые customParams для middleware
+            // Add empty customParams for middleware
             middleware_data.insert(
                 "customParams".to_string(),
                 serde_json::Value::Object(serde_json::Map::new()),
@@ -67,7 +67,7 @@ pub async fn execute_middleware(
 
             let middleware_json = serde_json::to_string(&middleware_data).unwrap();
 
-            // Выполняем middleware через JavaScript
+            // Execute middleware through JavaScript
             let event_queue = get_event_queue();
             let channel = {
                 let event_queue_map = event_queue.read().unwrap();
@@ -92,7 +92,7 @@ pub async fn execute_middleware(
                     Ok(())
                 });
 
-                // Ждем результат от middleware
+                // Wait for middleware result
                 let result = match rx.recv_timeout(std::time::Duration::from_millis(1000)) {
                     Ok(result) => result,
                     Err(_) => {
@@ -103,14 +103,14 @@ pub async fn execute_middleware(
                     }
                 };
 
-                // Парсим результат middleware
+                // Parse middleware result
                 let middleware_result: serde_json::Value = serde_json::from_str(&result)
                     .unwrap_or_else(|_| serde_json::json!({"shouldContinue": true}));
 
-                // Если middleware хочет прервать выполнение
+                // If middleware wants to interrupt execution
                 if let Some(should_continue) = middleware_result["shouldContinue"].as_bool() {
                     if !should_continue {
-                        // Middleware прерывает выполнение
+                        // Middleware interrupts execution
                         let content = middleware_result["content"]
                             .as_str()
                             .unwrap_or("")
@@ -124,7 +124,7 @@ pub async fn execute_middleware(
                             .status(StatusCode::OK)
                             .header("content-type", content_type);
 
-                        // Добавляем заголовки из middleware
+                        // Add headers from middleware
                         if let Some(headers) = middleware_result["headers"].as_object() {
                             for (key, value) in headers {
                                 if let Some(value_str) = value.as_str() {
@@ -138,7 +138,7 @@ pub async fn execute_middleware(
                     }
                 }
 
-                // Модифицируем request_data customParams из middleware
+                // Modify request_data customParams from middleware
                 if let Some(custom_params) = middleware_result["customParams"].as_object() {
                     for (key, value) in custom_params {
                         request_data.insert(key.clone(), value.clone());

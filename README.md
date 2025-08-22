@@ -85,6 +85,37 @@ pnpm playground:build
 pnpm playground:build:watch
 ```
 
+## Demo Applications
+
+### Multipart Upload Demo (`playground/src/multipart_example.ts`)
+Complete file upload application demonstrating advanced multipart handling:
+
+- **Wildcard Routes**: Upload to any subfolder using `{*subfolder}` patterns
+- **File Management**: Upload, download, list, and delete files with subfolder support
+- **Security**: Configurable file size limits, allowed extensions, and MIME types
+- **Web Interface**: Built-in HTML forms for single and multiple file uploads
+- **File Operations**: Rust backend methods for file system operations
+- **Subfolder Support**: Organize files in nested directory structures
+
+**Features:**
+- Single file upload with subfolder selection
+- Multiple file upload (up to 10 files)
+- Wildcard subfolder patterns (`documents/*`, `images/*`, `files/*`)
+- File listing with folder hierarchy
+- File download from any subfolder
+- File deletion with path support
+- Static file serving for web interface
+
+**Usage:**
+```bash
+cd playground
+npm run start:multipart
+# Server runs on http://localhost:4540
+# Web interface: http://localhost:4540
+# Upload files to: http://localhost:4540/upload
+# Download files from: http://localhost:4540/download/{*name}
+```
+
 ## Code Examples
 
 ### Basic Server Setup
@@ -210,15 +241,17 @@ app.listen(port, () => {
 ```
 
 ### File Upload & Multipart Forms
+
+#### Simple Upload Example
 ```typescript
-// Обработка загрузки одного файла
+// Single file upload
 app.post('/upload', (req, res) => {
   if (req.hasFile('avatar')) {
     const file = req.getFile('avatar');
-    console.log(`Файл: ${file.filename}, размер: ${file.size} байт`);
+    console.log(`File: ${file.filename}, size: ${file.size} bytes`);
     
     res.json({
-      message: 'Файл загружен успешно',
+      message: 'File uploaded successfully',
       file: {
         name: file.filename,
         size: file.size,
@@ -226,31 +259,146 @@ app.post('/upload', (req, res) => {
       }
     });
   } else {
-    res.status(400).json({ error: 'Файл не найден' });
+    res.status(400).json({ error: 'File not found' });
   }
 });
 
-// Обработка множественной загрузки файлов
+// Multiple file upload
 app.post('/upload-multiple', (req, res) => {
   const files = req.getFiles();
   const fileCount = req.getFileCount();
   
   if (fileCount > 0) {
-    // Отправляем информацию о всех файлах
+    // Send information about all files
     res.sendFiles(files);
   } else {
-    res.status(400).text('Файлы не найдены');
+    res.status(400).text('Files not found');
   }
 });
+```
 
-// Возврат различных типов контента
-app.get('/download/:filename', (req, res) => {
-  const filename = req.params.filename;
-  res.download(`./uploads/${filename}`, filename);
+#### Frontend Upload Example (HTML + JavaScript)
+```html
+<!-- Simple file upload form -->
+<form id="uploadForm" enctype="multipart/form-data">
+  <input type="file" name="avatar" accept="image/*" required>
+  <select name="subfolder" id="subfolderSelect">
+    <option value="">Root folder</option>
+    <option value="documents">Documents</option>
+    <option value="images">Images</option>
+    <option value="documents/2024">Documents/2024</option>
+  </select>
+  <button type="submit">Upload File</button>
+</form>
+
+<div id="results"></div>
+```
+
+```javascript
+// JavaScript for handling file upload
+document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  
+  const formData = new FormData(this);
+  const subfolder = document.getElementById('subfolderSelect').value;
+  
+  // Add subfolder to form data if selected
+  if (subfolder) {
+    formData.append('subfolder', subfolder);
+  }
+  
+  try {
+    const response = await fetch('/upload', {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      const uploadedFiles = result.uploadedFiles || [];
+      const totalFiles = result.totalFiles || 0;
+      
+      // Display upload results
+      let resultHtml = `
+        <div class="result success">
+          <h3>✅ File uploaded successfully</h3>
+          <p><strong>Files uploaded:</strong> ${totalFiles}</p>
+          <p><strong>Subfolder:</strong> ${subfolder || 'Root folder'}</p>
+          
+          <h4>Uploaded files:</h4>
+          <div class="uploaded-files">`;
+      
+      uploadedFiles.forEach(file => {
+        resultHtml += `
+          <div class="file-details">
+            <p><strong>Name:</strong> ${file.name}</p>
+            <p><strong>Size:</strong> ${file.size} bytes</p>
+            <p><strong>Type:</strong> ${file.mime_type}</p>
+            <p><strong>Path:</strong> ${file.relative_path}</p>
+          </div>`;
+      });
+      
+      resultHtml += `
+          </div>
+        </div>`;
+      
+      document.getElementById('results').innerHTML = resultHtml;
+    } else {
+      document.getElementById('results').innerHTML = 
+        `<div class="result error">❌ Upload failed: ${result.error}</div>`;
+    }
+  } catch (error) {
+    document.getElementById('results').innerHTML = 
+      `<div class="result error">❌ Network error: ${error.message}</div>`;
+  }
+});
+```
+
+#### Advanced Upload with Wildcard Routes
+```typescript
+// Upload to specific subfolder with wildcard support
+app.upload('/upload/{*subfolder}', {
+  folder: './uploads',
+  allowedSubfolders: ['documents/*', 'images/*', 'files/*'], // Wildcard patterns
+  maxFileSize: 50 * 1024 * 1024, // 50 MB
+  allowedExtensions: ['.png', '.jpg', '.jpeg', '.gif', '.pdf', '.txt', '.docx'],
+  allowedMimeTypes: ['image/png', 'image/jpeg', 'image/gif', 'application/pdf'],
+  multiple: false,
+  overwrite: true
 });
 
+// Multiple file upload to any subfolder
+app.upload('/upload-multiple/{*subfolder}', {
+  folder: './uploads',
+  allowedSubfolders: ['*'], // Allow any subfolder
+  maxFileSize: 50 * 1024 * 1024,
+  multiple: true,
+  maxFiles: 10,
+  overwrite: true
+});
+```
+
+#### File Download with Wildcard Routes
+```typescript
+// Download files from any subfolder
+app.download('/download/{*name}', {
+  folder: './uploads',
+  maxFileSize: 100 * 1024 * 1024, // 100 MB
+  allowedExtensions: ['.png', '.jpg', '.jpeg', '.gif', '.pdf', '.txt', '.docx'],
+  allowHiddenFiles: false,
+  allowSystemFiles: false
+});
+```
+
+#### Content Type Responses
+```typescript
 app.get('/page', (req, res) => {
-  res.html('<h1>HTML страница</h1><p>Контент</p>');
+  res.html('<h1>HTML Page</h1><p>Content</p>');
 });
 
 app.get('/data.xml', (req, res) => {
@@ -262,11 +410,79 @@ app.get('/redirect', (req, res) => {
 });
 ```
 
+### Route Parameters and Wildcards
+
+#### Named Parameters
+```typescript
+// Basic named parameter (colon syntax)
+app.get('/users/{id}', (req, res) => {
+  const userId = req.params.id;
+  res.json({ userId, message: 'User details' });
+});
+
+// Named parameters in curly braces (modern syntax)
+app.get('/posts/{postId}/comments/{commentId}', (req, res) => {
+  const { postId, commentId } = req.params;
+  res.json({ postId, commentId, message: 'Comment details' });
+});
+
+// Mixed syntax is also supported
+app.get('/articles/{articleId}/reviews/{reviewId}', (req, res) => {
+  const { articleId, reviewId } = req.params;
+  res.json({ articleId, reviewId, message: 'Review details' });
+});
+```
+
+#### Wildcard Parameters
+```typescript
+// Wildcard for file paths
+app.get('/files/{*filepath}', (req, res) => {
+  const filepath = req.params.filepath;
+  // filepath can be: "documents/report.pdf", "images/photo.jpg", etc.
+  res.json({ filepath, message: 'File path captured' });
+});
+
+// Wildcard for subfolder uploads
+app.post('/upload/{*subfolder}', (req, res) => {
+  const subfolder = req.params.subfolder;
+  // subfolder can be: "documents", "documents/2024", "documents/2024/january", etc.
+  res.json({ subfolder, message: 'Upload to subfolder' });
+});
+
+// Wildcard for downloads
+app.get('/download/{*name}', (req, res) => {
+  const filename = req.params.name;
+  // filename can be: "report.pdf", "documents/report.pdf", "documents/2024/report.pdf", etc.
+  res.download(`./uploads/${filename}`);
+});
+```
+
+#### Query Parameters
+```typescript
+// Access query parameters
+app.get('/search', (req, res) => {
+  const { q, page, limit } = req.query;
+  res.json({ 
+    query: q, 
+    page: parseInt(page) || 1, 
+    limit: parseInt(limit) || 10 
+  });
+});
+
+// Upload with query parameter for subfolder
+app.post('/upload', (req, res) => {
+  const subfolder = req.query.dir; // ?dir=documents/2024
+  // Use subfolder for file organization
+  res.json({ subfolder, message: 'Upload completed' });
+});
+```
+
 ## Server Capabilities
 
 ### HTTP Methods Support
 - GET, POST, PUT, DELETE, PATCH requests
-- Dynamic route parameters (`/users/:id`)
+- Dynamic route parameters (`/users/{id}`, `/posts/{postId}`)
+- Wildcard parameters (`/files/{*filepath}`)
 - Query string parsing
 - Request body parsing (JSON, form data, multipart/form-data)
 - File upload support with Base64 encoding

@@ -4,16 +4,16 @@ use std::collections::HashMap;
 use std::sync::OnceLock;
 use std::sync::RwLock;
 
-// Структура для хранения маршрутов и их обработчиков
+// Structure for storing routes and their handlers
 #[derive(Clone)]
 pub struct RouteInfo {
     pub path: String,
     pub method: String,
     #[allow(dead_code)]
-    pub handler_id: String, // Уникальный ID для обработчика
+    pub handler_id: String, // Unique ID for handler
 }
 
-// Структура для хранения middleware
+// Structure for storing middleware
 #[derive(Clone)]
 pub struct MiddlewareInfo {
     pub path: String,
@@ -21,13 +21,13 @@ pub struct MiddlewareInfo {
     pub handler_id: String,
 }
 
-// Синхронное хранилище маршрутов
+// Synchronous storage for routes
 pub static ROUTES: OnceLock<RwLock<HashMap<String, RouteInfo>>> = OnceLock::new();
 
-// Синхронное хранилище middleware
+// Synchronous storage for middleware
 pub static MIDDLEWARE: OnceLock<RwLock<Vec<MiddlewareInfo>>> = OnceLock::new();
 
-// Структура для настроек скачивания файлов
+// Structure for file download settings
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct DownloadRouteConfig {
     pub path: String,
@@ -39,7 +39,7 @@ pub struct DownloadRouteConfig {
     pub allow_system_files: bool,
 }
 
-// Структура для настроек загрузки файлов
+// Structure for file upload settings
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct UploadRouteConfig {
     pub path: String,
@@ -53,14 +53,14 @@ pub struct UploadRouteConfig {
     pub overwrite: bool,
 }
 
-// Глобальный канал для связи между HTTP потоком и JavaScript потоком
+// Global channel for communication between HTTP thread and JavaScript thread
 pub static EVENT_QUEUE: OnceLock<RwLock<Option<Channel>>> = OnceLock::new();
 
-// Глобальное хранилище настроек скачивания
+// Global storage for download settings
 pub static DOWNLOAD_ROUTES: OnceLock<RwLock<HashMap<String, DownloadRouteConfig>>> =
     OnceLock::new();
 
-// Глобальное хранилище настроек загрузки
+// Global storage for upload settings
 pub static UPLOAD_ROUTES: OnceLock<RwLock<HashMap<String, UploadRouteConfig>>> = OnceLock::new();
 
 pub fn get_routes() -> &'static RwLock<HashMap<String, RouteInfo>> {

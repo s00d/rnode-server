@@ -12,15 +12,15 @@ use neon::prelude::*;
 use serde_json;
 use std::net::SocketAddr;
 
-// Функция для запуска сервера
+// Function for starting the server
 pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let port = cx.argument::<JsNumber>(0)?.value(&mut cx) as u16;
 
-    // Проверяем, есть ли второй аргумент (хост)
+    // Check if there's a second argument (host)
     let host = if cx.len() > 1 {
         if let Ok(host_arg) = cx.argument::<JsString>(1) {
             let host_str = host_arg.value(&mut cx);
-            // Парсим IP адрес
+            // Parse IP address
             let ip_parts: Result<Vec<u8>, _> =
                 host_str.split('.').map(|part| part.parse::<u8>()).collect();
 
@@ -48,28 +48,28 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
         port
     );
 
-    // Создаем Channel для связи с JavaScript
+    // Create Channel for communication with JavaScript
     let queue = cx.channel();
 
-    // Сохраняем Channel в глобальной переменной
+    // Save Channel in global variable
     {
         let event_queue_guard = get_event_queue();
         let mut event_queue_map = event_queue_guard.write().unwrap();
         *event_queue_map = Some(queue);
     }
 
-    // Запускаем реальный HTTP сервер
+    // Start real HTTP server
     std::thread::spawn(move || {
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(async {
-            // Создаем базовый роутер
+            // Create base router
             let mut app = Router::new();
             
-            // Добавляем динамические маршруты
+            // Add dynamic routes
             let routes = get_routes();
             let routes_map = routes.read().unwrap();
             
-            // Создаем клоны для использования в замыканиях
+            // Create clones for use in closures
             let routes_vec: Vec<(String, String, String)> = routes_map.iter()
                 .map(|(_, route_info)| (route_info.path.clone(), route_info.method.clone(), route_info.handler_id.clone()))
                 .collect();
@@ -86,7 +86,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                     let method = method_clone.clone();
                     let handler_id = handler_id_clone.clone();
                     async move { 
-                        // Получаем фактический путь из запроса
+                        // Get actual path from request
                         let actual_path = req.uri().path().to_string();
                         dynamic_handler(req, actual_path, registered_path, method, handler_id).await 
                     }
@@ -109,10 +109,10 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                 println!("  {} {}", route_info.method, route_info.path);
             }
             
-            // Освобождаем блокировку перед запуском сервера
+            // Release lock before starting server
             drop(routes_map);
             
-            // Добавляем динамические роуты для скачивания файлов
+            // Add dynamic routes for file downloads
             let download_routes = get_download_routes();
             let download_routes_map = download_routes.read().unwrap();
             
@@ -124,37 +124,37 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                     let config = config_clone.clone();
                     let route_path = route_path_clone.clone();
                     async move {
-                        // Извлекаем путь к файлу из параметра {*name} или из query параметра ?path=
+                        // Extract file path from {*name} parameter or from query parameter ?path=
                         let actual_filename = {
                             let mut result = None;
                             
-                            // Сначала проверяем параметр {*name} из пути
+                            // First check {*name} parameter from path
                             if route_path.contains("{*name}") {
-                                // Извлекаем имя файла из URL
+                                // Extract filename from URL
                                 let path_parts: Vec<&str> = req.uri().path().split('/').collect();
                                 if path_parts.len() >= 3 {
                                     let filename = path_parts[2..].join("/");
                                     if !filename.is_empty() {
-                                        println!("📁 Файл для скачивания из параметра {{*name}}: '{}'", filename);
+                                        println!("📁 File for download from {{*name}} parameter: '{}'", filename);
                                         result = Some(filename);
                                     }
                                 }
                             }
                             
-                            // Если имя файла не найдено в пути, проверяем query параметр ?path=
+                            // If filename not found in path, check query parameter ?path=
                             if result.is_none() {
                                 if let Some(query) = req.uri().query() {
                                     let query_parts: Vec<&str> = query.split('&').collect();
                                     for part in query_parts {
                                         if part.starts_with("path=") {
-                                            let path_value = &part[5..]; // Убираем "path="
+                                            let path_value = &part[5..]; // Remove "path="
                                             if !path_value.is_empty() {
-                                                // Декодируем URL-encoded значения
+                                                // Decode URL-encoded values
                                                 let decoded_value = match urlencoding::decode(path_value) {
                                                     Ok(decoded) => decoded.to_string(),
                                                     Err(_) => path_value.to_string(),
                                                 };
-                                                println!("📁 Файл для скачивания из query параметра ?path=: '{}'", decoded_value);
+                                                println!("📁 File for download from query parameter ?path=: '{}'", decoded_value);
                                                 result = Some(decoded_value);
                                                 break;
                                             }
@@ -163,11 +163,11 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                 }
                             }
                             
-                            // Если ничего не найдено, возвращаем ошибку
+                            // If nothing found, return error
                             match result {
                                 Some(filename) => filename,
                                 None => {
-                                    println!("❌ Не указан путь к файлу для скачивания");
+                                    println!("❌ File path for download not specified");
                                     return Err(axum::http::StatusCode::BAD_REQUEST);
                                 }
                             }
@@ -175,12 +175,12 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                         
                         let file_path = format!("{}/{}", config.folder, actual_filename);
                         
-                        // Проверяем существование файла
+                        // Check if file exists
                         if !std::path::Path::new(&file_path).exists() {
                             return Err(axum::http::StatusCode::NOT_FOUND);
                         }
                         
-                        // Проверяем размер файла
+                        // Check file size
                         if let Some(max_size) = config.max_file_size {
                             if let Ok(metadata) = std::fs::metadata(&file_path) {
                                 if metadata.len() > max_size {
@@ -189,7 +189,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                             }
                         }
                         
-                        // Проверяем расширение файла
+                        // Check file extension
                         if let Some(ref allowed_extensions) = config.allowed_extensions {
                             if let Some(extension) = std::path::Path::new(&actual_filename).extension() {
                                 let ext_str = extension.to_string_lossy().to_lowercase();
@@ -201,7 +201,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                             }
                         }
                         
-                        // Проверяем заблокированные пути
+                        // Check blocked paths
                         if let Some(ref blocked_paths) = config.blocked_paths {
                             for blocked_path in blocked_paths {
                                 if actual_filename.contains(blocked_path) {
@@ -210,7 +210,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                             }
                         }
                         
-                        // Проверяем скрытые и системные файлы
+                        // Check hidden and system files
                         if !config.allow_hidden_files {
                             if actual_filename.starts_with('.') {
                                 return Err(axum::http::StatusCode::FORBIDDEN);
@@ -226,11 +226,11 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                             }
                         }
                         
-                        // Открываем файл для чтения
+                        // Open file for reading
                         if let Ok(file) = tokio::fs::File::open(&file_path).await {
                             let metadata = file.metadata().await.unwrap_or_else(|_| std::fs::metadata(&file_path).unwrap());
                             
-                            // Определяем MIME тип
+                            // Determine MIME type
                             let mime_type = if let Some(kind) = infer::get(&std::fs::read(&file_path).unwrap_or_default()) {
                                 kind.mime_type().to_string()
                             } else {
@@ -245,7 +245,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                             response.headers_mut().insert("content-disposition", format!("attachment; filename=\"{}\"", actual_filename).parse().unwrap());
                             response.headers_mut().insert("content-length", metadata.len().to_string().parse().unwrap());
                             
-                            // Кастомные заголовки пока не поддерживаются
+                            // Custom headers not supported yet
                             
                             Ok(response)
                         } else {
@@ -254,16 +254,16 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                     }
                 };
                 
-                // Регистрируем роут (поддерживаем wildcard для подпапок)
+                // Register route (support wildcard for subfolders)
                 let actual_route = route_path.clone();
                 app = app.route(&actual_route, get(download_handler));
-                println!("📥 Зарегистрирован роут скачивания: {} -> {}", route_path, actual_route);
+                println!("📥 Download route registered: {} -> {}", route_path, actual_route);
             }
             
-            // Освобождаем блокировку
+            // Release lock
             drop(download_routes_map);
             
-            // Добавляем роуты для загрузки файлов
+            // Add routes for file uploads
             let upload_routes = get_upload_routes();
             let upload_routes_map = upload_routes.read().unwrap();
             
@@ -275,24 +275,24 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                         let config = config_clone.clone();
                         let route_path = route_path_clone.clone();
                         async move {
-                            println!("📤 Загрузка файла через роут: {}", route_path);
+                            println!("📤 File upload via route: {}", route_path);
 
-                            // Функция для проверки wildcard паттерна
+                            // Function for checking wildcard pattern
                             fn matches_pattern(pattern: &str, path: &str) -> bool {
                                 if pattern == path {
-                                    return true; // Точное совпадение
+                                    return true; // Exact match
                                 }
 
                                 if pattern == "*" {
-                                    // Паттерн "*" разрешает любую подпапку
+                                    // Pattern "*" allows any subfolder
                                     return true;
                                 }
 
                                 if pattern.ends_with("/*") {
-                                    // Паттерн типа "documents/*"
+                                    // Pattern like "documents/*"
                                     let prefix = &pattern[..pattern.len() - 2];
                                     if path.starts_with(prefix) {
-                                        // Проверяем что это подпапка, а не файл
+                                        // Check that it's a subfolder, not a file
                                         if path.len() > prefix.len() && path.chars().nth(prefix.len()) == Some('/') {
                                             return true;
                                         }
@@ -302,41 +302,41 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                 false
                             }
 
-                            // Извлекаем subfolder из параметра {*subfolder} или из query параметра ?dir=
+                            // Extract subfolder from {*subfolder} parameter or from query parameter ?dir=
                             let subfolder_from_url = {
                                 let mut result = None;
 
-                                // Сначала проверяем параметр {*subfolder} из пути
+                                // First check {*subfolder} parameter from path
                                 if route_path.contains("{*subfolder}") {
-                                    // Извлекаем subfolder из реального URL запроса
+                                    // Extract subfolder from actual request URL
                                     let request_path = req.uri().path();
                                     let path_parts: Vec<&str> = request_path.split('/').collect();
 
-                                    // Если путь содержит /upload/ или /upload-multiple/, извлекаем subfolder
+                                    // If path contains /upload/ or /upload-multiple/, extract subfolder
                                     if (request_path.starts_with("/upload/") || request_path.starts_with("/upload-multiple/")) && path_parts.len() >= 3 {
                                         let subfolder = path_parts[2..].join("/");
                                         if !subfolder.is_empty() {
-                                            println!("📁 Подпапка из параметра {{*subfolder}}: '{}'", subfolder);
+                                            println!("📁 Subfolder from {{*subfolder}} parameter: '{}'", subfolder);
                                             result = Some(subfolder);
                                         }
                                     }
                                 }
 
-                                // Если subfolder не найден в пути, проверяем query параметр ?dir=
+                                // If subfolder not found in path, check query parameter ?dir=
                                 if result.is_none() {
                                     if let Some(query) = req.uri().query() {
-                                        // Парсим query параметры
+                                        // Parse query parameters
                                         let query_parts: Vec<&str> = query.split('&').collect();
                                         for part in query_parts {
                                             if part.starts_with("dir=") {
-                                                let dir_value = &part[4..]; // Убираем "dir="
+                                                let dir_value = &part[4..]; // Remove "dir="
                                                 if !dir_value.is_empty() {
-                                                    // Декодируем URL-encoded значения
+                                                    // Decode URL-encoded values
                                                     let decoded_value = match urlencoding::decode(dir_value) {
                                                         Ok(decoded) => decoded.to_string(),
                                                         Err(_) => dir_value.to_string(),
                                                     };
-                                                    println!("📁 Подпапка из query параметра: '{}' (декодированная: '{}')", dir_value, decoded_value);
+                                                    println!("📁 Subfolder from query parameter: '{}' (decoded: '{}')", dir_value, decoded_value);
                                                     result = Some(decoded_value);
                                                     break;
                                                 }
@@ -348,7 +348,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                 result
                             };
 
-                            // Получаем Content-Type для определения boundary
+                            // Get Content-Type to determine boundary
                             let content_type = req.headers()
                                 .get("content-type")
                                 .and_then(|h| h.to_str().ok())
@@ -362,13 +362,13 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                     .unwrap();
                             }
 
-                            // Извлекаем boundary
+                            // Extract boundary
                             let boundary = content_type
                                 .split("boundary=")
                                 .nth(1)
                                 .unwrap_or("boundary");
 
-                            // Получаем body
+                            // Get body
                             let body_bytes = match axum::body::to_bytes(req.into_body(), usize::MAX).await {
                                 Ok(bytes) => bytes,
                                 Err(_) => {
@@ -379,20 +379,20 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                 }
                             };
 
-                            // Создаем stream для multer
+                            // Create stream for multer
                             let stream = stream::once(async move {
                                 Result::<axum::body::Bytes, std::io::Error>::Ok(body_bytes)
                             });
 
-                            // Создаем Multipart
+                            // Create Multipart
                             let mut multipart = Multipart::new(stream, boundary);
 
                             let mut uploaded_files = Vec::new();
                             let mut form_fields = std::collections::HashMap::new();
-                            // Используем subfolder из query параметра
+                            // Use subfolder from query parameter
                             let subfolder_from_form = subfolder_from_url;
 
-                            // Структура для информации о файлах
+                            // Structure for file information
                             #[derive(serde::Serialize)]
                             struct FileInfo {
                                 name: String,
@@ -401,56 +401,56 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                 relative_path: String,
                             }
 
-                            // Обрабатываем все поля и файлы в одном цикле
+                            // Process all fields and files in one loop
                             loop {
                                 match multipart.next_field().await {
                                     Ok(Some(field)) => {
                                         let field_name = field.name().unwrap_or("unknown").to_string();
 
                                         if let Some(filename) = field.file_name() {
-                                        // Это файл - обрабатываем сразу
+                                        // This is a file - process immediately
                                         let filename = filename.to_string();
-                                        println!("📄 Обрабатываем файл: '{}'", filename);
+                                        println!("📄 Processing file: '{}'", filename);
 
-                                        // Проверяем что подпапка разрешена
+                                        // Check if subfolder is allowed
                                         let upload_folder = if let Some(ref subfolder) = subfolder_from_form {
-                                            println!("📁 Используем подпапку из query параметра: '{}'", subfolder);
-                                            // Проверяем что подпапка разрешена с поддержкой wildcard
+                                            println!("📁 Using subfolder from query parameter: '{}'", subfolder);
+                                            // Check if subfolder is allowed with wildcard support
                                             if let Some(ref allowed_subfolders) = config.allowed_subfolders {
-                                                println!("📁 Проверяем разрешенные подпапки: {:?}", allowed_subfolders);
+                                                println!("📁 Checking allowed subfolders: {:?}", allowed_subfolders);
 
                                                 let is_allowed = allowed_subfolders.iter().any(|allowed| {
                                                     matches_pattern(allowed, subfolder)
                                                 });
 
                                                 if !is_allowed {
-                                                    println!("❌ Подпапка '{}' не разрешена", subfolder);
+                                                    println!("❌ Subfolder '{}' not allowed", subfolder);
                                                     return axum::response::Response::builder()
                                                         .status(axum::http::StatusCode::FORBIDDEN)
                                                         .body(axum::body::Body::from(format!("Subfolder '{}' not allowed", subfolder)))
                                                         .unwrap();
                                                 }
-                                                println!("✅ Подпапка '{}' разрешена", subfolder);
+                                                println!("✅ Subfolder '{}' allowed", subfolder);
                                             }
                                             let folder = format!("{}/{}", config.folder, subfolder);
-                                            println!("📁 Полная папка для загрузки: '{}'", folder);
+                                            println!("📁 Full upload folder: '{}'", folder);
                                             folder
                                         } else {
-                                            println!("📁 Подпапка не указана, используем корневую: '{}'", config.folder);
+                                            println!("📁 Subfolder not specified, using root: '{}'", config.folder);
                                             config.folder.clone()
                                         };
 
-                                        // Создаем относительный путь к файлу
+                                        // Create relative file path
                                         let relative_path = if let Some(ref subfolder) = subfolder_from_form {
                                             let path = format!("{}/{}", subfolder, filename);
-                                            println!("📁 Относительный путь к файлу: '{}'", path);
+                                            println!("📁 Relative file path: '{}'", path);
                                             path
                                         } else {
-                                            println!("📁 Относительный путь (без подпапки): '{}'", filename);
+                                            println!("📁 Relative path (no subfolder): '{}'", filename);
                                             filename.clone()
                                         };
 
-                                        // Проверяем расширение
+                                        // Check extension
                                         if let Some(ref allowed_extensions) = config.allowed_extensions {
                                             if let Some(extension) = std::path::Path::new(&filename).extension() {
                                                 let ext_str = extension.to_string_lossy().to_lowercase();
@@ -465,12 +465,12 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                             }
                                         }
 
-                                        // Определяем MIME тип через mime_guess
+                                        // Determine MIME type via mime_guess
                                         let mime_type = MimeGuess::from_path(&filename)
                                             .first_or_octet_stream()
                                             .to_string();
 
-                                        // Проверяем MIME тип для безопасности
+                                        // Check MIME type for security
                                         if let Some(ref allowed_mime_types) = config.allowed_mime_types {
                                             if !allowed_mime_types.contains(&mime_type) {
                                                 return axum::response::Response::builder()
@@ -480,7 +480,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                             }
                                         }
 
-                                        // Читаем содержимое файла
+                                        // Read file content
                                         let data = match field.bytes().await {
                                             Ok(data) => data,
                                             Err(_) => {
@@ -491,7 +491,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                             }
                                         };
 
-                                        // Проверяем размер файла
+                                        // Check file size
                                         if let Some(max_size) = config.max_file_size {
                                             if data.len() as u64 > max_size {
                                                 return axum::response::Response::builder()
@@ -501,7 +501,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                             }
                                         }
 
-                                        // Проверяем перезапись
+                                        // Check overwrite
                                         let file_path = format!("{}/{}", upload_folder, filename);
                                         if !config.overwrite && std::path::Path::new(&file_path).exists() {
                                             return axum::response::Response::builder()
@@ -510,31 +510,31 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                                 .unwrap();
                                         }
 
-                                        // Создаем папку если её нет
-                                        println!("📁 Создаем папку: '{}'", upload_folder);
+                                        // Create folder if it doesn't exist
+                                        println!("📁 Creating folder: '{}'", upload_folder);
                                         if let Err(e) = std::fs::create_dir_all(&upload_folder) {
-                                            println!("❌ Ошибка создания папки '{}': {}", upload_folder, e);
+                                            println!("❌ Error creating folder '{}': {}", upload_folder, e);
                                             return axum::response::Response::builder()
                                                 .status(axum::http::StatusCode::INTERNAL_SERVER_ERROR)
                                                 .body(axum::body::Body::from(format!("Failed to create upload directory: {}", e)))
                                             .unwrap();
                                         }
-                                        println!("✅ Папка создана успешно: '{}'", upload_folder);
+                                        println!("✅ Folder created successfully: '{}'", upload_folder);
 
-                                        // Сохраняем файл
-                                        println!("💾 Сохраняем файл в: '{}'", file_path);
+                                        // Save file
+                                        println!("💾 Saving file to: '{}'", file_path);
                                         if let Err(e) = std::fs::write(&file_path, &data) {
-                                            println!("❌ Ошибка сохранения файла '{}': {}", file_path, e);
+                                            println!("❌ Error saving file '{}': {}", file_path, e);
                                             return axum::response::Response::builder()
                                                 .status(axum::http::StatusCode::INTERNAL_SERVER_ERROR)
                                                 .body(axum::body::Body::from(format!("Failed to save file: {}", e)))
                                                 .unwrap();
                                         }
-                                        println!("✅ Файл сохранен успешно: '{}'", file_path);
+                                        println!("✅ File saved successfully: '{}'", file_path);
 
-                                        // Проверяем количество файлов в зависимости от типа загрузки
+                                        // Check file count based on upload type
                                         if config.multiple {
-                                            // Для множественной загрузки проверяем maxFiles
+                                            // For multiple uploads check maxFiles
                                             if let Some(max_files) = config.max_files {
                                                 if uploaded_files.len() >= max_files as usize {
                                                     return axum::response::Response::builder()
@@ -544,7 +544,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                                 }
                                             }
                                         } else {
-                                            // Для одиночной загрузки разрешаем только 1 файл
+                                            // For single upload allow only 1 file
                                             if uploaded_files.len() >= 1 {
                                                 return axum::response::Response::builder()
                                                     .status(axum::http::StatusCode::BAD_REQUEST)
@@ -553,7 +553,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                             }
                                         }
 
-                                        // Создаем информацию о файле
+                                        // Create file information
                                         let file_info = FileInfo {
                                             name: filename.clone(),
                                             size: data.len() as u64,
@@ -562,20 +562,20 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                         };
 
                                         uploaded_files.push(file_info);
-                                        println!("💾 Файл сохранен: {} ({} байт, {})", file_path, data.len(), mime_type);
+                                        println!("💾 File saved: {} ({} bytes, {})", file_path, data.len(), mime_type);
                                     } else {
-                                        // Это обычное поле формы
+                                        // This is a regular form field
                                         let value = field.text().await.unwrap_or_else(|_| String::new());
-                                        println!("📝 Поле формы: '{}' = '{}'", field_name, value);
+                                        println!("📝 Form field: '{}' = '{}'", field_name, value);
                                         form_fields.insert(field_name, value);
                                     }
                                 }
-                                Ok(None) => break, // Конец multipart данных
-                                Err(_) => break, // Ошибка парсинга
+                                Ok(None) => break, // End of multipart data
+                                Err(_) => break, // Parsing error
                             }
                         }
 
-                        // Формируем ответ
+                        // Form response
                         let response = serde_json::json!({
                             "success": true,
                             "message": "File uploaded successfully",
@@ -592,25 +592,25 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                     }
                 };
                     
-                // Регистрируем роут
+                // Register route
                 app = app.route(route_path, post(upload_handler));
-                println!("📤 Зарегистрирован роут загрузки: {}", route_path);
+                println!("📤 Upload route registered: {}", route_path);
             }
             
-            // Освобождаем блокировку
+            // Release lock
             drop(upload_routes_map);
             
-            // Добавляем fallback маршрут для статических файлов и несуществующих маршрутов
+            // Add fallback route for static files and non-existent routes
             let app = app.fallback(|req: axum::http::Request<axum::body::Body>| async move {
                 let path = req.uri().path().to_string();
                 
-                // Сначала пробуем найти статический файл
+                // First try to find static file
                 let accept_encoding = req.headers().get("accept-encoding").and_then(|h| h.to_str().ok());
                 if let Some(static_response) = handle_static_file(path, accept_encoding).await {
                     return static_response;
                 }
                 
-                // Если статический файл не найден, возвращаем 404
+                // If static file not found, return 404
                 axum::response::Response::builder()
                     .status(axum::http::StatusCode::NOT_FOUND)
                     .body(axum::body::Body::from("Not Found"))
@@ -622,7 +622,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
         });
     });
 
-    // Даем серверу время на запуск
+    // Give server time to start
     std::thread::sleep(std::time::Duration::from_millis(100));
 
     Ok(cx.undefined())

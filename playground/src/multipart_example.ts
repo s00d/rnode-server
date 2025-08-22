@@ -90,9 +90,6 @@ app.get('/', (req, res) => {
     // Используем Rust метод для получения списка файлов с подпапками
     try {
       const listResult = app.listFiles(uploadsDir);
-
-      console.log(1111, JSON.stringify(listResult))
-      
       if (listResult.success) {
         let allFiles = [];
         

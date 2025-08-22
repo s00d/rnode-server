@@ -7,7 +7,7 @@ use neon::prelude::*;
 use serde_json;
 use std::convert::Infallible;
 
-// Структура для информации о файле
+// Structure for file information
 #[derive(Debug)]
 struct FileInfo {
     filename: String,
@@ -16,7 +16,7 @@ struct FileInfo {
     data: String, // Base64 encoded data
 }
 
-// Структура для результата парсинга multipart
+// Structure for multipart parsing result
 type MultipartResult = Result<
     (
         std::collections::HashMap<String, String>,
@@ -25,44 +25,44 @@ type MultipartResult = Result<
     Box<dyn std::error::Error>,
 >;
 
-// Функция для парсинга multipart/form-data
+// Function for parsing multipart/form-data
 async fn parse_multipart_data(
     body_bytes: axum::body::Bytes,
     content_type: &str,
 ) -> MultipartResult {
-    // Получаем boundary из content-type
+    // Get boundary from content-type
     let boundary = content_type
         .split("boundary=")
         .nth(1)
         .ok_or("No boundary found")?;
 
-    // Создаем stream из bytes
+    // Create stream from bytes
     let stream =
         stream::once(async move { Result::<axum::body::Bytes, Infallible>::Ok(body_bytes) });
 
-    // Создаем Multipart из stream и boundary
+    // Create Multipart from stream and boundary
     let mut multipart = Multipart::new(stream, boundary);
 
     let mut fields = std::collections::HashMap::new();
     let mut files = std::collections::HashMap::new();
 
-    // Парсим multipart данные
+    // Parse multipart data
     while let Some(field) = multipart.next_field().await? {
         let field_name = field.name().unwrap_or("unknown").to_string();
 
         if let Some(filename) = field.file_name() {
-            // Это файл
+            // This is a file
             let filename = filename.to_string();
             let field_content_type = field
                 .content_type()
                 .map(|ct| ct.to_string())
                 .unwrap_or_else(|| "application/octet-stream".to_string());
 
-            // Читаем содержимое файла
+            // Read file content
             let data = field.bytes().await?;
             let size = data.len();
 
-            // Кодируем в Base64 для передачи в JSON
+            // Encode to Base64 for JSON transfer
             let data_base64 = base64::engine::general_purpose::STANDARD.encode(&data);
 
             let file_info = FileInfo {
@@ -74,7 +74,7 @@ async fn parse_multipart_data(
 
             files.insert(field_name, file_info);
         } else {
-            // Это обычное поле формы
+            // This is a regular form field
             let value = field.text().await?;
             fields.insert(field_name, value);
         }
@@ -83,22 +83,22 @@ async fn parse_multipart_data(
     Ok((fields, files))
 }
 
-// Функция для обработки HTTP запросов - вызывается из JavaScript
+// Function for processing HTTP requests - called from JavaScript
 pub fn process_http_request(mut cx: FunctionContext) -> JsResult<JsString> {
     let method = cx.argument::<JsString>(0)?.value(&mut cx);
     let path = cx.argument::<JsString>(1)?.value(&mut cx);
 
-    // Вызываем JavaScript функцию getHandler(method, path)
-    // Пока возвращаем заглушку
+    // Call JavaScript function getHandler(method, path)
+    // For now return a stub
     let result = format!("Processing {} {} in JavaScript", method, path);
 
     Ok(cx.string(result))
 }
 
-// Динамический обработчик для зарегистрированных маршрутов
+// Dynamic handler for registered routes
 pub async fn dynamic_handler(
     req: axum::extract::Request,
-    actual_path: String, // Фактический запрошенный путь
+    actual_path: String, // Actual requested path
     registered_path: String,
     method: String,
     _handler_id: String,
@@ -112,14 +112,14 @@ pub async fn dynamic_handler(
     use axum::http::StatusCode;
     use axum::response::Response;
 
-    // Разрушаем Request на части для извлечения body
+    // Break down Request into parts to extract body
     let (parts, body) = req.into_parts();
 
-    // Параметры уже извлечены через Axum экстракторы
+    // Parameters already extracted via Axum extractors
     let uri = parts.uri.clone();
     let query_string = uri.query().unwrap_or("");
 
-    // Извлекаем cookies из заголовков
+    // Extract cookies from headers
     let cookies = parts
         .headers
         .get("cookie")
@@ -127,7 +127,7 @@ pub async fn dynamic_handler(
         .unwrap_or("")
         .to_string();
 
-    // Извлекаем все заголовки
+    // Extract all headers
     let mut headers_json = serde_json::Map::new();
     for (key, value) in &parts.headers {
         let key_str = key.as_str().to_string();
@@ -136,7 +136,7 @@ pub async fn dynamic_handler(
         }
     }
 
-    // Определяем Content-Type для правильного парсинга
+    // Determine Content-Type for proper parsing
     let content_type = parts
         .headers
         .get("content-type")
@@ -144,24 +144,24 @@ pub async fn dynamic_handler(
         .unwrap_or("")
         .to_string();
 
-    // Сначала получаем bytes из body
+    // First get bytes from body
     let body_bytes = match axum::body::to_bytes(body, usize::MAX).await {
         Ok(bytes) => bytes,
         Err(_) => axum::body::Bytes::new(),
     };
 
-    // Парсим body в зависимости от Content-Type
+    // Parse body based on Content-Type
     let (body_data, files_data) = if content_type.contains("multipart/form-data") {
-        // Парсим multipart/form-data
+        // Parse multipart/form-data
         match parse_multipart_data(body_bytes.clone(), &content_type).await {
             Ok((fields, files)) => {
-                // Создаем JSON для полей формы
+                // Create JSON for form fields
                 let mut fields_json = serde_json::Map::new();
                 for (key, value) in fields {
                     fields_json.insert(key, serde_json::Value::String(value));
                 }
 
-                // Создаем JSON для файлов
+                // Create JSON for files
                 let mut files_json = serde_json::Map::new();
                 for (key, file_info) in files {
                     let mut file_json = serde_json::Map::new();
@@ -190,7 +190,7 @@ pub async fn dynamic_handler(
                 )
             }
             Err(_) => {
-                // Fallback к обычному body
+                // Fallback to regular body
                 let body_string = String::from_utf8_lossy(&body_bytes).to_string();
                 (
                     serde_json::Value::String(body_string),
@@ -199,7 +199,7 @@ pub async fn dynamic_handler(
             }
         }
     } else {
-        // Обычный body (JSON, form-urlencoded, plain text)
+        // Regular body (JSON, form-urlencoded, plain text)
         let body_string = String::from_utf8_lossy(&body_bytes).to_string();
         (
             serde_json::Value::String(body_string),
@@ -207,7 +207,7 @@ pub async fn dynamic_handler(
         )
     };
 
-    // Создаем JSON объект с параметрами
+    // Create JSON object with parameters
     let mut request_data = serde_json::Map::new();
     request_data.insert(
         "method".to_string(),
@@ -220,29 +220,29 @@ pub async fn dynamic_handler(
     request_data.insert(
         "path".to_string(),
         serde_json::Value::String(actual_path.clone()),
-    ); // Фактический путь для req.url
-    request_data.insert("body".to_string(), body_data); // Body запроса (поля формы или обычный body)
-    request_data.insert("files".to_string(), files_data); // Файлы (если есть)
+    ); // Actual path for req.url
+    request_data.insert("body".to_string(), body_data); // Request body (form fields or regular body)
+    request_data.insert("files".to_string(), files_data); // Files (if any)
     request_data.insert(
         "contentType".to_string(),
         serde_json::Value::String(content_type),
     ); // Content-Type
-    request_data.insert("cookies".to_string(), serde_json::Value::String(cookies)); // Cookies из заголовков
+    request_data.insert("cookies".to_string(), serde_json::Value::String(cookies)); // Cookies from headers
     request_data.insert(
         "headers".to_string(),
         serde_json::Value::Object(headers_json),
-    ); // Все заголовки
+    ); // All headers
 
-    // Извлекаем path параметры (например, :id -> 123 или {*filepath} -> documents/2024/january/record.png)
+    // Extract path parameters (e.g., :id -> 123 or {*filepath} -> documents/2024/january/record.png)
     let mut path_params_json = serde_json::Map::new();
     let actual_segments: Vec<&str> = actual_path.split('/').collect();
     let registered_segments: Vec<&str> = registered_path.split('/').collect();
 
-    // Обрабатываем простые параметры типа :id
+    // Process simple parameters like :id
     if actual_segments.len() == registered_segments.len() {
         for (i, registered_seg) in registered_segments.iter().enumerate() {
             if registered_seg.starts_with(':') && i < actual_segments.len() {
-                let param_name = &registered_seg[1..]; // Убираем :
+                let param_name = &registered_seg[1..]; // Remove :
                 let param_value = actual_segments[i];
                 path_params_json.insert(
                     param_name.to_string(),
@@ -252,20 +252,44 @@ pub async fn dynamic_handler(
         }
     }
 
-    // Обрабатываем wildcard параметры типа {*filepath}
+    // Process named parameters like {postId} or {commentId}
+    if actual_segments.len() == registered_segments.len() {
+        for (i, registered_seg) in registered_segments.iter().enumerate() {
+            if registered_seg.starts_with('{') && registered_seg.ends_with('}') && !registered_seg.contains("{*") {
+                // Extract parameter name from {param} (excluding wildcard {*param})
+                let param_name = registered_seg
+                    .trim_start_matches('{')
+                    .trim_end_matches('}');
+
+                if i < actual_segments.len() {
+                    let param_value = actual_segments[i];
+                    println!(
+                        "📝 Named parameter {{{}}}: '{}'",
+                        param_name, param_value
+                    );
+                    path_params_json.insert(
+                        param_name.to_string(),
+                        serde_json::Value::String(param_value.to_string()),
+                    );
+                }
+            }
+        }
+    }
+
+    // Process wildcard parameters like {*filepath}
     for (i, registered_seg) in registered_segments.iter().enumerate() {
         if registered_seg.contains("{*") && registered_seg.ends_with("}") {
-            // Извлекаем имя параметра из {*param}
+            // Extract parameter name from {*param}
             let param_name = registered_seg
                 .trim_start_matches("{*")
                 .trim_end_matches("}");
 
             if i < actual_segments.len() {
-                // Для wildcard параметра берем все оставшиеся сегменты
+                // For wildcard parameter take all remaining segments
                 let param_value = actual_segments[i..].join("/");
                 if !param_value.is_empty() {
                     println!(
-                        "📁 Wildcard параметр {{*{}}}: '{}'",
+                        "📁 Wildcard parameter {{*{}}}: '{}'",
                         param_name, param_value
                     );
                     path_params_json.insert(
@@ -277,7 +301,7 @@ pub async fn dynamic_handler(
         }
     }
 
-    // Парсим query параметры
+    // Parse query parameters
     let mut query_params_json = serde_json::Map::new();
     if !query_string.is_empty() {
         for pair in query_string.split('&') {
@@ -299,18 +323,18 @@ pub async fn dynamic_handler(
         serde_json::Value::Object(query_params_json.clone()),
     );
 
-    // Выполняем middleware после извлечения всех параметров
+    // Execute middleware after extracting all parameters
     match execute_middleware(&mut request_data).await {
-        Ok(()) => (), // Middleware успешно выполнен, request_data модифицирован
+        Ok(()) => (), // Middleware successfully executed, request_data modified
         Err(middleware_response) => return middleware_response,
     };
 
     let request_json = serde_json::to_string(&request_data).unwrap();
 
-    // Клонируем данные для передачи в JavaScript
+    // Clone data for transfer to JavaScript
     let request_json_clone = request_json.clone();
 
-    // Создаем канал для получения результата
+    // Create channel for receiving result
     let (tx, rx) = std::sync::mpsc::channel();
 
     let event_queue = get_event_queue();
@@ -321,22 +345,22 @@ pub async fn dynamic_handler(
 
     if let Some(channel) = channel {
         let _join_handle = channel.send(move |mut cx| {
-            // Вызываем глобальную функцию getHandler
+            // Call global function getHandler
             let global: Handle<JsObject> = cx.global("global")?;
             let get_handler_fn: Handle<JsFunction> = global.get(&mut cx, "getHandler")?;
 
-            // Вызываем getHandler(requestJson)
+            // Call getHandler(requestJson)
             let result: Handle<JsString> = get_handler_fn
                 .call_with(&mut cx)
                 .arg(cx.string(&request_json_clone))
                 .apply(&mut cx)?;
 
-            // Отправляем результат обратно в HTTP поток
+            // Send result back to HTTP stream
             let _ = tx.send(result.value(&mut cx));
             Ok(())
         });
 
-        // Ждем результат от JavaScript
+        // Wait for result from JavaScript
         let result = match rx.recv_timeout(std::time::Duration::from_millis(1000)) {
             Ok(result) => result,
             Err(_) => format!(
@@ -345,7 +369,7 @@ pub async fn dynamic_handler(
             ),
         };
 
-        // Парсим JSON ответ от JavaScript
+        // Parse JSON response from JavaScript
         let response_json_value: serde_json::Value = serde_json::from_str(&result).unwrap_or_else(|_| {
             serde_json::json!({"content": format!("Failed to parse JS response: {}", result), "contentType": "text/plain"})
         });
@@ -359,10 +383,10 @@ pub async fn dynamic_handler(
             .unwrap_or("text/plain")
             .to_string();
 
-        // Создаем ответ с заголовками
+        // Create response with headers
         let mut response_builder = Response::builder().header("content-type", content_type);
 
-        // Обрабатываем статус код из заголовков JavaScript ответа
+        // Process status code from JavaScript response headers
         let mut status_code = StatusCode::OK;
         if let Some(headers) = response_json_value["headers"].as_object() {
             if let Some(status_str) = headers.get("status").and_then(|v| v.as_str()) {
@@ -373,15 +397,15 @@ pub async fn dynamic_handler(
         }
         response_builder = response_builder.status(status_code);
 
-        // Добавляем заголовки из JavaScript ответа (исключая служебный заголовок status)
+        // Add headers from JavaScript response (excluding service header status)
         if let Some(headers) = response_json_value["headers"].as_object() {
             for (key, value) in headers {
                 if key != "status" {
-                    // Исключаем служебный заголовок status
+                    // Exclude service header status
                     if let Some(value_str) = value.as_str() {
                         response_builder = response_builder.header(key, value_str);
                     } else if let Some(value_array) = value.as_array() {
-                        // Обрабатываем массивы заголовков (например, Set-Cookie)
+                        // Process header arrays (e.g., Set-Cookie)
                         for item in value_array {
                             if let Some(item_str) = item.as_str() {
                                 response_builder = response_builder.header(key, item_str);
@@ -394,7 +418,7 @@ pub async fn dynamic_handler(
 
         response_builder.body(Body::from(response_text)).unwrap()
     } else {
-        // Channel недоступен, возвращаем ошибку
+        // Channel unavailable, return error
         let response_text = format!("No channel available for {} {}", method, registered_path);
 
         Response::builder()

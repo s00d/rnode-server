@@ -4,7 +4,7 @@
 import * as addon from './load.cjs';
 
 
-// Интерфейс для загруженного файла
+// Interface for uploaded file
 export interface UploadedFile {
   filename: string;
   contentType: string;
@@ -12,13 +12,13 @@ export interface UploadedFile {
   data: string; // Base64 encoded data
 }
 
-// Интерфейс для multipart данных
+// Interface for multipart data
 export interface MultipartData {
-  fields: Record<string, string>; // Обычные поля формы
-  files: Record<string, UploadedFile>; // Загруженные файлы
+  fields: Record<string, string>; // Regular form fields
+  files: Record<string, UploadedFile>; // Uploaded files
 }
 
-// Типы для файловых операций
+// Types for file operations
 export interface FileInfo {
   name: string;
   size: number;
@@ -58,24 +58,24 @@ export interface Request {
   url: string;
   params: Record<string, string>;
   query: Record<string, string>;
-  body: any; // Может быть string, Record<string, string> (для multipart полей), или null
-  files?: Record<string, UploadedFile>; // Файлы из multipart запроса
-  contentType?: string; // Content-Type заголовок
+  body: any; // Can be string, Record<string, string> (for multipart fields), or null
+  files?: Record<string, UploadedFile>; // Files from multipart request
+  contentType?: string; // Content-Type header
   headers: Record<string, string>;
   cookies?: string;
-  customParams?: Record<string, any>; // Параметры из предыдущих middleware/обработчиков
+  customParams?: Record<string, any>; // Parameters from previous middleware/handlers
   getCookie(name: string): string | null;
   getHeader(name: string): string | null;
   hasCookie(name: string): boolean;
   hasHeader(name: string): boolean;
   getCookies(): Record<string, string>;
   getHeaders(): Record<string, string>;
-  // Методы для работы с пользовательскими параметрами
+  // Methods for working with custom parameters
   setParam(name: string, value: any): void;
   getParam(name: string): any;
   hasParam(name: string): boolean;
   getParams(): Record<string, any>;
-  // Методы для работы с файлами
+  // Methods for working with files
   getFile(fieldName: string): UploadedFile | null;
   getFiles(): Record<string, UploadedFile>;
   hasFile(fieldName: string): boolean;
@@ -99,7 +99,7 @@ declare module "./load.cjs" {
   function clearStaticCache(): void;
   function getStaticStats(): string;
 
-  // Функции для работы с файлами
+  // Functions for working with files
   function saveFile(filename: string, base64Data: string, uploadsDir: string): string;
   function deleteFile(filename: string, uploadsDir: string): string;
   function listFiles(uploadsDir: string): string;
@@ -120,14 +120,14 @@ export interface Response {
   getCookies(): Record<string, string>;
   getHeaders(): Record<string, string | string[]>;
   setCookie(name: string, value: string, options?: any): Response;
-  // Методы для работы с файлами и формами
+  // Methods for working with files and forms
   sendFile(file: UploadedFile): Response;
   sendBuffer(buffer: Buffer, contentType?: string, size?: number): Response;
   sendFiles(files: Record<string, UploadedFile>): Response;
   sendMultipart(data: MultipartData): Response;
   download(filepath: string, filename?: string): Response;
   attachment(filename?: string): Response;
-  // Методы для различных типов контента
+  // Methods for various content types
   html(content: string): Response;
   text(content: string): Response;
   xml(content: string): Response;
@@ -146,7 +146,7 @@ export interface Router {
   getMiddlewares(): Map<string, (req: Request, res: Response, next: () => void) => void>;
 }
 
-// Интерфейс для настроек статических файлов
+// Interface for static file settings
 interface StaticOptions {
   cache?: boolean;
   maxAge?: number;
@@ -163,7 +163,7 @@ interface StaticOptions {
 
 export interface DownloadOptions {
   folder: string;
-  maxFileSize?: number; // в байтах
+  maxFileSize?: number; // in bytes
   allowedExtensions?: string[];
   blockedPaths?: string[];
   allowHiddenFiles?: boolean;
@@ -172,16 +172,16 @@ export interface DownloadOptions {
 
 export interface UploadOptions {
   folder: string;
-  allowedSubfolders?: string[]; // Разрешенные подпапки для безопасности
-  maxFileSize?: number; // в байтах
+  allowedSubfolders?: string[]; // Allowed subfolders for security
+  maxFileSize?: number; // in bytes
   allowedExtensions?: string[];
-  allowedMimeTypes?: string[]; // разрешенные MIME типы для безопасности
-  multiple?: boolean; // разрешить загрузку нескольких файлов
-  maxFiles?: number; // максимальное количество файлов (только если multiple: true)
-  overwrite?: boolean; // разрешить перезапись существующих файлов
+  allowedMimeTypes?: string[]; // allowed MIME types for security
+  multiple?: boolean; // allow multiple file upload
+  maxFiles?: number; // maximum number of files (only if multiple: true)
+  overwrite?: boolean; // allow overwriting existing files
 }
 
-// Интерфейс для RNodeApp (будет реализован классом)
+// Interface for RNodeApp (will be implemented by class)
 interface RNodeAppInterface extends Router {
   useRouter(path: string, router: Router): void;
   static(path: string, options?: StaticOptions): void;
@@ -191,7 +191,7 @@ interface RNodeAppInterface extends Router {
   listen(port: number, callback?: () => void): void;
   listen(port: number, host: string, callback?: () => void): void;
 
-  // Методы для работы с файлами
+  // Methods for working with files
   saveFile(filename: string, base64Data: string, uploadsDir: string): FileOperationResult;
   deleteFile(filename: string, uploadsDir: string): FileOperationResult;
   listFiles(uploadsDir: string): FileListResult;
@@ -201,13 +201,13 @@ interface RNodeAppInterface extends Router {
   upload(path: string, options: UploadOptions): void;
 }
 
-// Глобальное хранилище обработчиков и middleware в JavaScript
+// Global storage for handlers and middleware in JavaScript
 let handlers = new Map<string, (req: Request, res: Response) => void>();
 let middlewares = new Map<string, (req: Request, res: Response, next: () => void) => void>();
 
 
 
-// Глобальная функция для обработки запросов из Rust
+// Global function for handling requests from Rust
 function getHandler(requestJson: string): string {
   try {
     const request = JSON.parse(requestJson);
@@ -220,19 +220,19 @@ function getHandler(requestJson: string): string {
     console.log('  HandlerKey:', `${method}:${registeredPath}`);
     console.log('  Available handlers:', Array.from(handlers.keys()));
 
-    // Ищем обработчик по зарегистрированному пути
+    // Search for handler by registered path
     const handlerKey = `${method}:${registeredPath}`;
     const handler = handlers.get(handlerKey);
 
     if (handler) {
       console.log('✅ Handler found for:', handlerKey);
 
-      // Создаем mock объекты req и res
+      // Create mock req and res objects
       let responseData: any = '';
       let contentType = 'text/plain';
       let responseHeaders: Record<string, string | string[]> = {};
 
-      // Получаем параметры из предыдущих вызовов
+      // Get parameters from previous calls
       const customParams = request.customParams || {};
 
       const req: Request = {
@@ -243,8 +243,8 @@ function getHandler(requestJson: string): string {
         body: body || {},
         headers: headers || {},
         cookies: cookies || '',
-        customParams: customParams, // Передаем параметры в объект req
-        // Хелпер для получения cookie по имени
+        customParams: customParams, // Pass parameters to req object
+        // Helper for getting cookie by name
         getCookie: (name: string) => {
           const cookiesStr = cookies || '';
           if (!cookiesStr) return null;
@@ -252,7 +252,7 @@ function getHandler(requestJson: string): string {
           const cookieMatch = cookiesStr.match(new RegExp(`(^|;)\\s*${name}\\s*=\\s*([^;]+)`));
           return cookieMatch ? decodeURIComponent(cookieMatch[2]) : null;
         },
-        // Хелпер для получения заголовка по имени
+        // Helper for getting header by name
         getHeader: (name: string): string | null => {
           const headerName = name.toLowerCase();
           const headersObj = headers || {};
@@ -263,13 +263,13 @@ function getHandler(requestJson: string): string {
           }
           return null;
         },
-        // Хелпер для проверки наличия cookie
+        // Helper for checking cookie existence
         hasCookie: (name: string) => {
           const cookiesStr = cookies || '';
           if (!cookiesStr) return false;
           return new RegExp(`(^|;)\\s*${name}\\s*=`).test(cookiesStr);
         },
-        // Хелпер для проверки наличия заголовка
+        // Helper for checking header existence
         hasHeader: (name: string) => {
           const headerName = name.toLowerCase();
           for (const key of Object.keys(headers || {})) {
@@ -279,7 +279,7 @@ function getHandler(requestJson: string): string {
           }
           return false;
         },
-        // Получить все cookies в виде JSON объекта
+        // Get all cookies as JSON object
         getCookies: () => {
           const cookiesStr = cookies || '';
           const cookiesObj: Record<string, string> = {};
@@ -295,12 +295,12 @@ function getHandler(requestJson: string): string {
 
           return cookiesObj;
         },
-        // Получить все заголовки в виде JSON объекта
+        // Get all headers as JSON object
         getHeaders: () => {
           return headers || {};
         },
-        // Методы для работы с пользовательскими параметрами
-        // Параметры сохраняются локально и передаются через responseData
+        // Methods for working with custom parameters
+        // Parameters are stored locally and passed through responseData
         setParam: (name: string, value: any) => {
           customParams[name] = value;
         },
@@ -313,7 +313,7 @@ function getHandler(requestJson: string): string {
         getParams: () => {
           return { ...customParams };
         },
-        // Методы для работы с файлами
+        // Methods for working with files
         getFile: (fieldName: string) => {
           const files = request.files || {};
           return files[fieldName] || null;
@@ -363,7 +363,7 @@ function getHandler(requestJson: string): string {
           return cookieMatch ? decodeURIComponent(cookieMatch[2]) : null;
         },
         getCookies: () => {
-          // Возвращаем установленные cookies из responseHeaders
+          // Return set cookies from responseHeaders
           const cookies: Record<string, string> = {};
           if (responseHeaders['Set-Cookie']) {
             const setCookies = Array.isArray(responseHeaders['Set-Cookie'])
@@ -383,7 +383,7 @@ function getHandler(requestJson: string): string {
           return cookies;
         },
         getHeaders: () => {
-          // Возвращаем установленные заголовки
+          // Return set headers
           return responseHeaders;
         },
         setCookie: (name: string, value: string, options: any = {}) => {
@@ -402,14 +402,14 @@ function getHandler(requestJson: string): string {
           }
           return res;
         },
-        // Методы для работы с файлами и формами
+        // Methods for working with files and forms
         sendFile: (file: UploadedFile) => {
           responseData = JSON.stringify(file);
           contentType = 'application/json';
           return res;
         },
         sendBuffer: (buffer: Buffer, contentType: string = 'application/octet-stream', size?: number) => {
-          // Для бинарных данных используем специальный формат
+          // For binary data use special format
           responseData = {
             type: 'binary',
             data: buffer.toString('base64'),
@@ -429,9 +429,9 @@ function getHandler(requestJson: string): string {
           return res;
         },
         download: (filepath: string, filename?: string) => {
-          // Для download устанавливаем заголовки для загрузки файла
+          // For download set headers for file download
           responseHeaders['Content-Disposition'] = `attachment; filename="${filename || filepath}"`;
-          responseData = filepath; // Путь к файлу для Rust
+          responseData = filepath; // File path for Rust
           contentType = 'application/octet-stream';
           return res;
         },
@@ -443,7 +443,7 @@ function getHandler(requestJson: string): string {
           }
           return res;
         },
-        // Методы для различных типов контента
+        // Methods for various content types
         html: (content: string) => {
           responseData = content;
           contentType = 'text/html';
@@ -468,7 +468,7 @@ function getHandler(requestJson: string): string {
         }
       };
 
-      // Выполняем обработчик
+      // Execute handler
       try {
         handler(req, res);
         return JSON.stringify({
@@ -497,13 +497,13 @@ function getHandler(requestJson: string): string {
   }
 }
 
-// Функция для выполнения middleware из Rust
+// Function for executing middleware from Rust
 function executeMiddleware(middlewareJson: string): string {
   try {
     const request = JSON.parse(middlewareJson);
     const { method, path, cookies, headers } = request;
 
-    // Ищем подходящие middleware
+    // Search for suitable middleware
     for (const [middlewarePath, middleware] of middlewares) {
       if (path.startsWith(middlewarePath) || middlewarePath === '*') {
         let shouldContinue = true;
@@ -511,8 +511,8 @@ function executeMiddleware(middlewareJson: string): string {
         let middlewareContentType = 'text/plain';
         let middlewareHeaders: Record<string, string | string[]> = {};
 
-        // Создаем mock объекты req и res для middleware
-        // Получаем параметры из предыдущих вызовов
+        // Create mock req and res objects for middleware
+        // Get parameters from previous calls
         const middlewareCustomParams = request.customParams || {};
 
         const req: Request = {
@@ -570,7 +570,7 @@ function executeMiddleware(middlewareJson: string): string {
           getHeaders: () => {
             return headers || {};
           },
-          // Методы для работы с пользовательскими параметрами
+          // Methods for working with custom parameters
           setParam: (name: string, value: any) => {
             middlewareCustomParams[name] = value;
           },
@@ -583,7 +583,7 @@ function executeMiddleware(middlewareJson: string): string {
           getParams: () => {
             return { ...middlewareCustomParams };
           },
-          // Методы для работы с файлами
+          // Methods for working with files
           getFile: (fieldName: string) => {
             const files = request.files || {};
             return files[fieldName] || null;
@@ -607,12 +607,12 @@ function executeMiddleware(middlewareJson: string): string {
           json: (data: any) => {
             middlewareResponse = JSON.stringify(data);
             middlewareContentType = 'application/json';
-            shouldContinue = false; // Middleware прерывает выполнение
+            shouldContinue = false; // Middleware interrupts execution
             return res;
           },
           send: (data: string) => {
             middlewareResponse = data;
-            shouldContinue = false; // Middleware прерывает выполнение
+            shouldContinue = false; // Middleware interrupts execution
             return res;
           },
           end: (data?: string | Buffer) => {
@@ -673,7 +673,7 @@ function executeMiddleware(middlewareJson: string): string {
             }
             return res;
           },
-          // Методы для работы с файлами и формами
+          // Methods for working with files and forms
           sendFile: (file: UploadedFile) => {
             middlewareResponse = JSON.stringify(file);
             middlewareContentType = 'application/json';
@@ -714,7 +714,7 @@ function executeMiddleware(middlewareJson: string): string {
             }
             return res;
           },
-          // Методы для различных типов контента
+          // Methods for various content types
           html: (content: string) => {
             middlewareResponse = content;
             middlewareContentType = 'text/html';
@@ -747,7 +747,7 @@ function executeMiddleware(middlewareJson: string): string {
           shouldContinue = true;
         };
 
-        // Выполняем middleware
+        // Execute middleware
         try {
           middleware(req, res, next);
 
@@ -768,18 +768,18 @@ function executeMiddleware(middlewareJson: string): string {
       }
     }
 
-    // Если middleware не найден, продолжаем выполнение
+    // If middleware not found, continue execution
     return JSON.stringify({ shouldContinue: true });
   } catch (error) {
     return JSON.stringify({ shouldContinue: true });
   }
 }
 
-// Экспортируем функции для Rust
+// Export functions for Rust
 (global as any).getHandler = getHandler;
 (global as any).executeMiddleware = executeMiddleware;
 
-// Класс Router для создания групп маршрутов
+// Router class for creating route groups
 class RouterImpl implements Router {
   public handlers = new Map<string, { method: string; handler: (req: Request, res: Response) => void }>();
   public middlewares = new Map<string, (req: Request, res: Response, next: () => void) => void>();
@@ -810,10 +810,10 @@ class RouterImpl implements Router {
 
   use(pathOrMiddleware: string | ((req: Request, res: Response, next: () => void) => void), middleware?: (req: Request, res: Response, next: () => void) => void): void {
     if (typeof pathOrMiddleware === 'function') {
-      // Глобальный middleware: router.use(middleware)
+      // Global middleware: router.use(middleware)
       this.middlewares.set('*', pathOrMiddleware);
     } else if (typeof pathOrMiddleware === 'string' && middleware) {
-      // Middleware с путем: router.use(path, middleware)
+      // Middleware with path: router.use(path, middleware)
       this.middlewares.set(pathOrMiddleware, middleware);
     } else {
       throw new Error('Invalid middleware registration: use(path, middleware) or use(middleware)');
@@ -821,7 +821,7 @@ class RouterImpl implements Router {
   }
 
   getHandlers(): Map<string, { method: string; handler: (req: Request, res: Response) => void }> {
-    return this.handlers; // Возвращаем оригинальный Map с ключами method:path
+    return this.handlers; // Return original Map with method:path keys
   }
 
   getMiddlewares(): Map<string, (req: Request, res: Response, next: () => void) => void> {
@@ -829,19 +829,19 @@ class RouterImpl implements Router {
   }
 }
 
-// Функция для создания нового роутера
+// Function for creating new router
 export function Router(): Router {
   return new RouterImpl();
 }
 
-// Класс RNodeApp наследует от RouterImpl
+// RNodeApp class inherits from RouterImpl
 class RNodeApp extends RouterImpl {
-  // Дополнительные методы для RNodeApp
+  // Additional methods for RNodeApp
   static(pathOrPaths: string | string[], options?: StaticOptions): void {
-    // Дефолтные настройки
+    // Default settings
     const defaultOptions: StaticOptions = {
       cache: options?.cache ?? true,
-      maxAge: options?.maxAge ?? 3600, // 1 час
+      maxAge: options?.maxAge ?? 3600, // 1 hour
       maxFileSize: options?.maxFileSize ?? 10 * 1024 * 1024, // 10MB
       etag: options?.etag ?? true,
       lastModified: options?.lastModified ?? true,
@@ -854,80 +854,80 @@ class RNodeApp extends RouterImpl {
     };
 
     if (Array.isArray(pathOrPaths)) {
-      // Множественные пути
+      // Multiple paths
       for (const path of pathOrPaths) {
         addon.loadStaticFiles(path, defaultOptions);
         console.log(`Registered static files from: ${path} with secure options:`, defaultOptions);
       }
     } else {
-      // Один путь
+      // Single path
       addon.loadStaticFiles(pathOrPaths, defaultOptions);
       console.log(`Registered static files from: ${pathOrPaths} with secure options:`, defaultOptions);
     }
   }
 
-  // Очистка кеша статических файлов
+  // Clear static files cache
   clearStaticCache(): void {
     addon.clearStaticCache();
     console.log('Static files cache cleared');
   }
 
-  // Получение статистики статических файлов
+  // Get static files statistics
   getStaticStats(): string {
     return addon.getStaticStats();
   }
 
   useRouter(path: string, router: Router): void {
-    console.log(`🔧 Регистрируем роутер для пути: ${path}`);
+    console.log(`🔧 Registering router for path: ${path}`);
 
-    // Регистрируем все маршруты из роутера с префиксом
+    // Register all routes from router with prefix
     const routerHandlers = router.getHandlers();
     const routerMiddlewares = router.getMiddlewares();
 
-    console.log(`📝 Роутер содержит ${routerHandlers.size} обработчиков и ${routerMiddlewares.size} middleware`);
+    console.log(`📝 Router contains ${routerHandlers.size} handlers and ${routerMiddlewares.size} middleware`);
 
-    // Регистрируем middleware роутера
+    // Register router middleware
     for (const [routePath, middleware] of routerMiddlewares) {
       const fullPath = `${path}${routePath}`;
-      // Добавляем в глобальные middlewares
+      // Add to global middlewares
       middlewares.set(fullPath, middleware);
       addon.use(fullPath, middleware);
       console.log(`Registered router middleware: ${fullPath}`);
     }
 
-    // Регистрируем обработчики роутера
+    // Register router handlers
     for (const [methodPath, handlerInfo] of routerHandlers) {
       const [method, routePath] = methodPath.split(':', 2);
       const fullPath = `${path}${routePath}`;
       const { handler } = handlerInfo;
 
-      console.log(`🔧 Регистрируем обработчик: ${method} ${fullPath} (исходный путь: ${routePath})`);
+      console.log(`🔧 Registering handler: ${method} ${fullPath} (original path: ${routePath})`);
 
-      // Добавляем в глобальные handlers с полным путем
+      // Add to global handlers with full path
       handlers.set(`${method}:${fullPath}`, handler);
 
-      // Регистрируем в Rust addon через существующие методы
+      // Register in Rust addon through existing methods
       (addon as any)[method.toLowerCase()](fullPath, handler);
 
-      console.log(`✅ Зарегистрирован обработчик роутера: ${method} ${fullPath}`);
+      console.log(`✅ Router handler registered: ${method} ${fullPath}`);
     }
 
-    console.log(`🎯 Роутер зарегистрирован для пути: ${path}`);
-    console.log(`📊 Всего обработчиков в системе: ${router.getHandlers().size}`);
-    console.log(`🔧 Глобальные handlers обновлены:`, Array.from(handlers.keys()));
+    console.log(`🎯 Router registered for path: ${path}`);
+    console.log(`📊 Total handlers in system: ${router.getHandlers().size}`);
+    console.log(`🔧 Global handlers updated:`, Array.from(handlers.keys()));
   }
 
   listen(port: number, hostOrCallback?: string | (() => void), callback?: () => void): void {
-    // Копируем обработчики и регистрируем в Rust addon
+    // Copy handlers and register in Rust addon
     for (const [key, value] of this.handlers) {
       const [method, path] = key.split(':', 2);
       handlers.set(key, value.handler);
 
-      // Регистрируем в Rust addon через существующие методы
+      // Register in Rust addon through existing methods
       (addon as any)[method.toLowerCase()](path, value.handler);
     }
 
-    // Копируем middleware
+    // Copy middleware
     for (const [key, value] of this.middlewares) {
       middlewares.set(key, value);
     }
@@ -943,7 +943,7 @@ class RNodeApp extends RouterImpl {
       // listen(port, host, callback)
       let host = hostOrCallback;
 
-      // Конвертируем специальные значения
+      // Convert special values
       if (host === 'localhost') {
         host = '127.0.0.1';
       } else if (host === '0') {
@@ -957,16 +957,16 @@ class RNodeApp extends RouterImpl {
       addon.listen(port);
     }
 
-    // Держим процесс живым
+    // Keep process alive
     setInterval(() => {
-      // Пустой интервал для предотвращения завершения процесса
+      // Empty interval to prevent process termination
     }, 1000);
   }
 
-  // HTTP методы get, post, put, delete, patch и use автоматически наследуются от RouterImpl
-  // и автоматически регистрируются в Rust addon
+  // HTTP methods get, post, put, delete, patch and use are automatically inherited from RouterImpl
+  // and automatically registered in Rust addon
 
-  // Методы для работы с файлами
+  // Methods for working with files
   saveFile(filename: string, base64Data: string, uploadsDir: string): FileOperationResult {
     const result = addon.saveFile(filename, base64Data, uploadsDir);
     return JSON.parse(result);
@@ -992,37 +992,37 @@ class RNodeApp extends RouterImpl {
   }
 
   download(path: string, options: DownloadOptions): void {
-    // Регистрируем роут для скачивания файлов в Rust backend
+    // Register route for file downloads in Rust backend
     addon.registerDownloadRoute(path, JSON.stringify(options));
   }
 
   upload(path: string, options: UploadOptions): void {
-    // Регистрируем роут для загрузки файлов в Rust backend
+    // Register route for file uploads in Rust backend
     addon.registerUploadRoute(path, JSON.stringify(options));
   }
 }
 
-// Функция для создания приложения
+// Function for creating application
 export function createApp(): RNodeAppInterface {
   const appInfo = addon.createApp();
   console.log(`Creating ${appInfo.name} v${appInfo.version}`);
 
-  // Создаем экземпляр RNodeApp
+  // Create RNodeApp instance
   return new RNodeApp();
 }
 
-// Простая функция приветствия
+// Simple greeting function
 export function greeting(name: string): { message: string } {
   const message = addon.hello(name);
   return { message };
 }
 
-// Экспорт по умолчанию для совместимости с ES модулями
+// Default export for ES modules compatibility
 export default {
   createApp,
   greeting,
   RNodeApp
 };
 
-// Экспортируем типы для использования
+// Export types for use
 export type { StaticOptions };
