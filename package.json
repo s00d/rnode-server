@@ -23,6 +23,10 @@
     "playground:dev": "pnpm --filter playground run dev",
     "playground:dev:rnode": "pnpm --filter playground run dev:rnode",
     "playground:dev:express": "pnpm --filter playground run dev:express",
+    "playground:static": "pnpm --filter playground run start:static",
+    "playground:multipart": "pnpm --filter playground run start:multipart",
+    "playground:dev:static": "pnpm --filter playground run dev:static",
+    "playground:dev:multipart": "pnpm --filter playground run dev:multipart",
     "playground:build": "pnpm --filter playground run build",
     "playground:build:watch": "pnpm --filter playground run build:watch"
   },

@@ -45,6 +45,12 @@ npm run start
 # Run TypeScript RNode demo
 npm run start:rnode
 
+# Run static files demo  
+npm run start:static
+
+# Run multipart upload demo
+npm run start:multipart
+
 # Run Express.js comparison demo
 npm run start:express
 
@@ -63,11 +69,15 @@ npm run build:watch
 # Run playground demos
 pnpm playground:start
 pnpm playground:rnode
+pnpm playground:static
+pnpm playground:multipart
 pnpm playground:express
 
 # Development mode
 pnpm playground:dev
 pnpm playground:dev:rnode
+pnpm playground:dev:static
+pnpm playground:dev:multipart
 pnpm playground:dev:express
 
 # Build playground
@@ -157,13 +167,12 @@ app.static('./admin', {
   lastModified: true,
   gzip: true,
   brotli: true,
-  security: {
-    allowHiddenFiles: false,
-    allowSystemFiles: false,
-    allowedExtensions: ['html', 'css', 'js'],
-    blockedPaths: ['.git', '.env', '.htaccess', 'thumbs.db']
-  }
+  allowHiddenFiles: false,
+  allowSystemFiles: false,
+  allowedExtensions: ['html', 'css', 'js'],
+  blockedPaths: ['.git', '.env', '.htaccess', 'thumbs.db']
 });
+```
 
 #### Basic Options
 - `cache: boolean` - Enable file caching (default: `true`)
@@ -181,10 +190,10 @@ app.static('./admin', {
 - `brotli: boolean` - Enable Brotli compression (default: `false`)
 
 ####### Security Options
-- `security.allowHiddenFiles: boolean` - Allow hidden files (default: `false`)
-- `security.allowSystemFiles: boolean` - Allow system files (default: `false`)
-- `security.allowedExtensions: string[]` - Whitelist file extensions (default: `['html', 'css', 'js', 'json', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'ico', 'woff', 'woff2', 'ttf', 'eot']`)
-- `security.blockedPaths: string[]` - Block specific paths (default: `['.git', '.env', '.htaccess', 'thumbs.db', '.ds_store', 'desktop.ini']`)
+- `allowHiddenFiles: boolean` - Allow hidden files (default: `false`)
+- `allowSystemFiles: boolean` - Allow system files (default: `false`)
+- `allowedExtensions: string[]` - Whitelist file extensions (default: `['html', 'css', 'js', 'json', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'ico', 'woff', 'woff2', 'ttf', 'eot']`)
+- `blockedPaths: string[]` - Block specific paths (default: `['.git', '.env', '.htaccess', 'thumbs.db', '.ds_store', 'desktop.ini']`)
 
 
 ### Host Binding
@@ -200,13 +209,68 @@ app.listen(port, () => {
 });
 ```
 
+### File Upload & Multipart Forms
+```typescript
+// Обработка загрузки одного файла
+app.post('/upload', (req, res) => {
+  if (req.hasFile('avatar')) {
+    const file = req.getFile('avatar');
+    console.log(`Файл: ${file.filename}, размер: ${file.size} байт`);
+    
+    res.json({
+      message: 'Файл загружен успешно',
+      file: {
+        name: file.filename,
+        size: file.size,
+        type: file.contentType
+      }
+    });
+  } else {
+    res.status(400).json({ error: 'Файл не найден' });
+  }
+});
+
+// Обработка множественной загрузки файлов
+app.post('/upload-multiple', (req, res) => {
+  const files = req.getFiles();
+  const fileCount = req.getFileCount();
+  
+  if (fileCount > 0) {
+    // Отправляем информацию о всех файлах
+    res.sendFiles(files);
+  } else {
+    res.status(400).text('Файлы не найдены');
+  }
+});
+
+// Возврат различных типов контента
+app.get('/download/:filename', (req, res) => {
+  const filename = req.params.filename;
+  res.download(`./uploads/${filename}`, filename);
+});
+
+app.get('/page', (req, res) => {
+  res.html('<h1>HTML страница</h1><p>Контент</p>');
+});
+
+app.get('/data.xml', (req, res) => {
+  res.xml('<?xml version="1.0"?><data><item>value</item></data>');
+});
+
+app.get('/redirect', (req, res) => {
+  res.redirect('/new-location');
+});
+```
+
 ## Server Capabilities
 
 ### HTTP Methods Support
 - GET, POST, PUT, DELETE, PATCH requests
 - Dynamic route parameters (`/users/:id`)
 - Query string parsing
-- Request body parsing (JSON, form data)
+- Request body parsing (JSON, form data, multipart/form-data)
+- File upload support with Base64 encoding
+- Multiple file upload handling
 
 ### Middleware System
 - Global middleware for all routes
@@ -260,6 +324,17 @@ app.listen(port, () => {
 - Route grouping and organization
 - Middleware inheritance
 - Modular application structure
+
+### Response Types
+- **JSON responses** - `res.json(data)`
+- **HTML content** - `res.html(content)` 
+- **Plain text** - `res.text(content)`
+- **XML content** - `res.xml(content)`
+- **File downloads** - `res.download(filepath, filename)`
+- **File attachments** - `res.attachment(filename)`
+- **Redirects** - `res.redirect(url)`
+- **File uploads** - `res.sendFile(file)`, `res.sendFiles(files)`
+- **Multipart data** - `res.sendMultipart(data)`
 
 ### Error Handling
 - Custom error responses

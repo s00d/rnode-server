@@ -1,0 +1,349 @@
+/* RNode Server - Multipart Upload Demo Styles */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  line-height: 1.6;
+  color: #333;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  background: white;
+  border-radius: 15px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+h1 {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 30px;
+  text-align: center;
+  font-size: 2.5em;
+  margin: 0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+h2 {
+  color: #667eea;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #e1e5f2;
+  font-size: 1.4em;
+}
+
+.upload-section {
+  padding: 30px;
+  border-bottom: 1px solid #eee;
+}
+
+.upload-section:last-of-type {
+  border-bottom: none;
+}
+
+.upload-info {
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  border: 2px solid #2196f3;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 20px;
+  color: #1976d2;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.1);
+}
+
+.files-info {
+  background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+  border: 2px solid #9c27b0;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 20px;
+  color: #7b1fa2;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(156, 39, 176, 0.1);
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+input[type="file"] {
+  padding: 12px;
+  border: 2px dashed #667eea;
+  border-radius: 8px;
+  background: #f8f9ff;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+input[type="file"]:hover {
+  border-color: #764ba2;
+  background: #f0f2ff;
+}
+
+input[type="text"] {
+  padding: 12px 15px;
+  border: 2px solid #e1e5f2;
+  border-radius: 8px;
+  font-size: 16px;
+  transition: all 0.3s ease;
+}
+
+input[type="text"]:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+button {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 15px 30px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+#results {
+  padding: 30px;
+  background: #f8f9ff;
+}
+
+.result-item {
+  background: white;
+  padding: 20px;
+  margin-bottom: 15px;
+  border-radius: 8px;
+  border-left: 4px solid #667eea;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.result-item.success {
+  border-left-color: #28a745;
+}
+
+.result-item.error {
+  border-left-color: #dc3545;
+}
+
+.file-info {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.file-detail {
+  background: #f8f9ff;
+  padding: 10px;
+  border-radius: 5px;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+}
+
+.loading {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-right: 10px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.demo-links {
+  padding: 30px;
+  background: #f0f2ff;
+  text-align: center;
+}
+
+.demo-links h3 {
+  color: #667eea;
+  margin-bottom: 20px;
+}
+
+.demo-links a {
+  display: inline-block;
+  margin: 5px 10px;
+  padding: 10px 20px;
+  background: white;
+  color: #667eea;
+  text-decoration: none;
+  border-radius: 5px;
+  border: 2px solid #667eea;
+  transition: all 0.3s ease;
+}
+
+.demo-links a:hover {
+  background: #667eea;
+  color: white;
+}
+
+/* Стили для списка файлов */
+.files-section {
+  padding: 30px;
+  border-top: 1px solid #eee;
+}
+
+.files-list {
+  margin: 20px 0;
+}
+
+.file-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  margin-bottom: 10px;
+  background: #f8f9ff;
+  border-radius: 8px;
+  border: 1px solid #e1e5f2;
+  transition: all 0.3s ease;
+}
+
+.file-item:hover {
+  background: #f0f2ff;
+  border-color: #667eea;
+  box-shadow: 0 2px 10px rgba(102, 126, 234, 0.1);
+}
+
+.file-info {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
+}
+
+.file-name {
+  font-weight: 600;
+  color: #333;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+}
+
+.file-size, .file-date {
+  font-size: 12px;
+  color: #666;
+}
+
+.file-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.download-btn, .delete-btn {
+  padding: 8px 15px;
+  border-radius: 5px;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  border: none;
+  cursor: pointer;
+}
+
+.download-btn {
+  background: #28a745;
+  color: white;
+}
+
+.download-btn:hover {
+  background: #218838;
+  transform: translateY(-1px);
+}
+
+.delete-btn {
+  background: #dc3545;
+  color: white;
+}
+
+.delete-btn:hover {
+  background: #c82333;
+  transform: translateY(-1px);
+}
+
+.no-files {
+  text-align: center;
+  color: #666;
+  font-style: italic;
+  padding: 40px;
+  background: #f8f9ff;
+  border-radius: 8px;
+  border: 2px dashed #ddd;
+}
+
+.refresh-btn {
+  background: #6c757d;
+  margin-top: 15px;
+}
+
+.refresh-btn:hover {
+  background: #5a6268;
+}
+
+@media (max-width: 600px) {
+  .container {
+    margin: 10px;
+    border-radius: 10px;
+  }
+  
+  h1 {
+    font-size: 2em;
+    padding: 20px;
+  }
+  
+  .upload-section {
+    padding: 20px;
+  }
+  
+  .file-info {
+    grid-template-columns: 1fr;
+  }
+  
+  .file-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+  
+  .file-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+}

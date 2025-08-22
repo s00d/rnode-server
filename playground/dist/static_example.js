@@ -46,7 +46,7 @@ app.static('./fonts', {
     brotli: false
 });
 // Запускаем сервер
-app.listen(3000, () => {
-    console.log('Server running on port 3000');
+app.listen(4541, () => {
+    console.log('Server running on port 4541');
     console.log('Static files configured with advanced options');
 });

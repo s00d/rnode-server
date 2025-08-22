@@ -1,0 +1,16 @@
+RNode Server - Sample Download File
+
+This is a sample text file for testing the download functionality of RNode Server.
+
+Features demonstrated:
+✅ Multipart file upload
+✅ Multiple file upload
+✅ Base64 file encoding
+✅ Various response types (HTML, JSON, Text, XML)
+✅ File download
+✅ Static file serving
+✅ Advanced static file configuration
+
+Created: $(date)
+Server: RNode Server v1.0.0
+Framework: Rust + Node.js + TypeScript

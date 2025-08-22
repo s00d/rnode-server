@@ -27,7 +27,7 @@ apiRouter.post('/data', (req: Request, res: Response) => {
 });
 
 // PUT маршрут для обновления данных
-apiRouter.put('/data/:id', (req: Request, res: Response) => {
+apiRouter.put('/data/{id}', (req: Request, res: Response) => {
   res.json({
     success: true,
     message: 'Данные обновлены успешно',
@@ -38,7 +38,7 @@ apiRouter.put('/data/:id', (req: Request, res: Response) => {
 });
 
 // DELETE маршрут для удаления данных
-apiRouter.delete('/data/:id', (req: Request, res: Response) => {
+apiRouter.delete('/data/{id}', (req: Request, res: Response) => {
   res.json({
     success: true,
     message: 'Данные удалены успешно',

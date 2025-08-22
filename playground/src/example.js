@@ -19,17 +19,17 @@ app.static('./public');
 app.use((req, res, next) => {
   const timestamp = new Date().toISOString();
   console.log(`📋 [${timestamp}] ${req.method} ${req.url} - Global middleware`);
-  
+
   // Устанавливаем глобальные параметры для всех запросов
   req.setParam('requestId', Math.random().toString(36).substr(2, 9));
   req.setParam('timestamp', Date.now());
   req.setParam('globalMiddleware', true);
-  
+
   // Получаем sessionId из куки
   const sessionId = req.getCookie('sessionId');
   if (sessionId) {
     console.log('🍪 Найдена сессия в куки:', sessionId);
-    
+
     // Валидируем сессию и получаем пользователя
     const sessionResult = authDb.validateSession(sessionId);
     if (sessionResult.success) {
@@ -47,20 +47,20 @@ app.use((req, res, next) => {
     req.setParam('isAuthenticated', false);
     console.log('🔒 Пользователь не авторизован');
   }
-  
+
   console.log('🌐 Установлены глобальные параметры:', req.getParams());
-  
+
   next();
 });
 
 // GET маршрут для демонстрации глобального middleware
 app.get('/hello', (req, res) => {
   console.log('👋 Hello обработчик - параметры из глобального middleware:', req.getParams());
-  
+
   // Добавляем свои параметры
   req.setParam('handlerName', 'hello');
   req.setParam('message', 'Hello World!');
-  
+
   res.json({
     message: 'Hello World!',
     globalParams: req.getParams(),
@@ -86,28 +86,28 @@ app.get('/api/test', (req, res) => {
 app.get('/api/cors-test', (req, res) => {
   try {
     console.log('=== GET /api/cors-test ===');
-    
+
     // Проверяем что методы существуют
     if (typeof req.getHeader !== 'function') {
       throw new Error('req.getHeader не является функцией');
     }
-    
+
     console.log('Origin header:', req.getHeader('origin'));
     console.log('User-Agent header:', req.getHeader('user-agent'));
-    
+
     // Устанавливаем тестовые cookies и заголовки
     res.setCookie('testCookie', 'testValue', { maxAge: 3600000 });
     res.setCookie('sessionId', 'abc123', { httpOnly: true });
     res.setHeader('X-Custom-Header', 'test-value');
     res.setHeader('X-Response-Time', Date.now().toString());
-    
+
     // Явно устанавливаем Content-Type
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    
+
     // Получаем установленные cookies и заголовки
     const setCookies = res.getCookies();
     const setHeaders = res.getHeaders();
-    
+
     res.json({
       success: true,
       message: 'CORS работает!',
@@ -151,7 +151,7 @@ usersRouter.use((req, res, next) => {
 usersRouter.post('', (req, res) => {
   console.log('=== POST /api/users ===');
   console.log('Body:', req.body);
-  
+
   try {
     // Парсим body если это JSON
     let userData = req.body;
@@ -162,7 +162,7 @@ usersRouter.post('', (req, res) => {
         userData = { name: req.body, email: '', age: null };
       }
     }
-    
+
     // Проверяем обязательные поля
     if (!userData.name || !userData.email) {
       return res.json({
@@ -170,10 +170,10 @@ usersRouter.post('', (req, res) => {
         message: 'Имя и email обязательны'
       });
     }
-    
+
     // Создаем пользователя в базе
     const result = db.createUser(userData);
-    
+
     if (result.success) {
       res.json({
         success: true,
@@ -198,16 +198,16 @@ usersRouter.post('', (req, res) => {
 // GET маршрут для получения всех пользователей
 usersRouter.get('', (req, res) => {
   console.log('=== GET /api/users ===');
-  
+
   const result = db.getAllUsers();
   res.json(result);
 });
 
 // GET маршрут с параметрами для получения пользователя по ID
-usersRouter.get('/:id', (req, res) => {
+usersRouter.get('/{id}', (req, res) => {
   console.log('=== GET /api/users/:id ===');
   console.log('ID:', req.params.id);
-  
+
   const userId = parseInt(req.params.id);
   if (isNaN(userId)) {
     return res.json({
@@ -215,17 +215,17 @@ usersRouter.get('/:id', (req, res) => {
       message: 'Неверный ID пользователя'
     });
   }
-  
+
   const result = db.getUserById(userId);
   res.json(result);
 });
 
 // PUT маршрут для обновления пользователя
-usersRouter.put('/:id', (req, res) => {
+usersRouter.put('/{id}', (req, res) => {
   console.log('=== PUT /api/users/:id ===');
   console.log('ID:', req.params.id);
   console.log('Body:', req.body);
-  
+
   const userId = parseInt(req.params.id);
   if (isNaN(userId)) {
     return res.json({
@@ -233,7 +233,7 @@ usersRouter.put('/:id', (req, res) => {
       message: 'Неверный ID пользователя'
     });
   }
-  
+
   try {
     let userData = req.body;
     if (typeof req.body === 'string') {
@@ -243,14 +243,14 @@ usersRouter.put('/:id', (req, res) => {
         userData = { name: req.body, email: '', age: null };
       }
     }
-    
+
     if (!userData.name || !userData.email) {
       return res.json({
         success: false,
         message: 'Имя и email обязательны'
       });
     }
-    
+
     const result = db.updateUser(userId, userData);
     res.json(result);
   } catch (error) {
@@ -262,10 +262,10 @@ usersRouter.put('/:id', (req, res) => {
 });
 
 // DELETE маршрут для удаления пользователя
-usersRouter.delete('/:id', (req, res) => {
+usersRouter.delete('/{id}', (req, res) => {
   console.log('=== DELETE /api/users/:id ===');
   console.log('ID:', req.params.id);
-  
+
   const userId = parseInt(req.params.id);
   if (isNaN(userId)) {
     return res.json({
@@ -273,16 +273,16 @@ usersRouter.delete('/:id', (req, res) => {
       message: 'Неверный ID пользователя'
     });
   }
-  
+
   const result = db.deleteUser(userId);
   res.json(result);
 });
 
 // GET маршрут для поиска пользователей
-usersRouter.get('/search/:query', (req, res) => {
+usersRouter.get('/search/{query}', (req, res) => {
   console.log('=== GET /api/users/search/:query ===');
   console.log('Query:', req.params.query);
-  
+
   const result = db.searchUsers(req.params.query);
   res.json(result);
 });
@@ -294,40 +294,40 @@ app.get('/api/cookies', (req, res) => {
   console.log('=== GET /api/cookies ===');
   console.log('Cookies:', req.cookies);
   console.log('Headers:', req.headers);
-  
+
   // Демонстрируем использование хелперов
   console.log('Session ID:', req.getCookie('sessionId'));
   console.log('Has theme cookie:', req.hasCookie('theme'));
   console.log('User-Agent header:', req.getHeader('user-agent'));
   console.log('Has Accept header:', req.hasHeader('accept'));
-  
+
   // Получаем все cookies и заголовки в JSON
   const allCookies = req.getCookies();
   const allHeaders = req.getHeaders();
   console.log('All cookies (JSON):', allCookies);
   console.log('All headers (JSON):', allHeaders);
-  
+
   // Устанавливаем несколько cookies используя setCookie
-  res.setCookie('sessionId', 'abc123', { 
-    httpOnly: true, 
+  res.setCookie('sessionId', 'abc123', {
+    httpOnly: true,
     maxAge: 3600000, // 1 час
     path: '/'
   });
-  
-  res.setCookie('theme', 'dark', { 
+
+  res.setCookie('theme', 'dark', {
     maxAge: 86400000, // 24 часа
     path: '/'
   });
-  
-  res.setCookie('language', 'ru', { 
+
+  res.setCookie('language', 'ru', {
     maxAge: 31536000000, // 1 год
     path: '/'
   });
-  
+
   // Устанавливаем заголовки
   res.setHeader('X-Custom-Header', 'RNode-Server');
   res.setHeader('X-Response-Time', Date.now().toString());
-  
+
   res.json({
     success: true,
     message: 'Cookies и заголовки установлены',
@@ -352,16 +352,16 @@ app.get('/api/cookies', (req, res) => {
 
 
 // Маршрут для удаления cookies
-app.delete('/api/cookies/:name', (req, res) => {
+app.delete('/api/cookies/{name}', (req, res) => {
   console.log('=== DELETE /api/cookies/:name ===');
   console.log('Cookie name:', req.params.name);
-  
+
   // Удаляем cookie
-  res.cookie(req.params.name, '', { 
+  res.cookie(req.params.name, '', {
     maxAge: 0,
     path: '/'
   });
-  
+
   res.json({
     success: true,
     message: `Cookie '${req.params.name}' удален`
@@ -371,11 +371,11 @@ app.delete('/api/cookies/:name', (req, res) => {
 // Маршрут для получения информации о cookies
 app.get('/api/cookies/info', (req, res) => {
   console.log('=== GET /api/cookies/info ===');
-  
+
   // Парсим cookies строку
   const cookiesStr = req.cookies || '';
   const cookies = {};
-  
+
   if (cookiesStr) {
     cookiesStr.split(';').forEach(cookie => {
       const [name, value] = cookie.trim().split('=');
@@ -384,7 +384,7 @@ app.get('/api/cookies/info', (req, res) => {
       }
     });
   }
-  
+
   res.json({
     success: true,
     rawCookies: req.cookies,
@@ -397,7 +397,7 @@ app.get('/api/cookies/info', (req, res) => {
 // Маршрут для демонстрации всех хелперов
 app.get('/api/helpers', (req, res) => {
   console.log('=== GET /api/helpers ===');
-  
+
   // Демонстрируем все хелперы
   const cookieHelpers = {
     rawCookies: req.cookies,
@@ -410,7 +410,7 @@ app.get('/api/helpers', (req, res) => {
     hasNonExistent: req.hasCookie('nonExistent'),
     allCookies: req.getCookies() // Новый метод
   };
-  
+
   const headerHelpers = {
     rawHeaders: req.headers,
     userAgent: req.getHeader('user-agent'),
@@ -422,11 +422,11 @@ app.get('/api/helpers', (req, res) => {
     hasNonExistent: req.hasHeader('non-existent-header'),
     allHeaders: req.getHeaders() // Новый метод
   };
-  
+
   // Устанавливаем тестовые cookies и заголовки
   res.setCookie('testCookie', 'testValue', { maxAge: 3600000 });
   res.setHeader('X-Test-Header', 'test-value');
-  
+
   res.json({
     success: true,
     message: 'Демонстрация всех хелперов',
@@ -439,37 +439,37 @@ app.get('/api/helpers', (req, res) => {
 // CORS middleware только для API маршрутов
 app.use('/api', (req, res, next) => {
   console.log('🌐 CORS middleware для API:', req.method, req.url);
-  
+
   // Разрешаем все origins (можно ограничить для продакшена)
   res.setHeader('Access-Control-Allow-Origin', '*');
-  
+
   // Разрешаем все методы
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-  
+
   // Разрешаем все заголовки
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Custom-Header');
-  
+
   // Разрешаем credentials (cookies, authorization headers)
   res.setHeader('Access-Control-Allow-Credentials', 'true');
-  
+
   // Максимальное время кеширования preflight запроса
   res.setHeader('Access-Control-Max-Age', '86400'); // 24 часа
-  
+
   // Устанавливаем Content-Type с кодировкой для всех API ответов
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  
+
   // Дополнительные заголовки для лучшей совместимости
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-XSS-Protection', '1; mode=block');
-  
+
   // Обрабатываем preflight OPTIONS запросы
   if (req.method === 'OPTIONS') {
     // Отправляем пустой JSON ответ вместо res.end()
     res.json({ success: true, message: 'Preflight OK' });
     return;
   }
-  
+
   // Продолжаем выполнение для других запросов
   next();
 });
@@ -477,13 +477,13 @@ app.use('/api', (req, res, next) => {
 // Middleware для проверки авторизации на /api/auth/* (кроме login и register)
 app.use('/api/auth', (req, res, next) => {
   console.log('🔐 Auth middleware для:', req.method, req.url);
-  
+
   // Пропускаем регистрацию и логин
   if (req.url === '/register' || req.url === '/login') {
     console.log('✅ Пропускаем auth middleware для:', req.url);
     return next();
   }
-  
+
   // Проверяем, что пользователь уже авторизован (установлен глобальным middleware)
   if (!req.getParam('isAuthenticated')) {
     console.log('❌ Пользователь не авторизован');
@@ -493,10 +493,10 @@ app.use('/api/auth', (req, res, next) => {
       error: 'Unauthorized'
     });
   }
-  
+
   console.log('✅ Auth middleware: пользователь уже авторизован через глобальный middleware');
   console.log('📝 Параметры пользователя:', req.getParams());
-  
+
   next();
 });
 
@@ -521,7 +521,7 @@ authRouter.use((req, res, next) => {
 authRouter.post('/register', (req, res) => {
   console.log('=== POST /api/auth/register ===');
   console.log('Body:', req.body);
-  
+
   try {
     let userData = req.body;
     if (typeof req.body === 'string') {
@@ -534,7 +534,7 @@ authRouter.post('/register', (req, res) => {
         });
       }
     }
-    
+
     // Проверяем обязательные поля
     if (!userData.username || !userData.email || !userData.password) {
       return res.status(400).json({
@@ -542,31 +542,31 @@ authRouter.post('/register', (req, res) => {
         message: 'Username, email и password обязательны'
       });
     }
-    
+
     // Регистрируем пользователя через SQLite
     const registrationResult = authDb.registerUser(userData);
-    
+
     if (!registrationResult.success) {
       return res.status(400).json(registrationResult);
     }
-    
+
     // После успешной регистрации автоматически авторизуем пользователя
     const loginResult = authDb.loginUser(userData.email, userData.password);
-    
+
     if (!loginResult.success) {
       return res.status(500).json({
         success: false,
         message: 'Пользователь зарегистрирован, но не удалось авторизоваться'
       });
     }
-    
+
     // Устанавливаем cookies для сессии
-    res.setCookie('sessionId', loginResult.sessionId, { 
-      httpOnly: true, 
+    res.setCookie('sessionId', loginResult.sessionId, {
+      httpOnly: true,
       maxAge: 86400000, // 24 часа
       path: '/'
     });
-    
+
     res.json({
       success: true,
       message: 'Пользователь успешно зарегистрирован и авторизован',
@@ -574,7 +574,7 @@ authRouter.post('/register', (req, res) => {
       sessionId: loginResult.sessionId,
       user: loginResult.user
     });
-    
+
   } catch (error) {
     console.error('Ошибка при регистрации:', error);
     res.status(500).json({
@@ -589,7 +589,7 @@ authRouter.post('/register', (req, res) => {
 authRouter.post('/login', (req, res) => {
   console.log('=== POST /api/auth/login ===');
   console.log('Body:', req.body);
-  
+
   try {
     let loginData = req.body;
     if (typeof req.body === 'string') {
@@ -602,7 +602,7 @@ authRouter.post('/login', (req, res) => {
         });
       }
     }
-    
+
     // Проверяем обязательные поля
     if (!loginData.email || !loginData.password) {
       return res.status(400).json({
@@ -610,21 +610,21 @@ authRouter.post('/login', (req, res) => {
         message: 'Email и password обязательны'
       });
     }
-    
+
     // Авторизуем пользователя через SQLite
     const loginResult = authDb.loginUser(loginData.email, loginData.password);
-    
+
     if (!loginResult.success) {
       return res.status(401).json(loginResult);
     }
-    
+
     // Устанавливаем cookies для сессии
-    res.setCookie('sessionId', loginResult.sessionId, { 
-      httpOnly: true, 
+    res.setCookie('sessionId', loginResult.sessionId, {
+      httpOnly: true,
       maxAge: 86400000, // 24 часа
       path: '/'
     });
-    
+
     res.json({
       success: true,
       message: loginResult.message,
@@ -632,7 +632,7 @@ authRouter.post('/login', (req, res) => {
       sessionId: loginResult.sessionId,
       user: loginResult.user
     });
-    
+
   } catch (error) {
     console.error('Ошибка при авторизации:', error);
     res.status(500).json({
@@ -646,21 +646,21 @@ authRouter.post('/login', (req, res) => {
 // POST /api/auth/logout - Выход из системы
 authRouter.post('/logout', (req, res) => {
   console.log('=== POST /api/auth/logout ===');
-  
+
   const sessionId = req.getCookie('sessionId');
-  
+
   if (sessionId) {
     // Деактивируем сессию в базе данных
     const logoutResult = authDb.logoutUser(sessionId);
     console.log('Результат выхода из системы:', logoutResult.message);
   }
-  
+
   // Удаляем cookies сессии
-  res.setCookie('sessionId', '', { 
+  res.setCookie('sessionId', '', {
     maxAge: 0,
     path: '/'
   });
-  
+
   res.json({
     success: true,
     message: 'Успешный выход из системы'
@@ -670,7 +670,7 @@ authRouter.post('/logout', (req, res) => {
 // GET /api/auth/profile - Получение профиля пользователя (защищенный маршрут)
 authRouter.get('/profile', (req, res) => {
   console.log('=== GET /api/auth/profile ===');
-  
+
   // Демонстрируем использование новых методов
   console.log('📝 Все параметры из middleware:', req.getParams());
   console.log('🔍 Проверяем наличие параметров:');
@@ -678,24 +678,24 @@ authRouter.get('/profile', (req, res) => {
   console.log('  - user:', req.hasParam('user') ? '✅' : '❌');
   console.log('  - isAuthenticated:', req.hasParam('isAuthenticated') ? '✅' : '❌');
   console.log('  - nonExistent:', req.hasParam('nonExistent') ? '✅' : '❌');
-  
+
   // Получаем параметры через новые методы
   const userId = req.getParam('userId');
   const user = req.getParam('user');
   const isAuthenticated = req.getParam('isAuthenticated');
-  
+
   console.log('📊 Полученные параметры:');
   console.log('  - userId:', userId);
   console.log('  - user:', user);
   console.log('  - isAuthenticated:', isAuthenticated);
-  
+
   // Получаем полный профиль пользователя из базы данных
   const profileResult = authDb.getUserProfile(userId);
-  
+
   if (!profileResult.success) {
     return res.status(404).json(profileResult);
   }
-  
+
   // Этот маршрут защищен middleware, поэтому параметры доступны
   res.json({
     success: true,
@@ -711,14 +711,14 @@ authRouter.get('/profile', (req, res) => {
 // Тестовый маршрут для демонстрации работы с параметрами
 authRouter.get('/test-params', (req, res) => {
   console.log('=== GET /api/auth/test-params ===');
-  
+
   // Устанавливаем дополнительные параметры в обработчике
   req.setParam('handlerParam', 'value_from_handler');
   req.setParam('timestamp', Date.now());
   req.setParam('random', Math.random());
-  
+
   console.log('📝 Параметры после установки в обработчике:', req.getParams());
-  
+
   // Демонстрируем все возможности
   res.json({
     success: true,
@@ -768,10 +768,10 @@ app.listen(port, () => {
   console.log(`   📝 Пользователи:`);
   console.log(`      POST   /api/users - создать пользователя`);
   console.log(`      GET    /api/users - получить всех пользователей`);
-  console.log(`      GET    /api/users/:id - получить пользователя по ID`);
-  console.log(`      PUT    /api/users/:id - обновить пользователя`);
-  console.log(`      DELETE /api/users/:id - удалить пользователя`);
-  console.log(`      GET    /api/users/search/:query - поиск пользователей`);
+  console.log(`      GET    /api/users/{id} - получить пользователя по ID`);
+  console.log(`      PUT    /api/users/{id} - обновить пользователя`);
+  console.log(`      DELETE /api/users/{id} - удалить пользователя`);
+  console.log(`      GET    /api/users/search/{query} - поиск пользователей`);
   console.log(`   🔐 Авторизация:`);
   console.log(`      POST   /api/auth/register - регистрация`);
   console.log(`      POST   /api/auth/login - вход в систему`);

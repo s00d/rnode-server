@@ -1,36 +1,8 @@
 use neon::prelude::*;
 use std::collections::HashMap;
-use std::time::{SystemTime, UNIX_EPOCH};
-use std::sync::{OnceLock, RwLock};
 use std::path::PathBuf;
-
-// Структура для настроек безопасности
-#[derive(Debug, Clone)]
-pub struct SecurityOptions {
-    pub allow_hidden_files: bool,
-    pub allow_system_files: bool,
-    pub allowed_extensions: Vec<String>,
-    pub blocked_paths: Vec<String>,
-}
-
-impl Default for SecurityOptions {
-    fn default() -> Self {
-        Self {
-            allow_hidden_files: false,
-            allow_system_files: false,
-            allowed_extensions: vec![
-                "html".to_string(), "css".to_string(), "js".to_string(), "json".to_string(),
-                "png".to_string(), "jpg".to_string(), "jpeg".to_string(), "gif".to_string(),
-                "svg".to_string(), "ico".to_string(), "woff".to_string(), "woff2".to_string(),
-                "ttf".to_string(), "eot".to_string()
-            ],
-            blocked_paths: vec![
-                ".git".to_string(), ".env".to_string(), ".htaccess".to_string(),
-                "thumbs.db".to_string(), ".ds_store".to_string(), "desktop.ini".to_string()
-            ],
-        }
-    }
-}
+use std::sync::{OnceLock, RwLock};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 // Структура для настроек статических файлов
 #[derive(Debug, Clone)]
@@ -42,20 +14,48 @@ pub struct StaticOptions {
     pub last_modified: bool,
     pub gzip: bool,
     pub brotli: bool,
-    pub security: SecurityOptions,
+    pub allow_hidden_files: bool,
+    pub allow_system_files: bool,
+    pub allowed_extensions: Vec<String>,
+    pub blocked_paths: Vec<String>,
 }
 
 impl Default for StaticOptions {
     fn default() -> Self {
         Self {
             cache: true,
-            max_age: Some(3600), // 1 час по умолчанию
+            max_age: Some(3600),                   // 1 час по умолчанию
             max_file_size: Some(10 * 1024 * 1024), // 10MB по умолчанию
             etag: true,
             last_modified: true,
             gzip: true,
             brotli: false,
-            security: SecurityOptions::default(),
+            allow_hidden_files: false,
+            allow_system_files: false,
+            allowed_extensions: vec![
+                "html".to_string(),
+                "css".to_string(),
+                "js".to_string(),
+                "json".to_string(),
+                "png".to_string(),
+                "jpg".to_string(),
+                "jpeg".to_string(),
+                "gif".to_string(),
+                "svg".to_string(),
+                "ico".to_string(),
+                "woff".to_string(),
+                "woff2".to_string(),
+                "ttf".to_string(),
+                "eot".to_string(),
+            ],
+            blocked_paths: vec![
+                ".git".to_string(),
+                ".env".to_string(),
+                ".htaccess".to_string(),
+                "thumbs.db".to_string(),
+                ".ds_store".to_string(),
+                "desktop.ini".to_string(),
+            ],
         }
     }
 }
@@ -69,11 +69,11 @@ pub struct StaticFile {
     pub modified_time: u64,
     pub etag: String,
     pub content_type_header: String, // Готовый заголовок Content-Type с кодировкой
-    
+
     // Готовые сжатые версии (если включены)
     pub gzip_content: Option<Vec<u8>>,
     pub brotli_content: Option<Vec<u8>>,
-    
+
     // Готовые заголовки для разных типов ответов
     pub headers: StaticFileHeaders,
 }
@@ -112,31 +112,42 @@ fn get_static_folders() -> &'static RwLock<Vec<StaticFolder>> {
 // Функция для загрузки настроек статических файлов (без загрузки самих файлов)
 pub fn load_static_files(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let static_path = cx.argument::<JsString>(0)?.value(&mut cx);
-    
+
     // Преобразуем относительный путь в абсолютный от текущей рабочей директории
-    let absolute_path = if static_path.starts_with("./") || static_path.starts_with("../") || !static_path.starts_with('/') {
+    let absolute_path = if static_path.starts_with("./")
+        || static_path.starts_with("../")
+        || !static_path.starts_with('/')
+    {
         match std::env::current_dir() {
             Ok(current_dir) => {
                 let full_path = current_dir.join(&static_path);
                 full_path.canonicalize().unwrap_or(full_path)
             }
-            Err(_) => PathBuf::from(&static_path)
+            Err(_) => PathBuf::from(&static_path),
         }
     } else {
         PathBuf::from(&static_path)
     };
-    
+
     let absolute_path_str = absolute_path.to_string_lossy();
-    
-    println!("📁 Loading static files configuration for path: {}", static_path);
+
+    println!(
+        "📁 Loading static files configuration for path: {}",
+        static_path
+    );
     println!("📍 Absolute path: {}", absolute_path_str);
-    
+
     // Получаем опции, если они переданы
     let options = if cx.len() > 1 {
         if let Ok(options_obj) = cx.argument::<JsObject>(1) {
             let parsed_options = parse_static_options(&mut cx, options_obj);
-            println!("🔧 Parsed static options: cache={}, maxAge={:?}, gzip={}, brotli={}", 
-                    parsed_options.cache, parsed_options.max_age, parsed_options.gzip, parsed_options.brotli);
+            println!(
+                "🔧 Parsed static options: cache={}, maxAge={:?}, gzip={}, brotli={}",
+                parsed_options.cache,
+                parsed_options.max_age,
+                parsed_options.gzip,
+                parsed_options.brotli
+            );
             parsed_options
         } else {
             println!("⚠️  Failed to parse options, using defaults");
@@ -146,10 +157,12 @@ pub fn load_static_files(mut cx: FunctionContext) -> JsResult<JsUndefined> {
         println!("📋 Using default static options");
         StaticOptions::default()
     };
-    
-    println!("📁 Registered static files folder: {} (absolute: {}) with options: {:?}", 
-            static_path, absolute_path_str, options);
-    
+
+    println!(
+        "📁 Registered static files folder: {} (absolute: {}) with options: {:?}",
+        static_path, absolute_path_str, options
+    );
+
     // Добавляем папку в список синхронно
     {
         let folders = get_static_folders();
@@ -158,125 +171,125 @@ pub fn load_static_files(mut cx: FunctionContext) -> JsResult<JsUndefined> {
             path: absolute_path_str.to_string(),
             options,
         });
-        println!("✅ Static folder registered: {} (absolute: {}) ({} folders total)", 
-                static_path, absolute_path_str, folders_write.len());
+        println!(
+            "✅ Static folder registered: {} (absolute: {}) ({} folders total)",
+            static_path,
+            absolute_path_str,
+            folders_write.len()
+        );
     }
-    
+
     Ok(cx.undefined())
 }
 
 // Функция для парсинга опций из JavaScript объекта
 fn parse_static_options(cx: &mut FunctionContext, options_obj: Handle<JsObject>) -> StaticOptions {
     let mut options = StaticOptions::default();
-    
+
     // Парсим cache
     if let Ok(cache) = options_obj.get::<JsBoolean, _, _>(cx, "cache") {
         options.cache = cache.value(cx);
     }
-    
+
     // Парсим maxAge
     if let Ok(max_age) = options_obj.get::<JsNumber, _, _>(cx, "maxAge") {
         options.max_age = Some(max_age.value(cx) as u32);
     }
-    
+
     // Парсим maxFileSize
     if let Ok(max_file_size) = options_obj.get::<JsNumber, _, _>(cx, "maxFileSize") {
         options.max_file_size = Some(max_file_size.value(cx) as usize);
     }
-    
+
     // Парсим etag
     if let Ok(etag) = options_obj.get::<JsBoolean, _, _>(cx, "etag") {
         options.etag = etag.value(cx);
     }
-    
+
     // Парсим lastModified
     if let Ok(last_modified) = options_obj.get::<JsBoolean, _, _>(cx, "lastModified") {
         options.last_modified = last_modified.value(cx);
     }
-    
+
     // Парсим gzip
     if let Ok(gzip) = options_obj.get::<JsBoolean, _, _>(cx, "gzip") {
         options.gzip = gzip.value(cx);
     }
-    
+
     // Парсим brotli
     if let Ok(brotli) = options_obj.get::<JsBoolean, _, _>(cx, "brotli") {
         options.brotli = brotli.value(cx);
     }
-    
-    // Парсим security опции
-    if let Ok(security_obj) = options_obj.get::<JsObject, _, _>(cx, "security") {
-        if let Ok(allow_hidden) = security_obj.get::<JsBoolean, _, _>(cx, "allowHiddenFiles") {
-            options.security.allow_hidden_files = allow_hidden.value(cx);
-        }
-        if let Ok(allow_system) = security_obj.get::<JsBoolean, _, _>(cx, "allowSystemFiles") {
-            options.security.allow_system_files = allow_system.value(cx);
-        }
-        if let Ok(allowed_ext) = security_obj.get::<JsArray, _, _>(cx, "allowedExtensions") {
-            let mut extensions = Vec::new();
-            for i in 0..allowed_ext.len(cx) {
-                if let Ok(ext) = allowed_ext.get::<JsString, _, _>(cx, i) {
-                    extensions.push(ext.value(cx));
-                }
-            }
-            if !extensions.is_empty() {
-                options.security.allowed_extensions = extensions;
+
+    // Парсим security опции напрямую
+    if let Ok(allow_hidden) = options_obj.get::<JsBoolean, _, _>(cx, "allowHiddenFiles") {
+        options.allow_hidden_files = allow_hidden.value(cx);
+    }
+    if let Ok(allow_system) = options_obj.get::<JsBoolean, _, _>(cx, "allowSystemFiles") {
+        options.allow_system_files = allow_system.value(cx);
+    }
+    if let Ok(allowed_ext) = options_obj.get::<JsArray, _, _>(cx, "allowedExtensions") {
+        let mut extensions = Vec::new();
+        for i in 0..allowed_ext.len(cx) {
+            if let Ok(ext) = allowed_ext.get::<JsString, _, _>(cx, i) {
+                extensions.push(ext.value(cx));
             }
         }
-        if let Ok(blocked_paths) = security_obj.get::<JsArray, _, _>(cx, "blockedPaths") {
-            let mut paths = Vec::new();
-            for i in 0..blocked_paths.len(cx) {
-                if let Ok(path) = blocked_paths.get::<JsString, _, _>(cx, i) {
-                    paths.push(path.value(cx));
-                }
-            }
-            if !paths.is_empty() {
-                options.security.blocked_paths = paths;
-            }
+        if !extensions.is_empty() {
+            options.allowed_extensions = extensions;
         }
     }
-    
+    if let Ok(blocked_paths) = options_obj.get::<JsArray, _, _>(cx, "blockedPaths") {
+        let mut paths = Vec::new();
+        for i in 0..blocked_paths.len(cx) {
+            if let Ok(path) = blocked_paths.get::<JsString, _, _>(cx, i) {
+                paths.push(path.value(cx));
+            }
+        }
+        if !paths.is_empty() {
+            options.blocked_paths = paths;
+        }
+    }
+
     options
 }
 
 // Функция для проверки безопасности файла
 fn is_file_safe(path: &std::path::Path, options: &StaticOptions) -> bool {
-    let file_name = path.file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("");
-    
+    let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+
     let path_str = path.to_string_lossy();
-    
+
     // Проверяем заблокированные пути
-    for blocked in &options.security.blocked_paths {
+    for blocked in &options.blocked_paths {
         if path_str.contains(blocked) {
             return false;
         }
     }
-    
+
     // Проверяем скрытые файлы
-    if !options.security.allow_hidden_files && file_name.starts_with('.') {
+    if !options.allow_hidden_files && file_name.starts_with('.') {
         return false;
     }
-    
+
     // Проверяем системные файлы
-    if !options.security.allow_system_files {
+    if !options.allow_system_files {
         let lower_name = file_name.to_lowercase();
         if lower_name == "thumbs.db" || lower_name == ".ds_store" || lower_name == "desktop.ini" {
             return false;
         }
     }
-    
+
     // Проверяем расширения файлов
     if let Some(extension) = path.extension() {
         if let Some(ext_str) = extension.to_str() {
             let ext_lower = ext_str.to_lowercase();
-            if !options.security.allowed_extensions.contains(&ext_lower) {
+            if !options.allowed_extensions.contains(&ext_lower) {
                 return false;
             }
         }
     }
-    
+
     true
 }
 
@@ -295,20 +308,28 @@ fn get_file_from_cache(path: &str) -> Option<StaticFile> {
 }
 
 // Функция для подготовки файла к ответу (сжатие, заголовки и т.д.)
-fn process_file_for_response(static_file: &mut StaticFile, folder_options: &StaticOptions, file_path: &str) {
+fn process_file_for_response(
+    static_file: &mut StaticFile,
+    folder_options: &StaticOptions,
+    file_path: &str,
+) {
     // Генерируем ETag
     if folder_options.etag {
         let etag_value = generate_etag(&static_file.content, static_file.modified_time);
         println!("🏷️  Generated ETag: {}", etag_value);
         static_file.etag = etag_value;
     }
-    
+
     // Создаем сжатые версии если включено
     if folder_options.gzip {
         match compress_gzip(&static_file.content) {
             Some(compressed) => {
-                println!("🗜️  Gzip compression: {} -> {} bytes (ratio: {:.1}%)", 
-                        static_file.size, compressed.len(), (compressed.len() as f64 / static_file.size as f64) * 100.0);
+                println!(
+                    "🗜️  Gzip compression: {} -> {} bytes (ratio: {:.1}%)",
+                    static_file.size,
+                    compressed.len(),
+                    (compressed.len() as f64 / static_file.size as f64) * 100.0
+                );
                 static_file.gzip_content = Some(compressed);
             }
             None => {
@@ -316,12 +337,16 @@ fn process_file_for_response(static_file: &mut StaticFile, folder_options: &Stat
             }
         }
     }
-    
+
     if folder_options.brotli {
         match compress_brotli(&static_file.content) {
             Some(compressed) => {
-                println!("🗜️  Brotli compression: {} -> {} bytes (ratio: {:.1}%)", 
-                        static_file.size, compressed.len(), (compressed.len() as f64 / static_file.size as f64) * 100.0);
+                println!(
+                    "🗜️  Brotli compression: {} -> {} bytes (ratio: {:.1}%)",
+                    static_file.size,
+                    compressed.len(),
+                    (compressed.len() as f64 / static_file.size as f64) * 100.0
+                );
                 static_file.brotli_content = Some(compressed);
             }
             None => {
@@ -329,24 +354,30 @@ fn process_file_for_response(static_file: &mut StaticFile, folder_options: &Stat
             }
         }
     }
-    
+
     // Определяем заголовок Content-Type с кодировкой
-    if static_file.mime_type.starts_with("text/") || static_file.mime_type.contains("javascript") || static_file.mime_type.contains("json") || static_file.mime_type.contains("xml") {
-        let encoding = get_file_encoding(PathBuf::from(file_path).as_path(), &static_file.mime_type);
+    if static_file.mime_type.starts_with("text/")
+        || static_file.mime_type.contains("javascript")
+        || static_file.mime_type.contains("json")
+        || static_file.mime_type.contains("xml")
+    {
+        let encoding =
+            get_file_encoding(PathBuf::from(file_path).as_path(), &static_file.mime_type);
         if !encoding.is_empty() {
-            static_file.content_type_header = format!("{}; charset={}", static_file.mime_type, encoding);
+            static_file.content_type_header =
+                format!("{}; charset={}", static_file.mime_type, encoding);
         } else {
             static_file.content_type_header = static_file.mime_type.clone();
         }
     } else {
         static_file.content_type_header = static_file.mime_type.clone();
     }
-    
+
     // Генерируем готовые заголовки
     let last_modified = httpdate::fmt_http_date(
-        SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(static_file.modified_time)
+        SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(static_file.modified_time),
     );
-    
+
     static_file.headers = StaticFileHeaders {
         etag: static_file.etag.clone(),
         last_modified,
@@ -357,7 +388,11 @@ fn process_file_for_response(static_file: &mut StaticFile, folder_options: &Stat
 // Функция для определения кодировки файла
 fn get_file_encoding(path: &std::path::Path, mime_type: &str) -> String {
     // Для текстовых файлов определяем кодировку
-    if mime_type.starts_with("text/") || mime_type.contains("javascript") || mime_type.contains("json") || mime_type.contains("xml") {
+    if mime_type.starts_with("text/")
+        || mime_type.contains("javascript")
+        || mime_type.contains("json")
+        || mime_type.contains("xml")
+    {
         // Читаем содержимое файла для анализа
         if let Ok(content) = std::fs::read(path) {
             // Проверяем BOM (Byte Order Mark)
@@ -375,17 +410,17 @@ fn get_file_encoding(path: &std::path::Path, mime_type: &str) -> String {
                     return "utf-16be".to_string();
                 }
             }
-            
+
             // Пробуем UTF-8
             if std::str::from_utf8(&content).is_ok() {
                 return "utf-8".to_string();
             }
         }
-        
+
         // По умолчанию для текстовых файлов используем UTF-8
         return "utf-8".to_string();
     }
-    
+
     // Для бинарных файлов кодировка не нужна
     "".to_string()
 }
@@ -394,20 +429,20 @@ fn get_file_encoding(path: &std::path::Path, mime_type: &str) -> String {
 fn generate_etag(content: &[u8], modified_time: u64) -> String {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
-    
+
     let mut hasher = DefaultHasher::new();
     content.hash(&mut hasher);
     modified_time.hash(&mut hasher);
-    
+
     format!("\"{:x}\"", hasher.finish())
 }
 
 // Функция для сжатия Gzip
 fn compress_gzip(data: &[u8]) -> Option<Vec<u8>> {
-    use flate2::write::GzEncoder;
     use flate2::Compression;
+    use flate2::write::GzEncoder;
     use std::io::Write;
-    
+
     let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
     if encoder.write_all(data).is_ok() {
         encoder.finish().ok()
@@ -418,13 +453,13 @@ fn compress_gzip(data: &[u8]) -> Option<Vec<u8>> {
 
 // Функция для сжатия Brotli
 fn compress_brotli(data: &[u8]) -> Option<Vec<u8>> {
-    use brotli::enc::BrotliEncoderParams;
     use brotli::BrotliCompress;
+    use brotli::enc::BrotliEncoderParams;
     use std::io::Cursor;
-    
+
     let mut params = BrotliEncoderParams::default();
     params.quality = 11; // Максимальное качество
-    
+
     let mut output = Vec::new();
     let mut input = Cursor::new(data);
     if BrotliCompress(&mut input, &mut output, &params).is_ok() {
@@ -435,72 +470,101 @@ fn compress_brotli(data: &[u8]) -> Option<Vec<u8>> {
 }
 
 // Функция для загрузки файла в кеш
-async fn load_file_to_cache(file_path: &str, folder_options: &StaticOptions, original_path: &str) -> bool {
-    println!("📂 Loading file: {} (requested path: {})", file_path, file_path);
-    
+async fn load_file_to_cache(
+    file_path: &str,
+    folder_options: &StaticOptions,
+    original_path: &str,
+) -> bool {
+    println!(
+        "📂 Loading file: {} (requested path: {})",
+        file_path, file_path
+    );
+
     // Ищем файл в зарегистрированных папках
     let folders = get_static_folders();
     let folders_clone = {
         let folders_read = folders.read().unwrap();
         folders_read.clone()
     };
-    
+
     let mut found_path = None;
     for folder in folders_clone.iter() {
         let folder_file_path = format!("{}/{}", folder.path, file_path.trim_start_matches('/'));
         let folder_path = PathBuf::from(&folder_file_path);
-        println!("🔍 Checking path: {} -> {}", folder_file_path, folder_path.display());
-        
+        println!(
+            "🔍 Checking path: {} -> {}",
+            folder_file_path,
+            folder_path.display()
+        );
+
         if folder_path.exists() {
-            println!("✅ Found file in folder {}: {}", folder.path, folder_path.display());
+            println!(
+                "✅ Found file in folder {}: {}",
+                folder.path,
+                folder_path.display()
+            );
             found_path = Some(folder_path);
             break;
         }
     }
-    
+
     let final_path = found_path.unwrap_or_else(|| {
         // Fallback: попробуем текущую директорию
         match std::env::current_dir() {
             Ok(current_dir) => current_dir.join(file_path.trim_start_matches('/')),
-            Err(_) => PathBuf::from(file_path)
+            Err(_) => PathBuf::from(file_path),
         }
     });
-    
+
     println!("📂 Final file path: {}", final_path.display());
-    
+
     // Проверяем безопасность
     if !is_file_safe(&final_path, folder_options) {
-        println!("🚫 Skipping unsafe file: {} (security check failed)", final_path.display());
+        println!(
+            "🚫 Skipping unsafe file: {} (security check failed)",
+            final_path.display()
+        );
         return false;
     }
-    
+
     // Проверяем существование файла
     if !final_path.exists() || !final_path.is_file() {
-        println!("❌ File does not exist or is not a file: {}", final_path.display());
+        println!(
+            "❌ File does not exist or is not a file: {}",
+            final_path.display()
+        );
         return false;
     }
-    
+
     // Получаем метаданные
     let metadata = match std::fs::metadata(&final_path) {
         Ok(m) => m,
         Err(e) => {
-            println!("❌ Failed to get file metadata: {} - {}", final_path.display(), e);
+            println!(
+                "❌ Failed to get file metadata: {} - {}",
+                final_path.display(),
+                e
+            );
             return false;
         }
     };
-    
+
     let file_size = metadata.len() as usize;
     println!("📊 File size: {} bytes", file_size);
-    
+
     // Проверяем лимит размера файла
     if let Some(max_size) = folder_options.max_file_size {
         if file_size > max_size {
-            println!("🚫 Skipping file {}: size {} exceeds limit {}", 
-                    final_path.display(), file_size, max_size);
+            println!(
+                "🚫 Skipping file {}: size {} exceeds limit {}",
+                final_path.display(),
+                file_size,
+                max_size
+            );
             return false;
         }
     }
-    
+
     // Читаем содержимое файла
     let content = match std::fs::read(&final_path) {
         Ok(c) => c,
@@ -509,19 +573,25 @@ async fn load_file_to_cache(file_path: &str, folder_options: &StaticOptions, ori
             return false;
         }
     };
-    
+
     let mime_type = get_mime_type(&final_path);
     println!("📄 MIME type: {}", mime_type);
-    
+
     // Получаем время модификации
     let modified_time = match metadata.modified() {
-        Ok(time) => time.duration_since(UNIX_EPOCH).unwrap_or_default().as_secs(),
+        Ok(time) => time
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs(),
         Err(_) => {
             println!("⚠️  Failed to get file modification time, using current time");
-            SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs()
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs()
         }
     };
-    
+
     // Создаем базовую структуру файла
     let mut static_file = StaticFile {
         content,
@@ -538,21 +608,27 @@ async fn load_file_to_cache(file_path: &str, folder_options: &StaticOptions, ori
             cache_control: String::new(),
         },
     };
-    
+
     // Обрабатываем файл (сжатие, заголовки и т.д.)
     process_file_for_response(&mut static_file, folder_options, file_path);
-    
+
     // Добавляем в кеш по оригинальному пути (path), а не по search_path
     let cache = get_static_files_cache();
     let mut cache_write = cache.write().unwrap();
-    
+
     // Используем оригинальный путь для кеширования
     cache_write.insert(original_path.to_string(), static_file);
-    println!("💾 File added to cache: {} (cache size: {})", original_path, cache_write.len());
-    
-    println!("✅ File loaded to cache: {} ({} bytes, MIME: {})", 
-            file_path, file_size, mime_type);
-    
+    println!(
+        "💾 File added to cache: {} (cache size: {})",
+        original_path,
+        cache_write.len()
+    );
+
+    println!(
+        "✅ File loaded to cache: {} ({} bytes, MIME: {})",
+        file_path, file_size, mime_type
+    );
+
     true
 }
 
@@ -560,53 +636,74 @@ async fn load_file_to_cache(file_path: &str, folder_options: &StaticOptions, ori
 fn find_folder_for_path(file_path: &str) -> Option<StaticOptions> {
     let folders = get_static_folders();
     let folders_read = folders.read().unwrap();
-    
-    println!("🔍 Searching for folder configuration for path: {} ({} folders registered)", file_path, folders_read.len());
-    
 
-    
+    println!(
+        "🔍 Searching for folder configuration for path: {} ({} folders registered)",
+        file_path,
+        folders_read.len()
+    );
+
     // Преобразуем запрашиваемый путь в абсолютный для сравнения
     let absolute_file_path = if file_path.starts_with("/") {
         match std::env::current_dir() {
             Ok(current_dir) => current_dir.join(file_path.trim_start_matches('/')),
-            Err(_) => PathBuf::from(file_path)
+            Err(_) => PathBuf::from(file_path),
         }
     } else {
         match std::env::current_dir() {
             Ok(current_dir) => current_dir.join(file_path),
-            Err(_) => PathBuf::from(file_path)
+            Err(_) => PathBuf::from(file_path),
         }
     };
-    
+
     let absolute_file_path_str = absolute_file_path.to_string_lossy();
     println!("📍 Absolute file path: {}", absolute_file_path_str);
-    
+
     for folder in folders_read.iter() {
-        println!("🔍 Checking folder: {} against file path: {}", folder.path, absolute_file_path_str);
-        
+        println!(
+            "🔍 Checking folder: {} against file path: {}",
+            folder.path, absolute_file_path_str
+        );
+
         // Проверяем, содержит ли папка запрашиваемый файл
         // Создаем полный путь к файлу в этой папке
         let folder_file_path = format!("{}/{}", folder.path, file_path);
         let folder_path = PathBuf::from(&folder_file_path);
-        
-        println!("🔍 Checking if folder contains file: {} -> {}", folder_file_path, folder_path.display());
-        
+
+        println!(
+            "🔍 Checking if folder contains file: {} -> {}",
+            folder_file_path,
+            folder_path.display()
+        );
+
         if folder_path.exists() && folder_path.is_file() {
-            println!("✅ Found matching folder: {} for path: {} (file exists: {})", folder.path, file_path, folder_path.display());
+            println!(
+                "✅ Found matching folder: {} for path: {} (file exists: {})",
+                folder.path,
+                file_path,
+                folder_path.display()
+            );
             return Some(folder.options.clone());
         }
-        
-
     }
-    
-    println!("⚠️  No matching folder found for path: {} (absolute: {})", file_path, absolute_file_path_str);
+
+    println!(
+        "⚠️  No matching folder found for path: {} (absolute: {})",
+        file_path, absolute_file_path_str
+    );
     None
 }
 
 // Функция для обработки статических файлов
-pub async fn handle_static_file(path: String, accept_encoding: Option<&str>) -> Option<axum::response::Response<axum::body::Body>> {
-    println!("🔍 Handling static file request: {} (accept-encoding: {:?})", path, accept_encoding);
-    
+pub async fn handle_static_file(
+    path: String,
+    accept_encoding: Option<&str>,
+) -> Option<axum::response::Response<axum::body::Body>> {
+    println!(
+        "🔍 Handling static file request: {} (accept-encoding: {:?})",
+        path, accept_encoding
+    );
+
     // Определяем реальный путь для поиска
     let search_path = if path == "/" {
         // Корневой путь - ищем index.html в корне
@@ -623,28 +720,31 @@ pub async fn handle_static_file(path: String, accept_encoding: Option<&str>) -> 
         // Обычный файл
         path.clone()
     };
-    
+
     println!("🔍 Search path: {} (original: {})", search_path, path);
-    
+
     // Сначала проверяем кеш
     let cache = get_static_files_cache();
     let cached_file = cache.read().unwrap().get(&path).cloned();
-    
+
     if let Some(static_file) = cached_file {
-        println!("✅ File found in cache: {} ({} bytes)", path, static_file.size);
+        println!(
+            "✅ File found in cache: {} ({} bytes)",
+            path, static_file.size
+        );
         return build_static_response(&static_file, accept_encoding, &path);
     }
-    
+
     println!("💾 File not in cache, searching for folder configuration...");
-    
+
     // Если файл не в кеше, ищем подходящую папку и загружаем
     if let Some(folder_options) = find_folder_for_path(&search_path) {
         println!("📂 Found folder configuration for path: {}", search_path);
-        
+
         // Загружаем файл в кеш, передавая оригинальный путь для правильного кеширования
         if load_file_to_cache(&search_path, &folder_options, &path).await {
             println!("📥 File loaded to cache: {}", search_path);
-            
+
             // Теперь получаем обработанный файл из кеша
             if let Some(static_file) = get_file_from_cache(&path) {
                 return build_static_response(&static_file, accept_encoding, &path);
@@ -653,79 +753,105 @@ pub async fn handle_static_file(path: String, accept_encoding: Option<&str>) -> 
             println!("❌ Failed to load file to cache: {}", search_path);
         }
     } else {
-        println!("⚠️  No folder configuration found for path: {}", search_path);
+        println!(
+            "⚠️  No folder configuration found for path: {}",
+            search_path
+        );
     }
-    
+
     println!("❌ File not found: {}", path);
     None
 }
 
 // Функция для построения ответа со статическим файлом
 fn build_static_response(
-    static_file: &StaticFile, 
-    accept_encoding: Option<&str>, 
-    _file_path: &str
+    static_file: &StaticFile,
+    accept_encoding: Option<&str>,
+    _file_path: &str,
 ) -> Option<axum::response::Response<axum::body::Body>> {
-    use axum::response::Response;
     use axum::body::Body;
-    use axum::http::{StatusCode};
-    
-    println!("🔧 Building response for file: {} bytes, MIME: {}", static_file.size, static_file.mime_type);
-    
+    use axum::http::StatusCode;
+    use axum::response::Response;
+
+    println!(
+        "🔧 Building response for file: {} bytes, MIME: {}",
+        static_file.size, static_file.mime_type
+    );
+
     // Определяем контент и заголовки сжатия
     let (content, content_encoding) = if let Some(accept_enc) = accept_encoding {
         if accept_enc.contains("br") && static_file.brotli_content.is_some() {
             let compressed = static_file.brotli_content.as_ref().unwrap();
-            println!("🗜️  Using Brotli compressed content: {} -> {} bytes", static_file.size, compressed.len());
+            println!(
+                "🗜️  Using Brotli compressed content: {} -> {} bytes",
+                static_file.size,
+                compressed.len()
+            );
             (compressed, "br")
         } else if accept_enc.contains("gzip") && static_file.gzip_content.is_some() {
             let compressed = static_file.gzip_content.as_ref().unwrap();
-            println!("🗜️  Using Gzip compressed content: {} -> {} bytes", static_file.size, compressed.len());
+            println!(
+                "🗜️  Using Gzip compressed content: {} -> {} bytes",
+                static_file.size,
+                compressed.len()
+            );
             (compressed, "gzip")
         } else {
-            println!("📄 Using uncompressed content: {} bytes", static_file.content.len());
+            println!(
+                "📄 Using uncompressed content: {} bytes",
+                static_file.content.len()
+            );
             (&static_file.content, "")
         }
     } else {
-        println!("📄 No accept-encoding, using uncompressed content: {} bytes", static_file.content.len());
+        println!(
+            "📄 No accept-encoding, using uncompressed content: {} bytes",
+            static_file.content.len()
+        );
         (&static_file.content, "")
     };
-    
-    let mut response_builder = Response::builder()
-        .status(StatusCode::OK);
-    
+
+    let mut response_builder = Response::builder().status(StatusCode::OK);
+
     // Используем готовый заголовок Content-Type
     response_builder = response_builder.header("content-type", &static_file.content_type_header);
-    println!("📄 Content-Type: {} (cached)", static_file.content_type_header);
-    
+    println!(
+        "📄 Content-Type: {} (cached)",
+        static_file.content_type_header
+    );
+
     // Добавляем Content-Length только для несжатого контента
     if content_encoding.is_empty() {
         response_builder = response_builder.header("content-length", content.len().to_string());
         println!("📏 Added content-length header: {} bytes", content.len());
     } else {
-        println!("📏 Skipping content-length for compressed content ({} -> {} bytes)", static_file.size, content.len());
+        println!(
+            "📏 Skipping content-length for compressed content ({} -> {} bytes)",
+            static_file.size,
+            content.len()
+        );
     }
-    
+
     // Добавляем готовые заголовки из кеша
     response_builder = response_builder
         .header("cache-control", &static_file.headers.cache_control)
         .header("etag", &static_file.headers.etag)
         .header("last-modified", &static_file.headers.last_modified);
-    
-    println!("🏷️  Added cached headers: ETag={}, Last-Modified={}, Cache-Control={}", 
-            static_file.headers.etag, static_file.headers.last_modified, static_file.headers.cache_control);
-    
 
-    
+    println!(
+        "🏷️  Added cached headers: ETag={}, Last-Modified={}, Cache-Control={}",
+        static_file.headers.etag,
+        static_file.headers.last_modified,
+        static_file.headers.cache_control
+    );
+
     if !content_encoding.is_empty() {
         response_builder = response_builder.header("content-encoding", content_encoding);
         println!("🗜️  Added content-encoding header: {}", content_encoding);
     }
-    
+
     println!("✅ Response built successfully for {} bytes", content.len());
-    response_builder
-        .body(Body::from(content.clone()))
-        .ok()
+    response_builder.body(Body::from(content.clone())).ok()
 }
 
 // Функция для очистки кеша статических файлов
@@ -734,7 +860,10 @@ pub fn clear_static_cache(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let mut cache_write = cache.write().unwrap();
     let cache_size = cache_write.len();
     cache_write.clear();
-    println!("🧹 Static files cache cleared: {} files removed", cache_size);
+    println!(
+        "🧹 Static files cache cleared: {} files removed",
+        cache_size
+    );
     Ok(cx.undefined())
 }
 
@@ -742,15 +871,18 @@ pub fn clear_static_cache(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 pub fn get_static_stats(mut cx: FunctionContext) -> JsResult<JsString> {
     let cache = get_static_files_cache();
     let folders = get_static_folders();
-    
+
     let cache_read = cache.read().unwrap();
     let folders_read = folders.read().unwrap();
-    
+
     let total_files = cache_read.len();
     let total_size: usize = cache_read.values().map(|f| f.size).sum();
     let folders_count = folders_read.len();
-    
-    let stats = format!("Static files: {} files in cache, {} bytes, {} folders registered", total_files, total_size, folders_count);
+
+    let stats = format!(
+        "Static files: {} files in cache, {} bytes, {} folders registered",
+        total_files, total_size, folders_count
+    );
     println!("📊 Static files statistics: {}", stats);
     Ok(cx.string(stats))
 }
