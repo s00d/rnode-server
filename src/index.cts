@@ -64,7 +64,8 @@ export interface Router {
   getMiddlewares(): Map<string, (req: Request, res: Response, next: () => void) => void>;
 }
 
-export interface ExpressApp extends Router {
+// Интерфейс для RNodeApp (будет реализован классом)
+interface RNodeAppInterface extends Router {
   useRouter(path: string, router: Router): void;
   static(path: string): void;
   listen(port: number, callback?: () => void): void;
@@ -467,27 +468,57 @@ class RouterImpl implements Router {
   
   get(path: string, handler: (req: Request, res: Response) => void): void {
     this.handlers.set(`GET:${path}`, { method: 'GET', handler });
-    console.log(`🔧 Router: Зарегистрирован GET обработчик для: ${path}`);
+    // Автоматически регистрируем в Rust addon если доступен
+    if (typeof addon !== 'undefined') {
+      addon.get(path, handler);
+      console.log(`Registered GET ${path}`);
+    } else {
+      console.log(`🔧 Router: Зарегистрирован GET обработчик для: ${path}`);
+    }
   }
   
   post(path: string, handler: (req: Request, res: Response) => void): void {
     this.handlers.set(`POST:${path}`, { method: 'POST', handler });
-    console.log(`🔧 Router: Зарегистрирован POST обработчик для: ${path}`);
+    // Автоматически регистрируем в Rust addon если доступен
+    if (typeof addon !== 'undefined') {
+      addon.post(path, handler);
+      console.log(`Registered POST ${path}`);
+    } else {
+      console.log(`🔧 Router: Зарегистрирован POST обработчик для: ${path}`);
+    }
   }
   
   put(path: string, handler: (req: Request, res: Response) => void): void {
     this.handlers.set(`PUT:${path}`, { method: 'PUT', handler });
-    console.log(`🔧 Router: Зарегистрирован PUT обработчик для: ${path}`);
+    // Автоматически регистрируем в Rust addon если доступен
+    if (typeof addon !== 'undefined') {
+      addon.put(path, handler);
+      console.log(`Registered PUT ${path}`);
+    } else {
+      console.log(`🔧 Router: Зарегистрирован PUT обработчик для: ${path}`);
+    }
   }
   
   delete(path: string, handler: (req: Request, res: Response) => void): void {
     this.handlers.set(`DELETE:${path}`, { method: 'DELETE', handler });
-    console.log(`🔧 Router: Зарегистрирован DELETE обработчик для: ${path}`);
+    // Автоматически регистрируем в Rust addon если доступен
+    if (typeof addon !== 'undefined') {
+      addon.del(path, handler);
+      console.log(`Registered DELETE ${path}`);
+    } else {
+      console.log(`🔧 Router: Зарегистрирован DELETE обработчик для: ${path}`);
+    }
   }
   
   patch(path: string, handler: (req: Request, res: Response) => void): void {
     this.handlers.set(`PATCH:${path}`, { method: 'PATCH', handler });
-    console.log(`🔧 Router: Зарегистрирован PATCH обработчик для: ${path}`);
+    // Автоматически регистрируем в Rust addon если доступен
+    if (typeof addon !== 'undefined') {
+      addon.patch(path, handler);
+      console.log(`Registered PATCH ${path}`);
+    } else {
+      console.log(`🔧 Router: Зарегистрирован PATCH обработчик для: ${path}`);
+    }
   }
   
   use(pathOrMiddleware: string | ((req: Request, res: Response, next: () => void) => void), middleware?: (req: Request, res: Response, next: () => void) => void): void {
@@ -495,12 +526,24 @@ class RouterImpl implements Router {
       // Глобальный middleware: router.use(middleware)
       const globalMiddleware = pathOrMiddleware;
       this.middlewares.set('*', globalMiddleware);
-      console.log(`Router: Registered global middleware`);
+      // Автоматически регистрируем в Rust addon если доступен
+      if (typeof addon !== 'undefined') {
+        addon.use('*', globalMiddleware);
+        console.log(`Registered global middleware`);
+      } else {
+        console.log(`Router: Registered global middleware`);
+      }
     } else if (typeof pathOrMiddleware === 'string' && middleware) {
       // Middleware с путем: router.use(path, middleware)
       const path = pathOrMiddleware;
       this.middlewares.set(path, middleware);
-      console.log(`Router: Registered middleware for path: ${path}`);
+      // Автоматически регистрируем в Rust addon если доступен
+      if (typeof addon !== 'undefined') {
+        addon.use(path, middleware);
+        console.log(`Registered middleware for path: ${path}`);
+      } else {
+        console.log(`Router: Registered middleware for path: ${path}`);
+      }
     } else {
       throw new Error('Invalid middleware registration: use(path, middleware) or use(middleware)');
     }
@@ -520,168 +563,106 @@ export function Router(): Router {
   return new RouterImpl();
 }
 
+// Класс RNodeApp наследует от RouterImpl
+class RNodeApp extends RouterImpl {
+  // Дополнительные методы для ExpressApp
+  static(path: string): void {
+    addon.loadStaticFiles(path);
+    console.log(`Registered static files from: ${path}`);
+  }
+
+  useRouter(path: string, router: Router): void {
+    console.log(`🔧 Регистрируем роутер для пути: ${path}`);
+
+    // Регистрируем все маршруты из роутера с префиксом
+    const routerHandlers = router.getHandlers();
+    const routerMiddlewares = router.getMiddlewares();
+
+    console.log(`📝 Роутер содержит ${routerHandlers.size} обработчиков и ${routerMiddlewares.size} middleware`);
+
+    // Регистрируем middleware роутера
+    for (const [routePath, middleware] of routerMiddlewares) {
+      const fullPath = `${path}${routePath}`;
+      addon.use(fullPath, middleware);
+      console.log(`Registered router middleware: ${fullPath}`);
+    }
+
+    // Регистрируем обработчики роутера
+    for (const [methodPath, handlerInfo] of routerHandlers) {
+      const [method, routePath] = methodPath.split(':', 2);
+      const fullPath = `${path}${routePath}`;
+      const { handler } = handlerInfo;
+
+      console.log(`🔧 Регистрируем обработчик: ${method} ${fullPath} (исходный путь: ${routePath})`);
+
+      // Регистрируем маршрут в Rust части
+      switch (method) {
+        case 'GET':
+          addon.get(fullPath, handler);
+          break;
+        case 'POST':
+          addon.post(fullPath, handler);
+          break;
+        case 'PUT':
+          addon.put(fullPath, handler);
+          break;
+        case 'DELETE':
+          addon.del(fullPath, handler);
+          break;
+        case 'PATCH':
+          addon.patch(fullPath, handler);
+          break;
+        default:
+          console.warn(`Unknown HTTP method: ${method} for path: ${fullPath}`);
+      }
+
+      console.log(`✅ Зарегистрирован обработчик роутера: ${method} ${fullPath}`);
+    }
+
+    console.log(`🎯 Роутер зарегистрирован для пути: ${path}`);
+    console.log(`📊 Всего обработчиков в системе: ${router.getHandlers().size}`);
+  }
+
+  listen(port: number, hostOrCallback?: string | (() => void), callback?: () => void): void {
+    if (typeof hostOrCallback === 'function') {
+      // listen(port, callback)
+      addon.listen(port);
+      hostOrCallback();
+    } else if (typeof hostOrCallback === 'string') {
+      // listen(port, host, callback)
+      let host = hostOrCallback;
+
+      // Конвертируем специальные значения
+      if (host === 'localhost') {
+        host = '127.0.0.1';
+      } else if (host === '0') {
+        host = '0.0.0.0';
+      }
+
+      addon.listen(port, host);
+      if (callback) callback();
+    } else {
+      // listen(port)
+      addon.listen(port);
+    }
+
+    // Держим процесс живым
+    setInterval(() => {
+      // Пустой интервал для предотвращения завершения процесса
+    }, 1000);
+  }
+
+  // HTTP методы get, post, put, delete, patch и use автоматически наследуются от RouterImpl
+  // и автоматически регистрируются в Rust addon
+}
+
 // Функция для создания приложения
-export function createApp(): ExpressApp {
+export function createApp(): RNodeAppInterface {
   const appInfo = addon.createApp();
   console.log(`Creating ${appInfo.name} v${appInfo.version}`);
-  
-  // Создаем Express-подобный объект
-  return {
-    get(path: string, handler: (req: Request, res: Response) => void): void {
-      handlers.set(`GET:${path}`, handler);
-      addon.get(path, handler);
-      console.log(`Registered GET ${path}`);
-    },
-    
-    post(path: string, handler: (req: Request, res: Response) => void): void {
-      handlers.set(`POST:${path}`, handler);
-      addon.post(path, handler);
-      console.log(`Registered POST ${path}`);
-    },
-    
-    put(path: string, handler: (req: Request, res: Response) => void): void {
-      handlers.set(`PUT:${path}`, handler);
-      addon.put(path, handler);
-      console.log(`Registered PUT ${path}`);
-    },
-    
-    delete(path: string, handler: (req: Request, res: Response) => void): void {
-      handlers.set(`DELETE:${path}`, handler);
-      addon.del(path, handler);
-      console.log(`Registered DELETE ${path}`);
-    },
-    
-    patch(path: string, handler: (req: Request, res: Response) => void): void {
-      handlers.set(`PATCH:${path}`, handler);
-      addon.patch(path, handler);
-      console.log(`Registered PATCH ${path}`);
-    },
-    
-    static(path: string): void {
-      addon.loadStaticFiles(path);
-      console.log(`Registered static files from: ${path}`);
-    },
-    
-    use(pathOrMiddleware: string | ((req: Request, res: Response, next: () => void) => void), middleware?: (req: Request, res: Response, next: () => void) => void): void {
-      if (typeof pathOrMiddleware === 'function') {
-        // Глобальный middleware: app.use(middleware)
-        const globalMiddleware = pathOrMiddleware;
-        middlewares.set('*', globalMiddleware);
-        addon.use('*', globalMiddleware);
-        console.log(`Registered global middleware`);
-      } else if (typeof pathOrMiddleware === 'string' && middleware) {
-        // Middleware с путем: app.use(path, middleware)
-        const path = pathOrMiddleware;
-        middlewares.set(path, middleware);
-        addon.use(path, middleware);
-        console.log(`Registered middleware for path: ${path}`);
-      } else {
-        throw new Error('Invalid middleware registration: use(path, middleware) or use(middleware)');
-      }
-    },
-    
-    useRouter(path: string, router: Router): void {
-      console.log(`🔧 Регистрируем роутер для пути: ${path}`);
-      
-      // Регистрируем все маршруты из роутера с префиксом
-      const routerHandlers = router.getHandlers();
-      const routerMiddlewares = router.getMiddlewares();
-      
-      console.log(`📝 Роутер содержит ${routerHandlers.size} обработчиков и ${routerMiddlewares.size} middleware`);
-      
-      // Регистрируем middleware роутера
-      for (const [routePath, middleware] of routerMiddlewares) {
-        const fullPath = `${path}${routePath}`;
-        middlewares.set(fullPath, middleware);
-        addon.use(fullPath, middleware);
-        console.log(`Registered router middleware: ${fullPath}`);
-      }
-      
-      // Регистрируем обработчики роутера
-      for (const [methodPath, handlerInfo] of routerHandlers) {
-        const [method, routePath] = methodPath.split(':', 2);
-        const fullPath = `${path}${routePath}`;
-        const { handler } = handlerInfo;
-        
-        console.log(`🔧 Регистрируем обработчик: ${method} ${fullPath} (исходный путь: ${routePath})`);
-        
-        // Регистрируем с правильным HTTP методом в JavaScript Map
-        handlers.set(`${method}:${fullPath}`, handler);
-        
-        // Регистрируем маршрут в Rust части
-        switch (method) {
-          case 'GET':
-            addon.get(fullPath, handler);
-            break;
-          case 'POST':
-            addon.post(fullPath, handler);
-            break;
-          case 'PUT':
-            addon.put(fullPath, handler);
-            break;
-          case 'DELETE':
-            addon.del(fullPath, handler);
-            break;
-          case 'PATCH':
-            addon.patch(fullPath, handler);
-            break;
-          default:
-            console.warn(`Unknown HTTP method: ${method} for path: ${fullPath}`);
-        }
-        
-        console.log(`✅ Зарегистрирован обработчик роутера: ${method} ${fullPath}`);
-      }
-      
-      console.log(`🎯 Роутер зарегистрирован для пути: ${path}`);
-      console.log(`📊 Всего обработчиков в системе: ${handlers.size}`);
-    },
-    
-    // Методы Router интерфейса
-    getHandlers(): Map<string, { method: string; handler: (req: Request, res: Response) => void }> {
-      // Возвращаем все обработчики с их HTTP методами
-      const result = new Map();
-      for (const [key, handler] of handlers) {
-        if (key.includes(':')) {
-          const [method, path] = key.split(':', 2);
-          result.set(path, { method, handler });
-        }
-      }
-      return result;
-    },
-    
-    getMiddlewares(): Map<string, (req: Request, res: Response, next: () => void) => void> {
-      return middlewares;
-    },
-    
-    listen(port: number, hostOrCallback?: string | (() => void), callback?: () => void): void {
-      if (typeof hostOrCallback === 'function') {
-        // listen(port, callback)
-        addon.listen(port);
-        hostOrCallback();
-      } else if (typeof hostOrCallback === 'string') {
-        // listen(port, host, callback)
-        let host = hostOrCallback;
-        
-        // Конвертируем специальные значения
-        if (host === 'localhost') {
-          host = '127.0.0.1';
-        } else if (host === '0') {
-          host = '0.0.0.0';
-        }
-        
-        addon.listen(port, host);
-        if (callback) callback();
-      } else {
-        // listen(port)
-        addon.listen(port);
-      }
-      
-      // Держим процесс живым
-      setInterval(() => {
-        // Пустой интервал для предотвращения завершения процесса
-      }, 1000);
-    }
-  };
+
+  // Создаем экземпляр RNodeApp
+  return new RNodeApp();
 }
 
 // Простая функция приветствия
@@ -693,5 +674,6 @@ export function greeting(name: string): { message: string } {
 // Экспорт по умолчанию для совместимости с ES модулями
 export default {
   createApp,
-  greeting
+  greeting,
+  RNodeApp
 };
