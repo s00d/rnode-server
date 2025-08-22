@@ -1,0 +1,18 @@
+{
+  "name": "rnode-server-express-comparison",
+  "version": "1.0.0",
+  "description": "Express version for performance comparison with RNode Server",
+  "main": "example_express.js",
+  "scripts": {
+    "start": "node example_express.js",
+    "test": "node benchmark_express.js",
+    "test-detailed": "node benchmark_detailed_express.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "devDependencies": {},
+  "keywords": ["express", "performance", "benchmark", "comparison"],
+  "author": "",
+  "license": "MIT"
+}

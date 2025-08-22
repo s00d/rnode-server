@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RNode Server - SQLite Users Manager</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚀 RNode Server</h1>
+            <p>SQLite Users Manager</p>
+            <nav class="main-nav">
+                <a href="/" class="nav-link active">🏠 Главная</a>
+                <a href="/auth/" class="nav-link">🔐 Авторизация</a>
+            </nav>
+        </header>
+
+        <main>
+            <!-- Форма создания/обновления пользователя -->
+            <section class="form-section">
+                <h2>👤 Управление пользователями</h2>
+                <form id="userForm">
+                    <input type="hidden" id="userId" value="">
+                    
+                    <div class="form-group">
+                        <label for="userName">Имя *</label>
+                        <input type="text" id="userName" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="userEmail">Email *</label>
+                        <input type="email" id="userEmail" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="userAge">Возраст</label>
+                        <input type="number" id="userAge" min="0" max="150">
+                    </div>
+                    
+                    <div class="form-buttons">
+                        <button type="submit" id="submitBtn">Создать пользователя</button>
+                        <button type="button" id="cancelBtn" style="display: none;">Отмена</button>
+                        <button type="button" id="clearBtn">Очистить</button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Поиск пользователей -->
+            <section class="search-section">
+                <h3>🔍 Поиск пользователей</h3>
+                <div class="search-group">
+                    <input type="text" id="searchQuery" placeholder="Введите имя или email для поиска...">
+                    <button type="button" id="searchBtn">Поиск</button>
+                    <button type="button" id="clearSearchBtn">Очистить</button>
+                </div>
+            </section>
+
+            <!-- Таблица пользователей -->
+            <section class="users-section">
+                <h3>📊 Список пользователей</h3>
+                <div class="table-container">
+                    <table id="usersTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Имя</th>
+                                <th>Email</th>
+                                <th>Возраст</th>
+                                <th>Создан</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTableBody">
+                            <!-- Пользователи будут загружены через JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="table-info">
+                    <span id="usersCount">Всего пользователей: 0</span>
+                </div>
+            </section>
+
+            <!-- Статистика -->
+            <section class="stats-section">
+                <h3>📈 Статистика</h3>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number" id="totalUsers">0</div>
+                        <div class="stat-label">Всего пользователей</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="avgAge">0</div>
+                        <div class="stat-label">Средний возраст</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="recentUsers">0</div>
+                        <div class="stat-label">За последние 24ч</div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Модальное окно для подтверждения удаления -->
+        <div id="deleteModal" class="modal">
+            <div class="modal-content">
+                <h3>🗑️ Подтверждение удаления</h3>
+                <p>Вы действительно хотите удалить пользователя <strong id="deleteUserName"></strong>?</p>
+                <p>Это действие нельзя отменить.</p>
+                <div class="modal-buttons">
+                    <button type="button" id="confirmDeleteBtn" class="btn-danger">Удалить</button>
+                    <button type="button" id="cancelDeleteBtn">Отмена</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Уведомления -->
+        <div id="notifications"></div>
+    </div>
+
+    <script src="/app.js"></script>
+</body>
+</html>
