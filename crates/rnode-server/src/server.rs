@@ -107,7 +107,8 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                 let path = req.uri().path().to_string();
                 
                 // Сначала пробуем найти статический файл
-                if let Some(static_response) = handle_static_file(path).await {
+                let accept_encoding = req.headers().get("accept-encoding").and_then(|h| h.to_str().ok());
+                if let Some(static_response) = handle_static_file(path, accept_encoding).await {
                     return static_response;
                 }
                 

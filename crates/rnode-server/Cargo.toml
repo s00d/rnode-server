@@ -21,3 +21,8 @@ tower-http = { version = "0.6", features = ["cors", "fs", "trace"] }
 hyper = { version = "1.0", features = ["full"] }
 http = "1.0"
 mime_guess = "2.0"
+lazy_static = "1.4"
+flate2 = "1.0"
+brotli = "3.3"
+httpdate = "1.0"
+

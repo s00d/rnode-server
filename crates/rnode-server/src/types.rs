@@ -29,8 +29,7 @@ pub static MIDDLEWARE: OnceLock<RwLock<Vec<MiddlewareInfo>>> = OnceLock::new();
 // Глобальный канал для связи между HTTP потоком и JavaScript потоком
 pub static EVENT_QUEUE: OnceLock<RwLock<Option<Channel>>> = OnceLock::new();
 
-// Глобальное хранилище статических файлов в памяти
-pub static STATIC_FILES: OnceLock<RwLock<HashMap<String, (Vec<u8>, String)>>> = OnceLock::new();
+
 
 pub fn get_routes() -> &'static RwLock<HashMap<String, RouteInfo>> {
     ROUTES.get_or_init(|| RwLock::new(HashMap::new()))
@@ -44,6 +43,4 @@ pub fn get_event_queue() -> &'static RwLock<Option<Channel>> {
     EVENT_QUEUE.get_or_init(|| RwLock::new(None))
 }
 
-pub fn get_static_files() -> &'static RwLock<HashMap<String, (Vec<u8>, String)>> {
-    STATIC_FILES.get_or_init(|| RwLock::new(HashMap::new()))
-}
+

@@ -3,20 +3,6 @@
 // The Rust addon.
 import * as addon from './load.cjs';
 
-// Use this declaration to assign types to the addon's exports,
-// which otherwise by default are `any`.
-declare module "./load.cjs" {
-  function hello(name: string): string;
-  function createApp(): { name: string; version: string };
-  function get(path: string, handler: Function): void;
-  function post(path: string, handler: Function): void;
-  function put(path: string, handler: Function): void;
-  function del(path: string, handler: Function): void;
-  function patch(path: string, handler: Function): void;
-  function use(path: string, handler: Function): void;
-  function listen(port: number, host?: string): void;
-  function loadStaticFiles(path: string): void;
-}
 
 // Express-подобные типы
 export interface Request {
@@ -39,6 +25,23 @@ export interface Request {
   getParam(name: string): any;
   hasParam(name: string): boolean;
   getParams(): Record<string, any>;
+}
+
+// Use this declaration to assign types to the addon's exports,
+// which otherwise by default are `any`.
+declare module "./load.cjs" {
+  function hello(name: string): string;
+  function createApp(): { name: string; version: string };
+  function get(path: string, handler: Function): void;
+  function post(path: string, handler: Function): void;
+  function put(path: string, handler: Function): void;
+  function del(path: string, handler: Function): void;
+  function patch(path: string, handler: Function): void;
+  function use(path: string, handler: Function): void;
+  function listen(port: number, host?: string): void;
+  function loadStaticFiles(path: string, options?: StaticOptions): void;
+  function clearStaticCache(): void;
+  function getStaticStats(): string;
 }
 
 export interface Response {
@@ -64,10 +67,30 @@ export interface Router {
   getMiddlewares(): Map<string, (req: Request, res: Response, next: () => void) => void>;
 }
 
+// Интерфейс для настроек статических файлов
+interface StaticOptions {
+  cache?: boolean;
+  maxAge?: number;
+  maxFileSize?: number;
+  etag?: boolean;
+  lastModified?: boolean;
+  gzip?: boolean;
+  brotli?: boolean;
+  security?: {
+    allowHiddenFiles?: boolean;
+    allowSystemFiles?: boolean;
+    allowedExtensions?: string[];
+    blockedPaths?: string[];
+  };
+}
+
 // Интерфейс для RNodeApp (будет реализован классом)
 interface RNodeAppInterface extends Router {
   useRouter(path: string, router: Router): void;
-  static(path: string): void;
+  static(path: string, options?: StaticOptions): void;
+  static(paths: string[], options?: StaticOptions): void;
+  clearStaticCache(): void;
+  getStaticStats(): string;
   listen(port: number, callback?: () => void): void;
   listen(port: number, host: string, callback?: () => void): void;
 }
@@ -565,10 +588,51 @@ export function Router(): Router {
 
 // Класс RNodeApp наследует от RouterImpl
 class RNodeApp extends RouterImpl {
-  // Дополнительные методы для ExpressApp
-  static(path: string): void {
-    addon.loadStaticFiles(path);
-    console.log(`Registered static files from: ${path}`);
+  // Дополнительные методы для RNodeApp
+  static(pathOrPaths: string | string[], options?: StaticOptions): void {
+    // Дефолтные настройки безопасности
+    const defaultSecurity = {
+      allowHiddenFiles: false,
+      allowSystemFiles: false,
+      allowedExtensions: ['html', 'css', 'js', 'json', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'ico', 'woff', 'woff2', 'ttf', 'eot'],
+      blockedPaths: ['.git', '.env', '.htaccess', 'thumbs.db', '.ds_store', 'desktop.ini']
+    };
+
+    // Дефолтные настройки производительности
+    const defaultOptions: StaticOptions = {
+      cache: true,
+      maxAge: 3600, // 1 час
+      maxFileSize: 10 * 1024 * 1024, // 10MB
+      etag: true,
+      lastModified: true,
+      gzip: true,
+      brotli: false,
+      security: defaultSecurity,
+      ...options
+    };
+
+    if (Array.isArray(pathOrPaths)) {
+      // Множественные пути
+      for (const path of pathOrPaths) {
+        addon.loadStaticFiles(path, defaultOptions);
+        console.log(`Registered static files from: ${path} with secure options:`, defaultOptions);
+      }
+    } else {
+      // Один путь
+      addon.loadStaticFiles(pathOrPaths, defaultOptions);
+      console.log(`Registered static files from: ${pathOrPaths} with secure options:`, defaultOptions);
+    }
+  }
+
+  // Очистка кеша статических файлов
+  clearStaticCache(): void {
+    addon.clearStaticCache();
+    console.log('Static files cache cleared');
+  }
+
+  // Получение статистики статических файлов
+  getStaticStats(): string {
+    return addon.getStaticStats();
   }
 
   useRouter(path: string, router: Router): void {
@@ -677,3 +741,6 @@ export default {
   greeting,
   RNodeApp
 };
+
+// Экспортируем типы для использования
+export type { StaticOptions };

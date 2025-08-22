@@ -8,9 +8,11 @@
     "start": "node src/example.js",
     "start:rnode": "tsx src/index.ts",
     "start:express": "node src/example_express.js",
+    "start:static": "tsx src/static_example.ts",
     "dev": "node --watch src/example.js",
     "dev:rnode": "tsx watch src/index.ts",
     "dev:express": "node --watch src/example_express.js",
+    "dev:static": "tsx watch src/static_example.ts",
     "build": "tsc",
     "build:watch": "tsc --watch"
   },

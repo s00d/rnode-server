@@ -10,7 +10,7 @@ mod utils;
 mod server;
 
 // Реэкспортируем публичные функции из модулей
-use static_files::load_static_files;
+use static_files::{load_static_files, clear_static_cache, get_static_stats};
 use middleware::register_middleware;
 use routes::*;
 use handlers::process_http_request;
@@ -31,5 +31,7 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("listen", start_listen)?;
     cx.export_function("processHttpRequest", process_http_request)?;
     cx.export_function("loadStaticFiles", load_static_files)?;
+    cx.export_function("clearStaticCache", clear_static_cache)?;
+    cx.export_function("getStaticStats", get_static_stats)?;
     Ok(())
 }
