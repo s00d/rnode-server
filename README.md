@@ -6,6 +6,7 @@ A high-performance HTTP server built with Rust and Node.js, featuring Express-li
 
 - **Express-like API** - Familiar routing and middleware patterns
 - **High Performance** - Rust backend with Node.js bindings
+- **Template Engine** - Tera template engine integration
 - **Authentication System** - Session-based auth with SQLite
 - **Database Integration** - Built-in SQLite support for users and sessions
 - **Static File Serving** - In-memory static file handling
@@ -140,6 +141,81 @@ app.listen(port, () => {
   console.log(`      GET    /api/users - get all users`);
 });
 ```
+
+## Template Engine
+
+RNode Server includes the Tera template engine for server-side HTML rendering. Tera is a fast, secure, and feature-rich template engine written in Rust.
+
+### Quick Start with Templates
+
+```javascript
+import { createApp } from 'rnode-server';
+
+const app = createApp();
+
+// Initialize Tera templates
+app.initTemplates('./templates/**/*.html', { autoescape: true });
+
+// Render template with data
+app.get('/welcome', (req, res) => {
+  const result = app.renderTemplate('welcome.html', {
+    title: 'Welcome',
+    user: { name: 'John', email: 'john@example.com' },
+    items: ['Item 1', 'Item 2', 'Item 3']
+  });
+  
+  const parsed = JSON.parse(result);
+  if (parsed.success) {
+    res.setHeader('Content-Type', 'text/html');
+    res.send(parsed.content);
+  } else {
+    res.status(500).json({ error: parsed.error });
+  }
+});
+```
+
+### Template Example
+
+Create a template file `templates/welcome.html`:
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ title }}</title>
+</head>
+<body>
+    <h1>Welcome, {{ user.name }}!</h1>
+    <p>Your email: {{ user.email }}</p>
+    
+    <h2>Items:</h2>
+    <ul>
+        {% for item in items %}
+            <li>{{ item }}</li>
+        {% endfor %}
+    </ul>
+    
+    <p>Generated at: {{ timestamp | default(value="now") }}</p>
+</body>
+</html>
+```
+
+### Template Methods
+
+- **`app.initTemplates(pattern, options)`** - Initialize Tera templates
+- **`app.renderTemplate(name, context)`** - Render template with data
+
+### Template Features
+
+- **Variables** - `{{ variable }}`
+- **Conditionals** - `{% if condition %}...{% endif %}`
+- **Loops** - `{% for item in items %}...{% endfor %}`
+- **Filters** - `{{ value | filter }}`
+- **Macros** - `{% macro name() %}...{% endmacro %}`
+- **Includes** - `{% include "partial.html" %}`
+- **Inheritance** - `{% extends "base.html" %}`
+
+For complete Tera documentation and advanced features, visit: [https://keats.github.io/tera/docs/](https://keats.github.io/tera/docs/)
 
 ## API Reference
 

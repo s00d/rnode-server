@@ -52,6 +52,23 @@ export interface FileContentResult {
   error?: string;
 }
 
+// Types for template operations
+export interface TemplateOptions {
+  autoescape: boolean;
+}
+
+export interface TemplateInitResult {
+  success: boolean;
+  message?: string;
+  error?: string;
+}
+
+export interface TemplateRenderResult {
+  success: boolean;
+  content?: string;
+  error?: string;
+}
+
 // Express-подобные типы
 export interface Request {
   method: string;
@@ -98,6 +115,8 @@ declare module "./load.cjs" {
   function loadStaticFiles(path: string, options?: StaticOptions): void;
   function clearStaticCache(): void;
   function getStaticStats(): string;
+  function initTemplates(pattern: string, options: TemplateOptions): string;
+  function renderTemplate(templateName: string, context: string): string;
 
   // Functions for working with files
   function saveFile(filename: string, base64Data: string, uploadsDir: string): string;
@@ -199,6 +218,10 @@ interface RNodeAppInterface extends Router {
   fileExists(filename: string, uploadsDir: string): boolean;
   download(path: string, options: DownloadOptions): void;
   upload(path: string, options: UploadOptions): void;
+
+  // Methods for working with templates
+  initTemplates(pattern: string, options: TemplateOptions): string;
+  renderTemplate(templateName: string, context: object): string;
 }
 
 // Global storage for handlers and middleware in JavaScript
@@ -999,6 +1022,32 @@ class RNodeApp extends RouterImpl {
   upload(path: string, options: UploadOptions): void {
     // Register route for file uploads in Rust backend
     addon.registerUploadRoute(path, JSON.stringify(options));
+  }
+
+  // Methods for working with templates
+  initTemplates(pattern: string, options: TemplateOptions): string {
+    try {
+      const result = addon.initTemplates(pattern, options);
+      return result;
+    } catch (error) {
+      return JSON.stringify({
+        success: false,
+        error: `Failed to initialize templates: ${error}`
+      });
+    }
+  }
+
+  renderTemplate(templateName: string, context: object): string {
+    try {
+      const contextStr = JSON.stringify(context);
+      const result = addon.renderTemplate(templateName, contextStr);
+      return result;
+    } catch (error) {
+      return JSON.stringify({
+        success: false,
+        error: `Failed to render template: ${error}`
+      });
+    }
   }
 }
 

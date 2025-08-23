@@ -7,6 +7,7 @@ mod middleware;
 mod routes;
 mod server;
 mod static_files;
+mod templates;
 mod types;
 mod utils;
 
@@ -20,6 +21,7 @@ use middleware::register_middleware;
 use routes::*;
 use server::start_listen;
 use static_files::{clear_static_cache, get_static_stats, load_static_files};
+use templates::{init_templates_wrapper, render_template_wrapper};
 use utils::*;
 
 #[neon::main]
@@ -49,6 +51,10 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("downloadFile", download_file)?;
     cx.export_function("registerDownloadRoute", register_download_route)?;
     cx.export_function("registerUploadRoute", register_upload_route)?;
+
+    // Export template functions
+    cx.export_function("initTemplates", init_templates_wrapper)?;
+    cx.export_function("renderTemplate", render_template_wrapper)?;
 
     Ok(())
 }
