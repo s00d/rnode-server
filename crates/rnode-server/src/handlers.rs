@@ -6,6 +6,110 @@ use multer::Multipart;
 use neon::prelude::*;
 use serde_json;
 use std::convert::Infallible;
+use axum::http::HeaderMap;
+
+// Helper function to extract client IP address from various headers
+fn extract_client_ip(headers: &HeaderMap) -> (String, Vec<String>) {
+    // Priority order for IP extraction (most trusted first)
+    let ip_headers = [
+        "cf-connecting-ip",        // Cloudflare (most trusted)
+        "x-real-ip",              // Nginx proxy
+        "x-forwarded-for",        // Standard proxy header
+        "x-client-ip",            // Custom proxy header
+        "x-forwarded",            // Alternative proxy header
+        "forwarded-for",          // RFC 7239
+        "forwarded",              // RFC 7239
+        "x-cluster-client-ip",    // Load balancer
+        "x-remote-ip",            // Custom remote IP
+        "x-remote-addr",          // Alternative remote addr
+    ];
+
+    let mut all_ips = Vec::new();
+    let mut primary_ip = String::new();
+
+    // Try to extract IP from various headers
+    for header_name in &ip_headers {
+        if let Some(header_value) = headers.get(*header_name) {
+            if let Ok(value_str) = header_value.to_str() {
+                let ips: Vec<&str> = value_str.split(',').collect();
+                
+                // Add all valid IPs to the list
+                for ip in &ips {
+                    let clean_ip = ip.trim();
+                    if !clean_ip.is_empty() && is_valid_ip(clean_ip) && !all_ips.contains(&clean_ip.to_string()) {
+                        all_ips.push(clean_ip.to_string());
+                    }
+                }
+                
+                // Set primary IP from first valid header found
+                if primary_ip.is_empty() && !ips.is_empty() {
+                    let first_ip = ips[0].trim();
+                    if is_valid_ip(first_ip) {
+                        primary_ip = first_ip.to_string();
+                    }
+                }
+                
+                // If we found valid IPs, break (don't check lower priority headers)
+                if !primary_ip.is_empty() {
+                    break;
+                }
+            }
+        }
+    }
+
+    // If no IP found in headers, use default localhost
+    if primary_ip.is_empty() {
+        primary_ip = "127.0.0.1".to_string();
+        if all_ips.is_empty() {
+            all_ips.push("127.0.0.1".to_string());
+        }
+    }
+
+    (primary_ip, all_ips)
+}
+
+// Helper function to validate IP address format
+fn is_valid_ip(ip: &str) -> bool {
+    // Basic IP validation (IPv4 and IPv6)
+    if ip.is_empty() {
+        return false;
+    }
+    
+    // Check for private/local IPs that might be invalid
+    let invalid_prefixes = [
+        "0.", "127.", "10.", "172.16.", "172.17.", "172.18.", "172.19.",
+        "172.20.", "172.21.", "172.22.", "172.23.", "172.24.", "172.25.",
+        "172.26.", "172.27.", "172.28.", "172.29.", "172.30.", "172.31.",
+        "192.168.", "169.254.", "224.", "240.", "255.255.255.255"
+    ];
+    
+    for prefix in &invalid_prefixes {
+        if ip.starts_with(prefix) && ip != "127.0.0.1" {
+            return false;
+        }
+    }
+    
+    // Basic format check (simplified)
+    let parts: Vec<&str> = ip.split('.').collect();
+    if parts.len() == 4 {
+        for part in parts {
+            if let Ok(_num) = part.parse::<u8>() {
+                // u8 is already 0-255, so no need to check > 255
+                // Just verify it's a valid number
+            } else {
+                return false;
+            }
+        }
+        return true;
+    }
+    
+    // IPv6 basic check (simplified)
+    if ip.contains(':') {
+        return ip.len() <= 39 && ip.chars().all(|c| c.is_ascii_hexdigit() || c == ':');
+    }
+    
+    false
+}
 
 // Structure for file information
 #[derive(Debug)]
@@ -136,6 +240,12 @@ pub async fn dynamic_handler(
         }
     }
 
+    // Clone headers for IP source detection
+    let headers_for_ip_source = headers_json.clone();
+
+    // Extract IP address from headers
+    let (ip, ips) = extract_client_ip(&parts.headers);
+
     // Determine Content-Type for proper parsing
     let content_type = parts
         .headers
@@ -145,10 +255,7 @@ pub async fn dynamic_handler(
         .to_string();
 
     // First get bytes from body
-    let body_bytes = match axum::body::to_bytes(body, usize::MAX).await {
-        Ok(bytes) => bytes,
-        Err(_) => axum::body::Bytes::new(),
-    };
+    let body_bytes = axum::body::to_bytes(body, usize::MAX).await.unwrap_or_else(|_| axum::body::Bytes::new());
 
     // Parse body based on Content-Type
     let (body_data, files_data) = if content_type.contains("multipart/form-data") {
@@ -232,6 +339,35 @@ pub async fn dynamic_handler(
         "headers".to_string(),
         serde_json::Value::Object(headers_json),
     ); // All headers
+    request_data.insert("ip".to_string(), serde_json::Value::String(ip)); // IP address
+    request_data.insert("ips".to_string(), serde_json::Value::Array(ips.into_iter().map(serde_json::Value::String).collect())); // All IPs
+    
+    // Add IP source information for debugging
+    let ip_source = if headers_for_ip_source.contains_key("cf-connecting-ip") {
+        "cf-connecting-ip"
+    } else if headers_for_ip_source.contains_key("x-real-ip") {
+        "x-real-ip"
+    } else if headers_for_ip_source.contains_key("x-forwarded-for") {
+        "x-forwarded-for"
+    } else if headers_for_ip_source.contains_key("x-client-ip") {
+        "x-client-ip"
+    } else if headers_for_ip_source.contains_key("x-forwarded") {
+        "x-forwarded"
+    } else if headers_for_ip_source.contains_key("forwarded-for") {
+        "forwarded-for"
+    } else if headers_for_ip_source.contains_key("forwarded") {
+        "forwarded"
+    } else if headers_for_ip_source.contains_key("x-cluster-client-ip") {
+        "x-cluster-client-ip"
+    } else if headers_for_ip_source.contains_key("x-remote-ip") {
+        "x-remote-ip"
+    } else if headers_for_ip_source.contains_key("x-remote-addr") {
+        "x-remote-addr"
+    } else {
+        "default"
+    };
+    
+    request_data.insert("ipSource".to_string(), serde_json::Value::String(ip_source.to_string())); // Source header for IP
 
     // Extract path parameters (e.g., :id -> 123 or {*filepath} -> documents/2024/january/record.png)
     let mut path_params_json = serde_json::Map::new();

@@ -2,7 +2,19 @@
 
 // The Rust addon.
 import * as addon from './load.cjs';
+import micromatch from 'micromatch';
 
+// Express types for compatibility
+import type {NextFunction, Request as ExpressRequest, Response as ExpressResponse} from 'express';
+
+// Express middleware wrapper types
+export interface ExpressMiddleware {
+  (req: ExpressRequest, res: ExpressResponse, next: NextFunction): void;
+}
+
+export interface ExpressErrorMiddleware {
+  (err: any, req: ExpressRequest, res: ExpressResponse, next: NextFunction): void;
+}
 
 // Interface for uploaded file
 export interface UploadedFile {
@@ -81,6 +93,9 @@ export interface Request {
   headers: Record<string, string>;
   cookies?: string;
   customParams?: Record<string, any>; // Parameters from previous middleware/handlers
+  ip?: string; // Client IP address
+  ips?: string[]; // All IP addresses from proxy chain
+  ipSource?: string; // Source header used for IP extraction
   getCookie(name: string): string | null;
   getHeader(name: string): string | null;
   hasCookie(name: string): boolean;
@@ -97,6 +112,11 @@ export interface Request {
   getFiles(): Record<string, UploadedFile>;
   hasFile(fieldName: string): boolean;
   getFileCount(): number;
+  // Accept methods for content negotiation
+  accepts(type: string): boolean;
+  acceptsCharsets(charset: string): boolean;
+  acceptsEncodings(encoding: string): boolean;
+  acceptsLanguages(language: string): boolean;
 }
 
 // Use this declaration to assign types to the addon's exports,
@@ -111,7 +131,7 @@ declare module "./load.cjs" {
   function patch(path: string, handler: Function): void;
   function options(path: string, handler: Function): void;
   function use(path: string, handler: Function): void;
-  function listen(port: number, host?: string): void;
+  function listen(port: number, host?: string, certPath?: string, keyPath?: string): void;
   function loadStaticFiles(path: string, options?: StaticOptions): void;
   function clearStaticCache(): void;
   function getStaticStats(): string;
@@ -129,6 +149,12 @@ declare module "./load.cjs" {
 }
 
 export interface Response {
+  // Properties for direct access
+  headers: Record<string, string | string[]>;
+  content: string | Buffer;
+  contentType: string;
+  
+  // Methods
   status(code: number): Response;
   json(data: any): Response;
   send(data: string | Buffer): Response;
@@ -153,6 +179,8 @@ export interface Response {
   redirect(url: string, status?: number): Response;
 }
 
+type Middleware = (req: Request, res: Response, next: () => void) => void;
+
 export interface Router {
   get(path: string, handler: (req: Request, res: Response) => void): void;
   post(path: string, handler: (req: Request, res: Response) => void): void;
@@ -160,9 +188,32 @@ export interface Router {
   delete(path: string, handler: (req: Request, res: Response) => void): void;
   patch(path: string, handler: (req: Request, res: Response) => void): void;
   options(path: string, handler: (req: Request, res: Response) => void): void;
-  use(pathOrMiddleware: string | ((req: Request, res: Response, next: () => void) => void), middleware?: (req: Request, res: Response, next: () => void) => void): void;
+  use(pathOrMiddleware: string | Middleware, middleware?: Middleware): void;
+  
+  // Express middleware support
+  useExpress(middleware: ExpressMiddleware): void;
+  useExpress(path: string, middleware: ExpressMiddleware): void;
+  useExpressError(middleware: ExpressErrorMiddleware): void;
+  
+  // SSL configuration
+  setSslConfig(config: SslConfig): void;
+  
+  // Static files
+  static(path: string, options?: StaticOptions): void;
+  static(paths: string[], options?: StaticOptions): void;
+
+  listFiles(folder: string): FileListResult;
+  saveFile(filename: string, base64Data: string, uploadsDir: string): FileOperationResult;
+  deleteFile(filename: string, uploadsDir: string): FileOperationResult;
+  getFileContent(filename: string, uploadsDir: string): FileContentResult;
+  fileExists(filename: string, uploadsDir: string): boolean;
+  
+  // Template methods
+  initTemplates(pattern: string, options: TemplateOptions): string;
+  renderTemplate(templateName: string, context: object): string;
+  
   getHandlers(): Map<string, { method: string; handler: (req: Request, res: Response) => void }>;
-  getMiddlewares(): Map<string, (req: Request, res: Response, next: () => void) => void>;
+  getMiddlewares(): Map<string, Middleware[]>;
 }
 
 // Interface for static file settings
@@ -200,33 +251,65 @@ export interface UploadOptions {
   overwrite?: boolean; // allow overwriting existing files
 }
 
-// Interface for RNodeApp (will be implemented by class)
-interface RNodeAppInterface extends Router {
+// RNode Server Application Interface
+export interface RNodeAppInterface extends Router {
+  // Server methods
+  listen(port: number, callback?: () => void): void;
+  listen(port: number, host: string, callback?: () => void): void;
+  
+  // Router methods
   useRouter(path: string, router: Router): void;
+
+  use(pathOrMiddleware: string | ((req: Request, res: Response, next: () => void) => void), middleware?: (req: Request, res: Response, next: () => void) => void): void;
+
+  // Static files
   static(path: string, options?: StaticOptions): void;
   static(paths: string[], options?: StaticOptions): void;
   clearStaticCache(): void;
   getStaticStats(): string;
-  listen(port: number, callback?: () => void): void;
-  listen(port: number, host: string, callback?: () => void): void;
-
-  // Methods for working with files
+  
+  // File operations
   saveFile(filename: string, base64Data: string, uploadsDir: string): FileOperationResult;
   deleteFile(filename: string, uploadsDir: string): FileOperationResult;
   listFiles(uploadsDir: string): FileListResult;
   getFileContent(filename: string, uploadsDir: string): FileContentResult;
   fileExists(filename: string, uploadsDir: string): boolean;
-  download(path: string, options: DownloadOptions): void;
-  upload(path: string, options: UploadOptions): void;
-
-  // Methods for working with templates
+  
+  // File upload/download
+  download(path: string, options: DownloadOptions): Router;
+  upload(path: string, options?: UploadOptions): Router;
+  
+  // Template methods
   initTemplates(pattern: string, options: TemplateOptions): string;
   renderTemplate(templateName: string, context: object): string;
+  
+  // Express middleware support
+  useExpress(middleware: ExpressMiddleware): void;
+  useExpress(path: string, middleware: ExpressMiddleware): void;
+  useExpressError(middleware: ExpressErrorMiddleware): void;
+  
+  // SSL configuration
+  setSslConfig(config: SslConfig): void;
+  getSslConfig(): SslConfig | undefined;
+  
+  // Get all registered routes including router routes
+  getAllRoutes(): Map<string, (req: Request, res: Response) => void>;
+}
+
+// SSL Configuration interface
+export interface SslConfig {
+  certPath?: string;
+  keyPath?: string;
+}
+
+// App creation options
+export interface AppOptions {
+  ssl?: SslConfig;
 }
 
 // Global storage for handlers and middleware in JavaScript
 let handlers = new Map<string, (req: Request, res: Response) => void>();
-let middlewares = new Map<string, (req: Request, res: Response, next: () => void) => void>();
+let middlewares = new Map<string, Middleware[]>();
 
 
 
@@ -234,7 +317,7 @@ let middlewares = new Map<string, (req: Request, res: Response, next: () => void
 function getHandler(requestJson: string): string {
   try {
     const request = JSON.parse(requestJson);
-    const { method, path, registeredPath, pathParams, queryParams, body, cookies, headers } = request;
+    const { method, path, registeredPath, pathParams, queryParams, body, cookies, headers, ip, ips, ipSource } = request;
 
     console.log('🔍 getHandler called:');
     console.log('  Method:', method);
@@ -267,6 +350,9 @@ function getHandler(requestJson: string): string {
         headers: headers || {},
         cookies: cookies || '',
         customParams: customParams, // Pass parameters to req object
+        ip: ip || '127.0.0.1',
+        ips: ips || ['127.0.0.1'],
+        ipSource: ipSource || 'default',
         // Helper for getting cookie by name
         getCookie: (name: string) => {
           const cookiesStr = cookies || '';
@@ -349,12 +435,45 @@ function getHandler(requestJson: string): string {
         },
         getFileCount: () => {
           return Object.keys(request.files || {}).length;
+        },
+        // Accept methods for content negotiation
+        accepts: (type: string) => {
+          // Simple content type checking
+          const acceptHeader = request.headers['accept'] || '';
+          if (type === 'json' || type === 'application/json') {
+            return acceptHeader.includes('application/json') || acceptHeader.includes('*/*');
+          }
+          if (type === 'html' || type === 'text/html') {
+            return acceptHeader.includes('text/html') || acceptHeader.includes('*/*');
+          }
+          if (type === 'text' || type === 'text/plain') {
+            return acceptHeader.includes('text/plain') || acceptHeader.includes('*/*');
+          }
+          return acceptHeader.includes('*/*') || acceptHeader.includes(type);
+        },
+        acceptsCharsets: (charset: string) => {
+          const acceptCharsetHeader = request.headers['accept-charset'] || '';
+          return acceptCharsetHeader.includes('*') || acceptCharsetHeader.includes(charset);
+        },
+        acceptsEncodings: (encoding: string) => {
+          const acceptEncodingHeader = request.headers['accept-encoding'] || '';
+          return acceptEncodingHeader.includes('*') || acceptEncodingHeader.includes(encoding);
+        },
+        acceptsLanguages: (language: string) => {
+          const acceptLanguageHeader = request.headers['accept-language'] || '';
+          return acceptLanguageHeader.includes('*') || acceptLanguageHeader.includes(language);
         }
       };
 
       const res: Response = {
+        // Properties for direct access
+        headers: {},
+        content: '',
+        contentType: 'text/plain',
+        
+        // Methods
         status: (code: number) => {
-          responseHeaders['status'] = code.toString();
+          res.headers['status'] = code.toString();
           return res;
         },
         json: (data: any) => {
@@ -524,277 +643,303 @@ function getHandler(requestJson: string): string {
 function executeMiddleware(middlewareJson: string): string {
   try {
     const request = JSON.parse(middlewareJson);
-    const { method, path, cookies, headers } = request;
+    console.log('🔍 executeMiddleware called with path:', request.path);
+    console.log('🔍 Available middleware patterns:', Array.from(middlewares.keys()));
+    
+    // Create req and res objects at function level
+    const req: Request = {
+      ...request,
+      customParams: { ...request.customParams },
+      headers: { ...request.headers },
+      cookies: request.cookies || '',
+      // Allow middleware to modify any request properties
+      setParam: (name: string, value: any) => {
+        if (!req.customParams) req.customParams = {};
+        req.customParams[name] = value;
+        console.log(`🔧 Middleware setParam: ${name} = ${value}`);
+      },
+      getParam: (name: string) => {
+        if (!req.customParams) return undefined;
+        const value = req.customParams[name];
+        console.log(`🔧 Middleware getParam: ${name} = ${value}`);
+        return value;
+      },
+      hasParam: (name: string) => {
+        if (!req.customParams) return false;
+        const has = name in req.customParams;
+        console.log(`🔧 Middleware hasParam: ${name} = ${has}`);
+        return has;
+      },
+      getParams: () => {
+        if (!req.customParams) return {};
+        console.log(`🔧 Middleware getParams:`, req.customParams);
+        return { ...req.customParams };
+      },
+      // Allow middleware to modify headers
+      setHeader: (name: string, value: string) => {
+        if (!req.headers) req.headers = {};
+        req.headers[name] = value;
+        console.log(`🔧 Middleware setHeader: ${name} = ${value}`);
+      },
+      // Allow middleware to modify cookies
+      setCookie: (name: string, value: string) => {
+        if (!req.cookies) req.cookies = '';
+        const existingCookies = req.cookies;
+        const cookieRegex = new RegExp(`(^|;)\\s*${name}\\s*=[^;]*`);
+        if (cookieRegex.test(existingCookies)) {
+          req.cookies = existingCookies.replace(cookieRegex, `$1${name}=${value}`);
+        } else {
+          req.cookies = existingCookies ? `${existingCookies}; ${name}=${value}` : `${name}=${value}`;
+        }
+        console.log(`🔧 Middleware setCookie: ${name} = ${value}`);
+      },
+      getCookie: (name: string) => {
+        const cookiesStr = req.cookies || '';
+        if (!cookiesStr) return null;
+        const cookieMatch = cookiesStr.match(new RegExp(`(^|;)\\s*${name}\\s*=\\s*([^;]+)`));
+        return cookieMatch ? decodeURIComponent(cookieMatch[2]) : null;
+      },
+      getHeader: (name: string): string | null => {
+        const headerName = name.toLowerCase();
+        const headersObj = req.headers || {};
+        for (const key of Object.keys(headersObj)) {
+          if (key.toLowerCase() === headerName) {
+            return headersObj[key];
+          }
+        }
+        return null;
+      }
+    };
 
+    const res: Response = {
+      headers: {},
+      content: '',
+      contentType: 'text/plain',
+      status: (code: number) => {
+        res.headers['status'] = code.toString();
+        return res;
+      },
+      json: (data: any) => {
+        res.content = JSON.stringify(data);
+        res.contentType = 'application/json';
+        return res;
+      },
+      send: (data: any) => {
+        if (typeof data === 'string') {
+          res.content = data;
+          res.contentType = 'text/plain';
+        } else {
+          res.content = JSON.stringify(data);
+          res.contentType = 'application/json';
+        }
+        return res;
+      },
+      end: (data?: any) => {
+        if (data) {
+          res.send(data);
+        }
+        return res;
+      },
+      setHeader: (name: string, value: string) => {
+        res.headers[name] = value;
+        return res;
+      },
+      getHeader: (name: string) => {
+        return res.headers[name] || null;
+      },
+      getHeaders: () => {
+        return res.headers;
+      },
+      getCookie: (name: string) => {
+        const cookiesStr = request.cookies || '';
+        if (!cookiesStr) return null;
+        const cookieMatch = cookiesStr.match(new RegExp(`(^|;)\\s*${name}\\s*=\\s*([^;]+)`));
+        return cookieMatch ? decodeURIComponent(cookieMatch[2]) : null;
+      },
+      getCookies: () => {
+        const cookiesStr = request.cookies || '';
+        if (!cookiesStr) return {};
+        const cookies: Record<string, string> = {};
+        cookiesStr.split(';').forEach((cookie: string) => {
+          const [name, value] = cookie.trim().split('=');
+          if (name && value) {
+            cookies[name] = decodeURIComponent(value);
+          }
+        });
+        return cookies;
+      },
+      setCookie: (name: string, value: string, options: any = {}) => {
+        let cookieString = `${name}=${value}`;
+        if (options.httpOnly) cookieString += '; HttpOnly';
+        if (options.secure) cookieString += '; Secure';
+        if (options.sameSite) cookieString += `; SameSite=${options.sameSite}`;
+        if (options.maxAge) cookieString += `; Max-Age=${options.maxAge}`;
+        if (options.path) cookieString += `; Path=${options.path}`;
+
+        res.headers['Set-Cookie'] = res.headers['Set-Cookie'] || [];
+        if (Array.isArray(res.headers['Set-Cookie'])) {
+          res.headers['Set-Cookie'].push(cookieString);
+        } else {
+          res.headers['Set-Cookie'] = [res.headers['Set-Cookie'], cookieString];
+        }
+        return res;
+      },
+      sendFile: (file: UploadedFile) => {
+        res.content = JSON.stringify(file);
+        res.contentType = 'application/json';
+        return res;
+      },
+      sendBuffer: (buffer: Buffer, contentType: string = 'application/octet-stream', size?: number) => {
+        res.content = buffer;
+        res.headers['Content-Type'] = contentType;
+        res.headers['Content-Length'] = (size || buffer.length).toString();
+        return res;
+      },
+      sendFiles: (files: Record<string, UploadedFile>) => {
+        res.content = JSON.stringify(files);
+        res.contentType = 'application/json';
+        return res;
+      },
+      sendMultipart: (data: MultipartData) => {
+        res.content = JSON.stringify(data);
+        res.contentType = 'application/json';
+        return res;
+      },
+      download: (filepath: string, filename?: string) => {
+        res.headers['Content-Disposition'] = `attachment; filename="${filename || filepath}"`;
+        res.content = filepath;
+        res.contentType = 'application/octet-stream';
+        return res;
+      },
+      attachment: (filename?: string) => {
+        if (filename) {
+          res.headers['Content-Disposition'] = `attachment; filename="${filename}"`;
+        } else {
+          res.headers['Content-Disposition'] = 'attachment';
+        }
+        return res;
+      },
+      html: (content: string) => {
+        res.content = content;
+        res.contentType = 'text/html';
+        return res;
+      },
+      text: (content: string) => {
+        res.content = content;
+        res.contentType = 'text/plain';
+        return res;
+      },
+      xml: (content: string) => {
+        res.content = content;
+        res.contentType = 'application/xml';
+        return res;
+      },
+      redirect: (url: string, status = 302) => {
+        res.headers['Location'] = url;
+        res.content = `Redirecting to ${url}`;
+        res.contentType = 'text/plain';
+        res.status(status);
+        return res;
+      }
+    };
+    
     // Search for suitable middleware
-    for (const [middlewarePath, middleware] of middlewares) {
-      if (path.startsWith(middlewarePath) || middlewarePath === '*') {
-        let shouldContinue = true;
-        let middlewareResponse: string | Buffer = '';
-        let middlewareContentType = 'text/plain';
-        let middlewareHeaders: Record<string, string | string[]> = {};
+    for (const [middlewarePath, middlewareArray] of middlewares) {
+      console.log(`🔍 Checking middleware pattern: ${middlewarePath} against path: ${request.path}`);
+      
+      let matches = false;
+      
+      if (middlewarePath === '*') {
+        // Global middleware matches everything
+        matches = true;
+        console.log('✅ Global middleware (*) matches');
+      } else {
+        // Use micromatch for pattern matching (supports glob, regex, etc.)
+        matches = micromatch.isMatch(request.path, middlewarePath);
+        console.log(`🔍 Micromatch check: ${request.path} matches ${middlewarePath} -> ${matches}`);
+      }
+      
+      // Execute middleware for this pattern
+      if (matches) {
+        console.log(`✅ Executing ${middlewareArray.length} middleware for pattern: ${middlewarePath}`);
+        
+        // Execute all middleware for this path
+        console.log(`🔧 Starting with params:`, req.customParams);
+        
+        for (let i = 0; i < middlewareArray.length; i++) {
+          const middleware = middlewareArray[i];
+          console.log(`🔄 Executing middleware ${i + 1} of ${middlewareArray.length}`);
+          
+          let shouldContinue = true;
 
-        // Create mock req and res objects for middleware
-        // Get parameters from previous calls
-        const middlewareCustomParams = request.customParams || {};
-
-        const req: Request = {
-          method,
-          url: path,
-          params: {},
-          query: {},
-          body: {},
-          headers: headers || {},
-          cookies: cookies || '',
-          customParams: middlewareCustomParams,
-          getCookie: (name: string) => {
-            const cookiesStr = cookies || '';
-            if (!cookiesStr) return null;
-            const cookieMatch = cookiesStr.match(new RegExp(`(^|;)\\s*${name}\\s*=\\s*([^;]+)`));
-            return cookieMatch ? decodeURIComponent(cookieMatch[2]) : null;
-          },
-          getHeader: (name: string): string | null => {
-            const headerName = name.toLowerCase();
-            const headersObj = headers || {};
-            for (const key of Object.keys(headersObj)) {
-              if (key.toLowerCase() === headerName) {
-                return headersObj[key];
-              }
-            }
-            return null;
-          },
-          hasCookie: (name: string) => {
-            const cookiesStr = cookies || '';
-            if (!cookiesStr) return false;
-            return new RegExp(`(^|;)\\s*${name}\\s*=`).test(cookiesStr);
-          },
-          hasHeader: (name: string) => {
-            const headerName = name.toLowerCase();
-            for (const key of Object.keys(headers || {})) {
-              if (key.toLowerCase() === headerName) {
-                return true;
-              }
-            }
-            return false;
-          },
-          getCookies: () => {
-            const cookiesStr = cookies || '';
-            const cookiesObj: Record<string, string> = {};
-            if (cookiesStr) {
-              cookiesStr.split(';').forEach((cookie: string) => {
-                const [name, value] = cookie.trim().split('=');
-                if (name && value) {
-                  cookiesObj[name] = decodeURIComponent(value);
-                }
-              });
-            }
-            return cookiesObj;
-          },
-          getHeaders: () => {
-            return headers || {};
-          },
-          // Methods for working with custom parameters
-          setParam: (name: string, value: any) => {
-            middlewareCustomParams[name] = value;
-          },
-          getParam: (name: string) => {
-            return middlewareCustomParams[name];
-          },
-          hasParam: (name: string) => {
-            return name in middlewareCustomParams;
-          },
-          getParams: () => {
-            return { ...middlewareCustomParams };
-          },
-          // Methods for working with files
-          getFile: (fieldName: string) => {
-            const files = request.files || {};
-            return files[fieldName] || null;
-          },
-          getFiles: () => {
-            return request.files || {};
-          },
-          hasFile: (fieldName: string) => {
-            return fieldName in (request.files || {});
-          },
-          getFileCount: () => {
-            return Object.keys(request.files || {}).length;
+          try {
+            // Call middleware function with req and res objects
+            middleware(req, res, () => {
+              // Next function - continue to next middleware
+              shouldContinue = true;
+            });
+            
+            // Update accumulated params for next middleware
+            console.log(`🔧 Updated params:`, req.customParams);
+          } catch (error) {
+            console.error('❌ Middleware error:', error);
+            return JSON.stringify({ 
+              shouldContinue: false,
+              req: {...req},
+              res: {...res}
+            });
           }
-        };
-
-        const res: Response = {
-          status: (code: number) => {
-            middlewareHeaders['status'] = code.toString();
-            return res;
-          },
-          json: (data: any) => {
-            middlewareResponse = JSON.stringify(data);
-            middlewareContentType = 'application/json';
-            shouldContinue = false; // Middleware interrupts execution
-            return res;
-          },
-          send: (data: string) => {
-            middlewareResponse = data;
-            shouldContinue = false; // Middleware interrupts execution
-            return res;
-          },
-          end: (data?: string | Buffer) => {
-            if (data) {
-              middlewareResponse = data;
-            }
-            shouldContinue = false;
-            return res;
-          },
-          setHeader: (name: string, value: string) => {
-            middlewareHeaders[name] = value;
-            return res;
-          },
-          getHeader: (name: string) => {
-            return middlewareHeaders[name] || null;
-          },
-          getCookie: (name: string) => {
-            const cookiesStr = cookies || '';
-            if (!cookiesStr) return null;
-            const cookieMatch = cookiesStr.match(new RegExp(`(^|;)\\s*${name}\\s*=\\s*([^;]+)`));
-            return cookieMatch ? decodeURIComponent(cookieMatch[2]) : null;
-          },
-          getCookies: () => {
-            const cookies: Record<string, string> = {};
-            if (middlewareHeaders['Set-Cookie']) {
-              const setCookies = Array.isArray(middlewareHeaders['Set-Cookie'])
-                  ? middlewareHeaders['Set-Cookie']
-                  : [middlewareHeaders['Set-Cookie']];
-
-              setCookies.forEach((cookieStr: string) => {
-                const [nameValue] = cookieStr.split(';');
-                if (nameValue) {
-                  const [name, value] = nameValue.split('=');
-                  if (name && value) {
-                    cookies[name] = value;
-                  }
-                }
-              });
-            }
-            return cookies;
-          },
-          getHeaders: () => {
-            return middlewareHeaders;
-          },
-          setCookie: (name: string, value: string, options: any = {}) => {
-            let cookieString = `${name}=${value}`;
-            if (options.httpOnly) cookieString += '; HttpOnly';
-            if (options.secure) cookieString += '; Secure';
-            if (options.sameSite) cookieString += `; SameSite=${options.sameSite}`;
-            if (options.maxAge) cookieString += `; Max-Age=${options.maxAge}`;
-            if (options.path) cookieString += `; Path=${options.path}`;
-
-            middlewareHeaders['Set-Cookie'] = middlewareHeaders['Set-Cookie'] || [];
-            if (Array.isArray(middlewareHeaders['Set-Cookie'])) {
-              middlewareHeaders['Set-Cookie'].push(cookieString);
-            } else {
-              middlewareHeaders['Set-Cookie'] = [middlewareHeaders['Set-Cookie'], cookieString];
-            }
-            return res;
-          },
-          // Methods for working with files and forms
-          sendFile: (file: UploadedFile) => {
-            middlewareResponse = JSON.stringify(file);
-            middlewareContentType = 'application/json';
-            shouldContinue = false;
-            return res;
-          },
-          sendBuffer: (buffer: Buffer, contentType: string = 'application/octet-stream', size?: number) => {
-            middlewareResponse = buffer;
-            middlewareHeaders['Content-Type'] = contentType;
-            middlewareHeaders['Content-Length'] = (size || buffer.length).toString();
-            shouldContinue = false;
-            return res;
-          },
-          sendFiles: (files: Record<string, UploadedFile>) => {
-            middlewareResponse = JSON.stringify(files);
-            middlewareContentType = 'application/json';
-            shouldContinue = false;
-            return res;
-          },
-          sendMultipart: (data: MultipartData) => {
-            middlewareResponse = JSON.stringify(data);
-            middlewareContentType = 'application/json';
-            shouldContinue = false;
-            return res;
-          },
-          download: (filepath: string, filename?: string) => {
-            middlewareHeaders['Content-Disposition'] = `attachment; filename="${filename || filepath}"`;
-            middlewareResponse = filepath;
-            middlewareContentType = 'application/octet-stream';
-            shouldContinue = false;
-            return res;
-          },
-          attachment: (filename?: string) => {
-            if (filename) {
-              middlewareHeaders['Content-Disposition'] = `attachment; filename="${filename}"`;
-            } else {
-              middlewareHeaders['Content-Disposition'] = 'attachment';
-            }
-            return res;
-          },
-          // Methods for various content types
-          html: (content: string) => {
-            middlewareResponse = content;
-            middlewareContentType = 'text/html';
-            shouldContinue = false;
-            return res;
-          },
-          text: (content: string) => {
-            middlewareResponse = content;
-            middlewareContentType = 'text/plain';
-            shouldContinue = false;
-            return res;
-          },
-          xml: (content: string) => {
-            middlewareResponse = content;
-            middlewareContentType = 'application/xml';
-            shouldContinue = false;
-            return res;
-          },
-          redirect: (url: string, status = 302) => {
-            middlewareHeaders['Location'] = url;
-            middlewareResponse = `Redirecting to ${url}`;
-            middlewareContentType = 'text/plain';
-            shouldContinue = false;
-            res.status(status);
-            return res;
-          }
-        };
-
-        const next = () => {
-          shouldContinue = true;
-        };
-
-        // Execute middleware
-        try {
-          middleware(req, res, next);
-
-          return JSON.stringify({
-            shouldContinue,
-            content: middlewareResponse,
-            contentType: middlewareContentType,
-            headers: middlewareHeaders,
-            customParams: middlewareCustomParams
-          });
-        } catch (error) {
-          return JSON.stringify({
-            shouldContinue: false,
-            content: 'Middleware Error',
-            contentType: 'text/plain'
-          });
         }
       }
     }
 
-    // If middleware not found, continue execution
-    return JSON.stringify({ shouldContinue: true });
+    console.log('✅ All middleware executed, continuing');
+    // Always return accumulated parameters, even when continuing
+    // Create req and res objects with accumulated data
+    const finalReq = {
+      ...request,
+      customParams: req.customParams,
+      headers: req.headers,
+      cookies: req.cookies
+    };
+    
+    const finalRes = {
+      headers: {},
+      content: '',
+      contentType: 'text/plain'
+    };
+    
+    return JSON.stringify({ 
+      shouldContinue: true,
+      req: finalReq,
+      res: finalRes
+    });
   } catch (error) {
-    return JSON.stringify({ shouldContinue: true });
+    console.error('❌ executeMiddleware error:', error);
+    
+    // Create default req and res objects for error case
+    const errorReq = {
+      customParams: {},
+      headers: {},
+      cookies: '',
+      path: '',
+      method: '',
+      body: '',
+      queryParams: {},
+      pathParams: {}
+    };
+    
+    const errorRes = {
+      headers: {},
+      content: 'Middleware Error',
+      contentType: 'text/plain'
+    };
+    
+    return JSON.stringify({ 
+      shouldContinue: false,
+      req: errorReq,
+      res: errorRes
+    });
   }
 }
 
@@ -805,50 +950,334 @@ function executeMiddleware(middlewareJson: string): string {
 // Router class for creating route groups
 class RouterImpl implements Router {
   public handlers = new Map<string, { method: string; handler: (req: Request, res: Response) => void }>();
-  public middlewares = new Map<string, (req: Request, res: Response, next: () => void) => void>();
+  public middlewares = new Map<string, Middleware[]>();
 
-  get(path: string, handler: (req: Request, res: Response) => void): void {
+  get(path: string, handler: (req: Request, res: Response) => void): Router {
     this.handlers.set(`GET:${path}`, { method: 'GET', handler });
+    return this;
   }
 
-  post(path: string, handler: (req: Request, res: Response) => void): void {
+  post(path: string, handler: (req: Request, res: Response) => void): Router {
     this.handlers.set(`POST:${path}`, { method: 'POST', handler });
+    return this;
   }
 
-  put(path: string, handler: (req: Request, res: Response) => void): void {
+  put(path: string, handler: (req: Request, res: Response) => void): Router {
     this.handlers.set(`PUT:${path}`, { method: 'PUT', handler });
+    return this;
   }
 
-  delete(path: string, handler: (req: Request, res: Response) => void): void {
+  delete(path: string, handler: (req: Request, res: Response) => void): Router {
     this.handlers.set(`DELETE:${path}`, { method: 'DELETE', handler });
+    return this;
   }
 
-  patch(path: string, handler: (req: Request, res: Response) => void): void {
+  patch(path: string, handler: (req: Request, res: Response) => void): Router {
     this.handlers.set(`PATCH:${path}`, { method: 'PATCH', handler });
+    return this;
   }
 
-  options(path: string, handler: (req: Request, res: Response) => void): void {
+  options(path: string, handler: (req: Request, res: Response) => void): Router {
     this.handlers.set(`OPTIONS:${path}`, { method: 'OPTIONS', handler });
+    return this;
   }
 
   use(pathOrMiddleware: string | ((req: Request, res: Response, next: () => void) => void), middleware?: (req: Request, res: Response, next: () => void) => void): void {
     if (typeof pathOrMiddleware === 'function') {
       // Global middleware: router.use(middleware)
-      this.middlewares.set('*', pathOrMiddleware);
+      const existing = this.middlewares.get('*') || [];
+      this.middlewares.set('*', [...existing, pathOrMiddleware]);
     } else if (typeof pathOrMiddleware === 'string' && middleware) {
       // Middleware with path: router.use(path, middleware)
-      this.middlewares.set(pathOrMiddleware, middleware);
+      const existing = this.middlewares.get(pathOrMiddleware) || [];
+      this.middlewares.set(pathOrMiddleware, [...existing, middleware]);
     } else {
       throw new Error('Invalid middleware registration: use(path, middleware) or use(middleware)');
     }
+  }
+
+  // Express middleware support
+  useExpress(middleware: ExpressMiddleware): void;
+  useExpress(path: string, middleware: ExpressMiddleware): void;
+  useExpress(middlewareOrPath: ExpressMiddleware | string, middleware?: ExpressMiddleware): void {
+    if (typeof middlewareOrPath === 'function') {
+      // useExpress(middleware)
+      const expressMiddleware = middlewareOrPath;
+      this.use((req: Request, res: Response, next: () => void) => {
+        // Convert RNode Request to Express Request
+        const expressReq = this.convertToExpressRequest(req);
+        
+        // Convert RNode Response to Express Response
+        const expressRes = this.convertToExpressResponse(res);
+        
+        // Create Express NextFunction
+        const expressNext: NextFunction = () => {
+          next();
+        };
+        
+        // Execute Express middleware
+        expressMiddleware(expressReq, expressRes, expressNext);
+      });
+    } else if (typeof middlewareOrPath === 'string' && middleware) {
+      // useExpress(path, middleware)
+      const path = middlewareOrPath;
+      const expressMiddleware = middleware;
+      this.use(path, (req: Request, res: Response, next: () => void) => {
+        // Convert RNode Request to Express Request
+        const expressReq = this.convertToExpressRequest(req);
+        
+        // Convert RNode Response to Express Response
+        const expressRes = this.convertToExpressResponse(res);
+        
+        // Create Express NextFunction
+        const expressNext: NextFunction = () => {
+          next();
+        };
+        
+        // Execute Express middleware
+        expressMiddleware(expressReq, expressRes, expressNext);
+      });
+    } else {
+      throw new Error('Invalid useExpress call: useExpress(middleware) or useExpress(path, middleware)');
+    }
+  }
+
+  private sslConfig?: SslConfig;
+
+  setSslConfig(config: SslConfig): void {
+    this.sslConfig = config;
+  }
+
+  getSslConfig(): SslConfig | undefined {
+    return this.sslConfig;
+  }
+
+  useExpressError(middleware: ExpressErrorMiddleware): void {
+    // Error middleware - will be called when errors occur
+    this.use((req: Request, res: Response, next: () => void) => {
+      try {
+        // Convert RNode Request to Express Request
+        const expressReq = this.convertToExpressRequest(req);
+        
+        // Convert RNode Response to Express Response
+        const expressRes = this.convertToExpressResponse(res);
+        
+        // Create Express NextFunction
+        const expressNext: NextFunction = () => {
+          next();
+        };
+        
+        // Execute Express error middleware (no error for now)
+        middleware(null, expressReq, expressRes, expressNext);
+      } catch (error) {
+        // If error middleware fails, continue
+        next();
+      }
+    });
+  }
+
+  // Helper methods for converting between RNode and Express types
+  private convertToExpressRequest(req: Request): ExpressRequest {
+    return {
+      ...req,
+      // Add Express-specific properties
+      app: {} as any,
+      baseUrl: '',
+      originalUrl: req.url,
+      path: req.url,
+      secure: false,
+      subdomains: [],
+      xhr: false,
+      accepts: (type: string) => req.accepts(type),
+      acceptsCharsets: (charset: string) => req.acceptsCharsets(charset),
+      acceptsEncodings: (encoding: string) => req.acceptsEncodings(encoding),
+      acceptsLanguages: (language: string) => req.acceptsLanguages(language),
+      get: (name: string) => req.getHeader(name),
+      header: (name: string) => req.getHeader(name),
+      is: () => false,
+      param: (name: string) => req.params[name] || req.query[name] || '',
+      range: () => undefined,
+      protocol: 'http',
+      route: {} as any,
+      signedCookies: {},
+      stale: false,
+      fresh: false,
+      hostname: 'localhost',
+      host: 'localhost:3000'
+    } as unknown as ExpressRequest;
+  }
+
+  private convertToExpressResponse(res: Response): ExpressResponse {
+    return {
+      ...res,
+      // Add Express-specific properties
+      app: {} as any,
+      locals: {},
+      charset: 'utf-8',
+      headersSent: false,
+      statusMessage: '',
+      req: {} as any,
+      // Only essential Express methods that make sense
+      get: (field: string) => res.getHeader(field),
+      set: (field: string, value: string) => {
+        res.setHeader(field, value);
+        return res;
+      },
+      header: (field: string, value: string) => {
+        res.setHeader(field, value);
+        return res;
+      }
+    } as unknown as ExpressResponse;
   }
 
   getHandlers(): Map<string, { method: string; handler: (req: Request, res: Response) => void }> {
     return this.handlers; // Return original Map with method:path keys
   }
 
-  getMiddlewares(): Map<string, (req: Request, res: Response, next: () => void) => void> {
+  getMiddlewares(): Map<string, Middleware[]> {
     return this.middlewares;
+  }
+
+  // File listing method
+  listFiles(folder: string): FileListResult {
+    try {
+      const result = addon.listFiles(folder);
+      const parsedResult = JSON.parse(result);
+      console.log(`📁 Files listed from folder: ${folder}`, parsedResult);
+      return parsedResult;
+    } catch (error) {
+      console.error('❌ Error listing files:', error);
+      return {
+        success: false,
+        error: `Failed to list files from ${folder}: ${error}`,
+        files: [],
+        total: 0
+      };
+    }
+  }
+
+  // File saving method
+  saveFile(filename: string, base64Data: string, uploadsDir: string): FileOperationResult {
+    try {
+      const result = addon.saveFile(filename, base64Data, uploadsDir);
+      const parsedResult = JSON.parse(result);
+      console.log(`💾 File saved: ${filename} in ${uploadsDir}`, parsedResult);
+      return parsedResult;
+    } catch (error) {
+      console.error('❌ Error saving file:', error);
+      return {
+        success: false,
+        error: `Failed to save file ${filename}: ${error}`,
+        path: `${uploadsDir}/${filename}`
+      };
+    }
+  }
+
+  // File deletion method
+  deleteFile(filename: string, uploadsDir: string): FileOperationResult {
+    try {
+      const result = addon.deleteFile(filename, uploadsDir);
+      const parsedResult = JSON.parse(result);
+      console.log(`🗑️ File deleted: ${filename} from ${uploadsDir}`, parsedResult);
+      return parsedResult;
+    } catch (error) {
+      console.error('❌ Error deleting file:', error);
+      return {
+        success: false,
+        error: `Failed to delete file ${filename}: ${error}`,
+        path: `${uploadsDir}/${filename}`
+      };
+    }
+  }
+
+  // File content retrieval method
+  getFileContent(filename: string, uploadsDir: string): FileContentResult {
+    try {
+      const result = addon.getFileContent(filename, uploadsDir);
+      const parsedResult = JSON.parse(result);
+      console.log(`📄 File content retrieved: ${filename} from ${uploadsDir}`, {
+        ...parsedResult,
+        content: parsedResult.content ? `${parsedResult.content.substring(0, 50)}...` : 'No content'
+      });
+      return parsedResult;
+    } catch (error) {
+      console.error('❌ Error getting file content:', error);
+      return {
+        success: false,
+        error: `Failed to get content of file ${filename}: ${error}`,
+        content: '',
+        size: 0,
+        filename: filename,
+        mime_type: 'application/octet-stream'
+      };
+    }
+  }
+
+  // File existence check method
+  fileExists(filename: string, uploadsDir: string): boolean {
+    try {
+      const exists = addon.fileExists(filename, uploadsDir);
+      console.log(`🔍 File exists check: ${filename} in ${uploadsDir} -> ${exists}`);
+      return exists;
+    } catch (error) {
+      console.error('❌ Error checking file existence:', error);
+      return false;
+    }
+  }
+
+  // Static files method
+  static(pathOrPaths: string | string[], options?: StaticOptions): void {
+    // Default settings
+    const defaultOptions: StaticOptions = {
+      cache: options?.cache ?? true,
+      maxAge: options?.maxAge ?? 3600, // 1 hour
+      maxFileSize: options?.maxFileSize ?? 10 * 1024 * 1024, // 10MB
+      etag: options?.etag ?? true,
+      lastModified: options?.lastModified ?? true,
+      gzip: options?.gzip ?? true,
+      brotli: options?.brotli ?? false,
+      allowHiddenFiles: options?.allowHiddenFiles ?? false,
+      allowSystemFiles: options?.allowSystemFiles ?? false,
+      allowedExtensions: options?.allowedExtensions ?? ['html', 'css', 'js', 'json', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'ico', 'woff', 'woff2', 'ttf', 'eot'],
+      blockedPaths: options?.blockedPaths ?? ['.git', '.env', '.htaccess', 'thumbs.db', '.ds_store', 'desktop.ini']
+    };
+
+    if (Array.isArray(pathOrPaths)) {
+      // Multiple paths
+      for (const path of pathOrPaths) {
+        addon.loadStaticFiles(path, defaultOptions);
+        console.log(`Registered static files from: ${path} with secure options:`, defaultOptions);
+      }
+    } else {
+      // Single path
+      addon.loadStaticFiles(pathOrPaths, defaultOptions);
+      console.log(`Registered static files from: ${pathOrPaths} with secure options:`, defaultOptions);
+    }
+  }
+
+  // Template initialization method
+  initTemplates(pattern: string, options: TemplateOptions): string {
+    try {
+      // Call Rust addon to initialize templates
+      const result = addon.initTemplates(pattern, options);
+      console.log(`✅ Templates initialized with pattern: ${pattern}`);
+      return result;
+    } catch (error) {
+      console.error('❌ Error initializing templates:', error);
+      return `Template initialization error: ${error}`;
+    }
+  }
+
+  // Template rendering method
+  renderTemplate(templateName: string, context: object): string {
+    try {
+      // Call Rust addon to render template
+      const result = addon.renderTemplate(templateName, JSON.stringify(context));
+      return result;
+    } catch (error) {
+      console.error('❌ Error rendering template:', error);
+      return `<!-- Template rendering error: ${templateName} -->`;
+    }
   }
 }
 
@@ -900,6 +1329,17 @@ class RNodeApp extends RouterImpl {
     return addon.getStaticStats();
   }
 
+  // Set SSL configuration
+  setSslConfig(config: SslConfig): void {
+    super.setSslConfig(config);
+  }
+
+  // Get all registered routes including router routes
+  getAllRoutes(): Map<string, (req: Request, res: Response) => void> {
+    // Return global handlers which include all routes from useRouter
+    return handlers;
+  }
+
   useRouter(path: string, router: Router): void {
     console.log(`🔧 Registering router for path: ${path}`);
 
@@ -910,12 +1350,33 @@ class RNodeApp extends RouterImpl {
     console.log(`📝 Router contains ${routerHandlers.size} handlers and ${routerMiddlewares.size} middleware`);
 
     // Register router middleware
-    for (const [routePath, middleware] of routerMiddlewares) {
-      const fullPath = `${path}${routePath}`;
+    for (const [routePath, middlewareArray] of routerMiddlewares) {
+      let fullPath: string;
+      
+      if (routePath === '*') {
+        // Глобальный middleware для роутера - регистрируем для всех путей роутера
+        fullPath = `${path}/*`;
+        console.log(`🔐 Registering global router middleware for: ${fullPath}`);
+      } else {
+        // Обычный middleware с путем
+        fullPath = `${path}${routePath}`;
+        console.log(`🔐 Registering router middleware for: ${fullPath}`);
+      }
+      
+      console.log(`🔍 Full path: '${fullPath}', routePath: '${routePath}', path: '${path}'`);
+      
       // Add to global middlewares
-      middlewares.set(fullPath, middleware);
-      addon.use(fullPath, middleware);
-      console.log(`Registered router middleware: ${fullPath}`);
+      const existing = middlewares.get(fullPath) || [];
+      middlewares.set(fullPath, [...existing, ...middlewareArray]);
+      
+      // Register each middleware individually in Rust addon
+      for (const middleware of middlewareArray) {
+        console.log(`🔧 Calling addon.use('${fullPath}', middleware)`);
+        addon.use(fullPath, middleware);
+      }
+      
+      console.log(`✅ Registered router middleware: ${fullPath} (${middlewareArray.length} middleware functions)`);
+      console.log(`📊 Global middlewares after registration:`, Array.from(middlewares.keys()));
     }
 
     // Register router handlers
@@ -930,7 +1391,8 @@ class RNodeApp extends RouterImpl {
       handlers.set(`${method}:${fullPath}`, handler);
 
       // Register in Rust addon through existing methods
-      (addon as any)[method.toLowerCase()](fullPath, handler);
+      const addonMethod = method.toLowerCase() === 'delete' ? 'del' : method.toLowerCase();
+      (addon as any)[addonMethod](fullPath, handler);
 
       console.log(`✅ Router handler registered: ${method} ${fullPath}`);
     }
@@ -941,137 +1403,173 @@ class RNodeApp extends RouterImpl {
   }
 
   listen(port: number, hostOrCallback?: string | (() => void), callback?: () => void): void {
-    // Copy handlers and register in Rust addon
-    for (const [key, value] of this.handlers) {
-      const [method, path] = key.split(':', 2);
-      handlers.set(key, value.handler);
+      // Copy handlers and register in Rust addon
+      for (const [key, value] of this.handlers) {
+        const [method, path] = key.split(':', 2);
+        handlers.set(key, value.handler);
 
-      // Register in Rust addon through existing methods
-      (addon as any)[method.toLowerCase()](path, value.handler);
-    }
+        // Register in Rust addon through existing methods
+        const addonMethod = method.toLowerCase() === 'delete' ? 'del' : method.toLowerCase();
+        (addon as any)[addonMethod](path, value.handler);
+      }
 
-    // Copy middleware
-    for (const [key, value] of this.middlewares) {
-      middlewares.set(key, value);
-    }
+      // Copy middleware
+      for (const [key, value] of this.middlewares) {
+        console.log(`🔧 Copying middleware: ${key} -> ${value.length} functions`);
+        const existing = middlewares.get(key) || [];
+        middlewares.set(key, [...existing, ...value]);
+        
+        // Register each middleware individually in Rust addon
+        for (const middleware of value) {
+          console.log(`🔧 Calling addon.use('${key}', middleware) in listen`);
+          addon.use(key, middleware);
+        }
+      }
 
-    console.log('🔧 Global handlers updated:', Array.from(handlers.keys()));
-    console.log('🔧 Global middlewares updated:', Array.from(middlewares.keys()));
+      console.log('🔧 Global handlers updated:', Array.from(handlers.keys()));
+      console.log('🔧 Global middlewares updated:', Array.from(middlewares.keys()));
+      console.log('🔧 App middlewares:', Array.from(this.middlewares.keys()));
 
-    if (typeof hostOrCallback === 'function') {
-      // listen(port, callback)
-      addon.listen(port);
-      hostOrCallback();
-    } else if (typeof hostOrCallback === 'string') {
-      // listen(port, host, callback)
-      let host = hostOrCallback;
+      // Determine host and callback
+      let host: string = "127.0.0.1";
+      let actualCallback: (() => void) | undefined;
 
-      // Convert special values
+      if (typeof hostOrCallback === 'string') {
+        host = hostOrCallback;
+        actualCallback = callback;
+      } else if (typeof hostOrCallback === 'function') {
+        actualCallback = hostOrCallback;
+      }
+
+      // Normalize host values
       if (host === 'localhost') {
         host = '127.0.0.1';
       } else if (host === '0') {
         host = '0.0.0.0';
       }
 
-      addon.listen(port, host);
-      if (callback) callback();
-    } else {
-      // listen(port)
-      addon.listen(port);
+      // Check if SSL is configured
+      const sslConfig = this.getSslConfig();
+      if (sslConfig && sslConfig.certPath && sslConfig.keyPath) {
+        console.log(`🔒 Starting HTTPS server on ${host || '127.0.0.1'}:${port}`);
+        console.log(`   Certificate: ${sslConfig.certPath}`);
+        console.log(`   Private Key: ${sslConfig.keyPath}`);
+        // Start HTTPS server with SSL certificates
+        addon.listen(port, host, sslConfig.certPath, sslConfig.keyPath);
+      } else {
+        console.log(`🌐 Starting HTTP server on ${host || '127.0.0.1'}:${port}`);
+        // Start HTTP server
+        addon.listen(port, host);
+      }
+      
+      if (actualCallback) {
+        actualCallback();
+      }
     }
 
-    // Keep process alive
-    setInterval(() => {
-      // Empty interval to prevent process termination
-    }, 1000);
-  }
+    // HTTP methods get, post, put, delete, patch and use are automatically inherited from RouterImpl
+    // and automatically registered in Rust addon
 
-  // HTTP methods get, post, put, delete, patch and use are automatically inherited from RouterImpl
-  // and automatically registered in Rust addon
+    // Methods for working with files
+    saveFile(filename: string, base64Data: string, uploadsDir: string): FileOperationResult {
+      const result = addon.saveFile(filename, base64Data, uploadsDir);
+      return JSON.parse(result);
+    }
 
-  // Methods for working with files
-  saveFile(filename: string, base64Data: string, uploadsDir: string): FileOperationResult {
-    const result = addon.saveFile(filename, base64Data, uploadsDir);
-    return JSON.parse(result);
-  }
+    deleteFile(filename: string, uploadsDir: string): FileOperationResult {
+      const result = addon.deleteFile(filename, uploadsDir);
+      return JSON.parse(result);
+    }
 
-  deleteFile(filename: string, uploadsDir: string): FileOperationResult {
-    const result = addon.deleteFile(filename, uploadsDir);
-    return JSON.parse(result);
-  }
+    listFiles(uploadsDir: string): FileListResult {
+      const result = addon.listFiles(uploadsDir);
+      return JSON.parse(result);
+    }
 
-  listFiles(uploadsDir: string): FileListResult {
-    const result = addon.listFiles(uploadsDir);
-    return JSON.parse(result);
-  }
+    getFileContent(filename: string, uploadsDir: string): FileContentResult {
+      const result = addon.getFileContent(filename, uploadsDir);
+      return JSON.parse(result);
+    }
 
-  getFileContent(filename: string, uploadsDir: string): FileContentResult {
-    const result = addon.getFileContent(filename, uploadsDir);
-    return JSON.parse(result);
-  }
+    fileExists(filename: string, uploadsDir: string): boolean {
+      return addon.fileExists(filename, uploadsDir);
+    }
 
-  fileExists(filename: string, uploadsDir: string): boolean {
-    return addon.fileExists(filename, uploadsDir);
-  }
+    download(path: string, options: DownloadOptions): Router {
+      // Register route for file downloads in Rust backend
+      addon.registerDownloadRoute(path, JSON.stringify(options));
+      return this;
+    }
 
-  download(path: string, options: DownloadOptions): void {
-    // Register route for file downloads in Rust backend
-    addon.registerDownloadRoute(path, JSON.stringify(options));
-  }
+    upload(path: string, options: UploadOptions): Router {
+      // Register route for file uploads in Rust backend
+      addon.registerUploadRoute(path, JSON.stringify(options));
+      return this;
+    }
 
-  upload(path: string, options: UploadOptions): void {
-    // Register route for file uploads in Rust backend
-    addon.registerUploadRoute(path, JSON.stringify(options));
-  }
+    // Methods for working with templates
+    initTemplates(pattern: string, options: TemplateOptions): string {
+      try {
+        return addon.initTemplates(pattern, options);
+      } catch (error) {
+        return JSON.stringify({
+          success: false,
+          error: `Failed to initialize templates: ${error}`
+        });
+      }
+    }
 
-  // Methods for working with templates
-  initTemplates(pattern: string, options: TemplateOptions): string {
-    try {
-      const result = addon.initTemplates(pattern, options);
-      return result;
-    } catch (error) {
-      return JSON.stringify({
-        success: false,
-        error: `Failed to initialize templates: ${error}`
-      });
+    renderTemplate(templateName: string, context: object): string {
+      try {
+        const contextStr = JSON.stringify(context);
+        const result = addon.renderTemplate(templateName, contextStr);
+        return result;
+      } catch (error) {
+        return JSON.stringify({
+          success: false,
+          error: `Failed to render template: ${error}`
+        });
+      }
     }
   }
 
-  renderTemplate(templateName: string, context: object): string {
-    try {
-      const contextStr = JSON.stringify(context);
-      const result = addon.renderTemplate(templateName, contextStr);
-      return result;
-    } catch (error) {
-      return JSON.stringify({
-        success: false,
-        error: `Failed to render template: ${error}`
-      });
+  // Function for creating application
+  export function createApp(options?: AppOptions): RNodeAppInterface {
+    const appInfo = addon.createApp();
+    console.log(`Creating ${appInfo.name} v${appInfo.version}`);
+
+    // Create RNodeApp instance
+    const app = new RNodeApp();
+
+    // Store SSL configuration if provided
+    if (options?.ssl) {
+      const { certPath, keyPath } = options.ssl;
+      if (certPath && keyPath) {
+        console.log(`🔒 SSL configuration loaded:`);
+        console.log(`   Certificate: ${certPath}`);
+        console.log(`   Private Key: ${keyPath}`);
+        // Store SSL config in the app for later use
+        (app as any).sslConfig = { certPath, keyPath };
+      } else {
+        console.warn('SSL certificate paths are not provided in options.');
+      }
     }
+
+    return app;
   }
-}
 
-// Function for creating application
-export function createApp(): RNodeAppInterface {
-  const appInfo = addon.createApp();
-  console.log(`Creating ${appInfo.name} v${appInfo.version}`);
+  // Simple greeting function
+  export function greeting(name: string): { message: string } {
+    const message = addon.hello(name);
+    return { message };
+  }
 
-  // Create RNodeApp instance
-  return new RNodeApp();
-}
+  // Default export for ES modules compatibility
+  export default {
+    createApp,
+    greeting,
+    RNodeApp
+  };
 
-// Simple greeting function
-export function greeting(name: string): { message: string } {
-  const message = addon.hello(name);
-  return { message };
-}
-
-// Default export for ES modules compatibility
-export default {
-  createApp,
-  greeting,
-  RNodeApp
-};
-
-// Export types for use
-export type { StaticOptions };
+  // Export types for use
+  export type { StaticOptions };

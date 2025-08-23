@@ -57,11 +57,14 @@
   "devDependencies": {
     "@neon-rs/cli": "^0.1.82",
     "@tsconfig/node20": "^20.1.4",
+    "@types/express": "^5.0.3",
+    "@types/micromatch": "^4.0.9",
     "@types/node": "^20.11.16",
     "typescript": "^5.3.3"
   },
   "dependencies": {
-    "@neon-rs/load": "^0.1.82"
+    "@neon-rs/load": "^0.1.82",
+    "micromatch": "^4.0.8"
   },
   "packageManager": "pnpm@9.15.9"
 }

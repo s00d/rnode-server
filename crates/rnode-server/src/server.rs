@@ -11,6 +11,23 @@ use multer::Multipart;
 use neon::prelude::*;
 use serde_json;
 use std::net::SocketAddr;
+use axum_server::tls_rustls::RustlsConfig;
+use globset::{Glob, GlobSetBuilder};
+
+// Structure for SSL/TLS configuration
+pub struct SslConfig {
+    pub cert_file: Option<String>,
+    pub key_file: Option<String>,
+}
+
+impl SslConfig {
+    pub fn from_files(cert_path: &str, key_path: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        Ok(SslConfig {
+            cert_file: Some(cert_path.to_string()),
+            key_file: Some(key_path.to_string()),
+        })
+    }
+}
 
 // Function for starting the server
 pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
@@ -38,14 +55,38 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
         Some([127, 0, 0, 1])
     };
 
+    // Check for SSL configuration (third and fourth arguments)
+    let ssl_config = if cx.len() >= 4 {
+        if let (Ok(cert_arg), Ok(key_arg)) = (cx.argument::<JsString>(2), cx.argument::<JsString>(3)) {
+            let cert_path = cert_arg.value(&mut cx);
+            let key_path = key_arg.value(&mut cx);
+            
+            match SslConfig::from_files(&cert_path, &key_path) {
+                Ok(config) => {
+                    println!("🔒 SSL enabled with certificate: {} and key: {}", cert_path, key_path);
+                    Some(config)
+                },
+                Err(e) => {
+                    println!("❌ Failed to load SSL certificate: {}, using HTTP only", e);
+                    None
+                }
+            }
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
     let host = host.unwrap();
     println!(
-        "Starting server on {}:{}",
+        "🚀 Starting server on {}:{} {}",
         host.iter()
             .map(|b| b.to_string())
             .collect::<Vec<_>>()
             .join("."),
-        port
+        port,
+        if ssl_config.is_some() { "(HTTPS)" } else { "(HTTP)" }
     );
 
     // Create Channel for communication with JavaScript
@@ -168,7 +209,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                 Some(filename) => filename,
                                 None => {
                                     println!("❌ File path for download not specified");
-                                    return Err(axum::http::StatusCode::BAD_REQUEST);
+                                    return Err(http::StatusCode::BAD_REQUEST);
                                 }
                             }
                         };
@@ -177,14 +218,14 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                         
                         // Check if file exists
                         if !std::path::Path::new(&file_path).exists() {
-                            return Err(axum::http::StatusCode::NOT_FOUND);
+                            return Err(http::StatusCode::NOT_FOUND);
                         }
                         
                         // Check file size
                         if let Some(max_size) = config.max_file_size {
                             if let Ok(metadata) = std::fs::metadata(&file_path) {
                                 if metadata.len() > max_size {
-                                    return Err(axum::http::StatusCode::PAYLOAD_TOO_LARGE);
+                                    return Err(http::StatusCode::PAYLOAD_TOO_LARGE);
                                 }
                             }
                         }
@@ -196,7 +237,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                 if !allowed_extensions.iter().any(|allowed| {
                                     allowed.trim_start_matches('.').to_lowercase() == ext_str
                                 }) {
-                                    return Err(axum::http::StatusCode::FORBIDDEN);
+                                    return Err(http::StatusCode::FORBIDDEN);
                                 }
                             }
                         }
@@ -205,7 +246,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                         if let Some(ref blocked_paths) = config.blocked_paths {
                             for blocked_path in blocked_paths {
                                 if actual_filename.contains(blocked_path) {
-                                    return Err(axum::http::StatusCode::FORBIDDEN);
+                                    return Err(http::StatusCode::FORBIDDEN);
                                 }
                             }
                         }
@@ -213,7 +254,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                         // Check hidden and system files
                         if !config.allow_hidden_files {
                             if actual_filename.starts_with('.') {
-                                return Err(axum::http::StatusCode::FORBIDDEN);
+                                return Err(http::StatusCode::FORBIDDEN);
                             }
                         }
                         
@@ -222,7 +263,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                             if system_files.iter().any(|&sys_file| {
                                 actual_filename.to_lowercase() == sys_file.to_lowercase()
                             }) {
-                                return Err(axum::http::StatusCode::FORBIDDEN);
+                                return Err(http::StatusCode::FORBIDDEN);
                             }
                         }
                         
@@ -234,7 +275,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                             let mime_type = if let Some(kind) = infer::get(&std::fs::read(&file_path).unwrap_or_default()) {
                                 kind.mime_type().to_string()
                             } else {
-                                mime_guess::MimeGuess::from_path(&file_path).first_or_octet_stream().to_string()
+                                MimeGuess::from_path(&file_path).first_or_octet_stream().to_string()
                             };
                             
                             let stream = tokio_util::io::ReaderStream::new(file);
@@ -249,7 +290,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                             
                             Ok(response)
                         } else {
-                            Err(axum::http::StatusCode::NOT_FOUND)
+                            Err(http::StatusCode::NOT_FOUND)
                         }
                     }
                 };
@@ -283,22 +324,16 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                     return true; // Exact match
                                 }
 
-                                if pattern == "*" {
-                                    // Pattern "*" allows any subfolder
-                                    return true;
-                                }
-
-                                if pattern.ends_with("/*") {
-                                    // Pattern like "documents/*"
-                                    let prefix = &pattern[..pattern.len() - 2];
-                                    if path.starts_with(prefix) {
-                                        // Check that it's a subfolder, not a file
-                                        if path.len() > prefix.len() && path.chars().nth(prefix.len()) == Some('/') {
-                                            return true;
-                                        }
+                                // Use globset for flexible wildcard matching
+                                if let Ok(glob) = Glob::new(pattern) {
+                                    let mut builder = GlobSetBuilder::new();
+                                    builder.add(glob);
+                                    if let Ok(globset) = builder.build() {
+                                        return globset.is_match(path);
                                     }
                                 }
 
+                                // Fallback to simple string comparison if glob parsing fails
                                 false
                             }
 
@@ -357,7 +392,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 
                             if !content_type.contains("multipart/form-data") {
                                 return axum::response::Response::builder()
-                                    .status(axum::http::StatusCode::BAD_REQUEST)
+                                    .status(http::StatusCode::BAD_REQUEST)
                                     .body(axum::body::Body::from("Content-Type must be multipart/form-data"))
                                     .unwrap();
                             }
@@ -373,7 +408,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                 Ok(bytes) => bytes,
                                 Err(_) => {
                                     return axum::response::Response::builder()
-                                        .status(axum::http::StatusCode::BAD_REQUEST)
+                                        .status(http::StatusCode::BAD_REQUEST)
                                         .body(axum::body::Body::from("Failed to read request body"))
                                         .unwrap();
                                 }
@@ -426,7 +461,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                                 if !is_allowed {
                                                     println!("❌ Subfolder '{}' not allowed", subfolder);
                                                     return axum::response::Response::builder()
-                                                        .status(axum::http::StatusCode::FORBIDDEN)
+                                                        .status(http::StatusCode::FORBIDDEN)
                                                         .body(axum::body::Body::from(format!("Subfolder '{}' not allowed", subfolder)))
                                                         .unwrap();
                                                 }
@@ -458,7 +493,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                                     allowed.trim_start_matches('.').to_lowercase() == ext_str
                                                 }) {
                                                     return axum::response::Response::builder()
-                                                        .status(axum::http::StatusCode::FORBIDDEN)
+                                                        .status(http::StatusCode::FORBIDDEN)
                                                         .body(axum::body::Body::from(format!("File extension .{} not allowed", ext_str)))
                                                         .unwrap();
                                                 }
@@ -474,7 +509,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                         if let Some(ref allowed_mime_types) = config.allowed_mime_types {
                                             if !allowed_mime_types.contains(&mime_type) {
                                                 return axum::response::Response::builder()
-                                                    .status(axum::http::StatusCode::FORBIDDEN)
+                                                    .status(http::StatusCode::FORBIDDEN)
                                                     .body(axum::body::Body::from(format!("MIME type {} not allowed", mime_type)))
                                                     .unwrap();
                                             }
@@ -485,7 +520,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                             Ok(data) => data,
                                             Err(_) => {
                                                 return axum::response::Response::builder()
-                                                    .status(axum::http::StatusCode::BAD_REQUEST)
+                                                    .status(http::StatusCode::BAD_REQUEST)
                                                     .body(axum::body::Body::from("Failed to read file data"))
                                                     .unwrap();
                                             }
@@ -495,7 +530,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                         if let Some(max_size) = config.max_file_size {
                                             if data.len() as u64 > max_size {
                                                 return axum::response::Response::builder()
-                                                    .status(axum::http::StatusCode::PAYLOAD_TOO_LARGE)
+                                                    .status(http::StatusCode::PAYLOAD_TOO_LARGE)
                                                     .body(axum::body::Body::from(format!("File size {} exceeds limit {}", data.len(), max_size)))
                                                     .unwrap();
                                             }
@@ -505,7 +540,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                         let file_path = format!("{}/{}", upload_folder, filename);
                                         if !config.overwrite && std::path::Path::new(&file_path).exists() {
                                             return axum::response::Response::builder()
-                                                .status(axum::http::StatusCode::CONFLICT)
+                                                .status(http::StatusCode::CONFLICT)
                                                 .body(axum::body::Body::from(format!("File {} already exists", relative_path)))
                                                 .unwrap();
                                         }
@@ -515,7 +550,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                         if let Err(e) = std::fs::create_dir_all(&upload_folder) {
                                             println!("❌ Error creating folder '{}': {}", upload_folder, e);
                                             return axum::response::Response::builder()
-                                                .status(axum::http::StatusCode::INTERNAL_SERVER_ERROR)
+                                                .status(http::StatusCode::INTERNAL_SERVER_ERROR)
                                                 .body(axum::body::Body::from(format!("Failed to create upload directory: {}", e)))
                                             .unwrap();
                                         }
@@ -526,7 +561,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                         if let Err(e) = std::fs::write(&file_path, &data) {
                                             println!("❌ Error saving file '{}': {}", file_path, e);
                                             return axum::response::Response::builder()
-                                                .status(axum::http::StatusCode::INTERNAL_SERVER_ERROR)
+                                                .status(http::StatusCode::INTERNAL_SERVER_ERROR)
                                                 .body(axum::body::Body::from(format!("Failed to save file: {}", e)))
                                                 .unwrap();
                                         }
@@ -538,7 +573,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                             if let Some(max_files) = config.max_files {
                                                 if uploaded_files.len() >= max_files as usize {
                                                     return axum::response::Response::builder()
-                                                        .status(axum::http::StatusCode::PAYLOAD_TOO_LARGE)
+                                                        .status(http::StatusCode::PAYLOAD_TOO_LARGE)
                                                         .body(axum::body::Body::from(format!("Maximum number of files ({}) exceeded", max_files)))
                                                         .unwrap();
                                                 }
@@ -547,7 +582,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                             // For single upload allow only 1 file
                                             if uploaded_files.len() >= 1 {
                                                 return axum::response::Response::builder()
-                                                    .status(axum::http::StatusCode::BAD_REQUEST)
+                                                    .status(http::StatusCode::BAD_REQUEST)
                                                     .body(axum::body::Body::from("Single file upload route received multiple files"))
                                                     .unwrap();
                                             }
@@ -585,7 +620,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                         });
 
                         axum::response::Response::builder()
-                            .status(axum::http::StatusCode::OK)
+                            .status(http::StatusCode::OK)
                             .header("content-type", "application/json")
                             .body(axum::body::Body::from(response.to_string()))
                             .unwrap()
@@ -601,7 +636,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
             drop(upload_routes_map);
             
             // Add fallback route for static files and non-existent routes
-            let app = app.fallback(|req: axum::http::Request<axum::body::Body>| async move {
+            let app = app.fallback(|req: http::Request<axum::body::Body>| async move {
                 let path = req.uri().path().to_string();
                 
                 // First try to find static file
@@ -612,13 +647,44 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                 
                 // If static file not found, return 404
                 axum::response::Response::builder()
-                    .status(axum::http::StatusCode::NOT_FOUND)
+                    .status(http::StatusCode::NOT_FOUND)
                     .body(axum::body::Body::from("Not Found"))
                     .unwrap()
             });
             
-            let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-            axum::serve(listener, app).await.unwrap();
+            // Start server based on SSL configuration
+            if let Some(ssl_config) = &ssl_config {
+                // Start HTTPS server using axum-server
+                let cert_path = ssl_config.cert_file.as_ref().unwrap();
+                let key_path = ssl_config.key_file.as_ref().unwrap();
+                
+                match RustlsConfig::from_pem_file(cert_path, key_path).await {
+                    Ok(tls_config) => {
+                        println!("🔒 Starting HTTPS server with TLS configuration");
+                        println!("🔒 HTTPS server listening on https://{}", addr);
+                        
+                        // Use axum-server with TLS
+                        axum_server::bind_rustls(addr, tls_config)
+                            .serve(app.into_make_service())
+                            .await
+                            .unwrap();
+                    }
+                    Err(e) => {
+                        eprintln!("❌ Failed to create HTTPS configuration: {}", e);
+                        eprintln!("🔄 Falling back to HTTP server");
+                        
+                        // Fallback to HTTP
+                        let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+                        println!("🌐 HTTP server listening on http://{}", addr);
+                        axum::serve(listener, app).await.unwrap();
+                    }
+                }
+            } else {
+                // Start HTTP server
+                let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+                println!("🌐 HTTP server listening on http://{}", addr);
+                axum::serve(listener, app).await.unwrap();
+            }
         });
     });
 

@@ -55,7 +55,6 @@ pub fn render_template(template_name: &str, context: HashMap<String, JsonValue>)
     if let Some(ref tera) = *templates {
         // Convert HashMap to serde_json::Map
         let mut json_map = Map::new();
-        let context_keys: Vec<String> = context.keys().cloned().collect();
         for (key, value) in context {
             json_map.insert(key, value);
         }

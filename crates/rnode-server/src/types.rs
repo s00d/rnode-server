@@ -14,17 +14,16 @@ pub struct RouteInfo {
 }
 
 // Structure for storing middleware
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct MiddlewareInfo {
     pub path: String,
-    #[allow(dead_code)]
-    pub handler_id: String,
+    pub middleware_id: String,
 }
 
 // Synchronous storage for routes
 pub static ROUTES: OnceLock<RwLock<HashMap<String, RouteInfo>>> = OnceLock::new();
 
-// Synchronous storage for middleware
+// Global middleware storage
 pub static MIDDLEWARE: OnceLock<RwLock<Vec<MiddlewareInfo>>> = OnceLock::new();
 
 // Structure for file download settings

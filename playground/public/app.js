@@ -1,7 +1,6 @@
 // RNode Server - SQLite Users Manager
 class UsersManager {
     constructor() {
-        this.baseUrl = 'http://localhost:4546';
         this.currentUser = null;
         this.init();
     }
@@ -33,7 +32,7 @@ class UsersManager {
     // API methods
     async apiCall(endpoint, options = {}) {
         try {
-            const response = await fetch(`${this.baseUrl}${endpoint}`, {
+            const response = await fetch(`${endpoint}`, {
                 headers: {
                     'Content-Type': 'application/json',
                     ...options.headers

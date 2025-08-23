@@ -1,17 +1,40 @@
 import Database from 'better-sqlite3';
 import path from 'path';
-import { fileURLToPath } from 'url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+interface UserData {
+  name: string;
+  email: string;
+  age?: number;
+}
+
+interface User {
+  id: number;
+  name: string;
+  email: string;
+  age: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface DatabaseResult<T = any> {
+  success: boolean;
+  message?: string;
+  id?: number;
+  users?: T[];
+  count?: number;
+  user?: T;
+  query?: string;
+}
 
 class UserDatabase {
+  private db: Database.Database;
+
   constructor() {
-    this.db = new Database(path.join(__dirname, 'users.db'));
+    this.db = new Database(path.join(process.cwd(), 'users.db'));
     this.init();
   }
 
-  init() {
+  private init(): void {
     // Create users table
     const createTable = `
       CREATE TABLE IF NOT EXISTS users (
@@ -29,7 +52,7 @@ class UserDatabase {
   }
 
   // Create user
-  createUser(userData) {
+  createUser(userData: UserData): DatabaseResult {
     try {
       const stmt = this.db.prepare(`
         INSERT INTO users (name, email, age) 
@@ -40,10 +63,10 @@ class UserDatabase {
       
       return {
         success: true,
-        id: result.lastInsertRowid,
+        id: Number(result.lastInsertRowid),
         message: 'User created successfully'
       };
-    } catch (error) {
+    } catch (error: any) {
       if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
         return {
           success: false,
@@ -58,17 +81,17 @@ class UserDatabase {
   }
 
   // Get all users
-  getAllUsers() {
+  getAllUsers(): DatabaseResult<User> {
     try {
       const stmt = this.db.prepare('SELECT * FROM users ORDER BY created_at DESC');
-      const users = stmt.all();
+      const users = stmt.all() as User[];
       
       return {
         success: true,
         users: users,
         count: users.length
       };
-    } catch (error) {
+    } catch (error: any) {
       return {
         success: false,
         message: `Error getting users: ${error.message}`,
@@ -79,10 +102,10 @@ class UserDatabase {
   }
 
   // Get user by ID
-  getUserById(id) {
+  getUserById(id: number): DatabaseResult<User> {
     try {
       const stmt = this.db.prepare('SELECT * FROM users WHERE id = ?');
-      const user = stmt.get(id);
+      const user = stmt.get(id) as User | undefined;
       
       if (user) {
         return {
@@ -95,7 +118,7 @@ class UserDatabase {
           message: 'User not found'
         };
       }
-    } catch (error) {
+    } catch (error: any) {
       return {
         success: false,
         message: `Error getting user: ${error.message}`
@@ -104,7 +127,7 @@ class UserDatabase {
   }
 
   // Update user
-  updateUser(id, userData) {
+  updateUser(id: number, userData: UserData): DatabaseResult {
     try {
       const stmt = this.db.prepare(`
         UPDATE users 
@@ -125,7 +148,7 @@ class UserDatabase {
           message: 'User not found'
         };
       }
-    } catch (error) {
+    } catch (error: any) {
       return {
         success: false,
         message: `Error updating user: ${error.message}`
@@ -134,7 +157,7 @@ class UserDatabase {
   }
 
   // Delete user
-  deleteUser(id) {
+  deleteUser(id: number): DatabaseResult {
     try {
       const stmt = this.db.prepare('DELETE FROM users WHERE id = ?');
       const result = stmt.run(id);
@@ -150,7 +173,7 @@ class UserDatabase {
           message: 'User not found'
         };
       }
-    } catch (error) {
+    } catch (error: any) {
       return {
         success: false,
         message: `Error deleting user: ${error.message}`
@@ -159,7 +182,7 @@ class UserDatabase {
   }
 
   // Search users by name or email
-  searchUsers(query) {
+  searchUsers(query: string): DatabaseResult<User> {
     try {
       const stmt = this.db.prepare(`
         SELECT * FROM users 
@@ -168,7 +191,7 @@ class UserDatabase {
       `);
       
       const searchPattern = `%${query}%`;
-      const users = stmt.all(searchPattern, searchPattern);
+      const users = stmt.all(searchPattern, searchPattern) as User[];
       
       return {
         success: true,
@@ -176,7 +199,7 @@ class UserDatabase {
         count: users.length,
         query: query
       };
-    } catch (error) {
+    } catch (error: any) {
       return {
         success: false,
         message: `Error searching users: ${error.message}`,
@@ -188,10 +211,11 @@ class UserDatabase {
   }
 
   // Close database connection
-  close() {
+  close(): void {
     this.db.close();
     console.log('🔒 Database connection closed');
   }
 }
 
 export default UserDatabase;
+export type { UserData, User, DatabaseResult };

@@ -1,0 +1,105 @@
+/* Utilities CSS file for static router demo */
+
+/* Message styles */
+.message {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 15px 20px;
+  border-radius: 5px;
+  color: white;
+  font-weight: 500;
+  z-index: 1000;
+  animation: slideIn 0.3s ease;
+}
+
+.message-info {
+  background-color: #3498db;
+}
+
+.message-success {
+  background-color: #2ecc71;
+}
+
+.message-warning {
+  background-color: #f39c12;
+}
+
+.message-error {
+  background-color: #e74c3c;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Form styles */
+input, textarea {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+input:focus, textarea:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .container {
+    padding: 10px;
+  }
+  
+  .header {
+    padding: 15px;
+  }
+  
+  .card {
+    margin: 10px 0;
+    padding: 15px;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-color: #2c3e50;
+    --text-color: #ecf0f1;
+  }
+  
+  .card {
+    background-color: #34495e;
+    color: #ecf0f1;
+  }
+  
+  input, textarea {
+    background-color: #34495e;
+    color: #ecf0f1;
+    border-color: #7f8c8d;
+  }
+}
+
+/* Print styles */
+@media print {
+  .btn, .message {
+    display: none;
+  }
+  
+  .card {
+    box-shadow: none;
+    border: 1px solid #ddd;
+  }
+}

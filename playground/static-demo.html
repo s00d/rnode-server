@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Static Router Demo</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/styles/utilities.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🚀 Static Router Demo</h1>
+            <p>Demonstrating static file serving with different configurations</p>
+        </header>
+
+        <div class="grid">
+            <div class="card">
+                <h3>📁 Assets Folder</h3>
+                <p>Cache: 1 hour, Gzip: enabled, Max size: 5MB</p>
+                <button class="btn" data-action="load-assets">Load Assets</button>
+            </div>
+
+            <div class="card">
+                <h3>🖼️ Images & Icons</h3>
+                <p>Cache: 24 hours, Gzip: disabled, Max size: 10MB</p>
+                <button class="btn" data-action="load-images">Load Images</button>
+            </div>
+
+            <div class="card">
+                <h3>🎨 CSS & Styles</h3>
+                <p>Cache: 30 minutes, Gzip: enabled, Brotli: enabled</p>
+                <button class="btn" data-action="load-css">Load CSS</button>
+            </div>
+
+            <div class="card">
+                <h3>⚡ JavaScript</h3>
+                <p>Cache: 15 minutes, Gzip: enabled, Brotli: enabled</p>
+                <button class="btn" data-action="load-js">Load JS</button>
+            </div>
+
+            <div class="card">
+                <h3>🔤 Fonts</h3>
+                <p>Cache: 1 week, Gzip: disabled, Brotli: disabled</p>
+                <button class="btn" data-action="load-fonts">Load Fonts</button>
+            </div>
+
+            <div class="card">
+                <h3>🧹 Cache Management</h3>
+                <p>Clear cache and reload static files</p>
+                <button class="btn" data-action="clear-cache">Clear Cache</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>📝 Demo Form</h3>
+            <form id="demo-form">
+                <div style="margin-bottom: 15px;">
+                    <label for="name">Name:</label>
+                    <input type="text" id="name" name="name" required style="width: 100%; padding: 8px; margin-top: 5px;">
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" name="email" required style="width: 100%; padding: 8px; margin-top: 5px;">
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label for="message">Message:</label>
+                    <textarea id="message" name="message" rows="4" style="width: 100%; padding: 8px; margin-top: 5px;"></textarea>
+                </div>
+                <button type="submit" class="btn">Submit Form</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h3>📊 Static Router Configuration</h3>
+            <pre style="background: #f8f9fa; padding: 15px; border-radius: 5px; overflow-x: auto;">
+// Assets folder
+staticRouter.static('./assets', {
+  cache: true,
+  maxAge: 3600,        // 1 hour
+  maxFileSize: 5MB,
+  etag: true,
+  gzip: true
+});
+
+// Multiple folders with different settings
+staticRouter.static(['./images', './icons'], {
+  cache: true,
+  maxAge: 86400,       // 24 hours
+  maxFileSize: 10MB,
+  gzip: false          // Images are already compressed
+});
+
+// CSS with aggressive compression
+staticRouter.static(['./css', './styles'], {
+  cache: true,
+  maxAge: 1800,        // 30 minutes
+  gzip: true,
+  brotli: true
+});
+
+// JavaScript with short cache
+staticRouter.static('./js', {
+  cache: true,
+  maxAge: 900,         // 15 minutes
+  gzip: true,
+  brotli: true
+});
+
+// Fonts with long cache
+staticRouter.static('./fonts', {
+  cache: true,
+  maxAge: 604800,      // 1 week
+  gzip: false,
+  brotli: false
+});</pre>
+        </div>
+
+        <footer class="footer">
+            <p>Static Router Demo - Different caching strategies for different file types</p>
+        </footer>
+    </div>
+
+    <script src="/js/app.js"></script>
+</body>
+</html>

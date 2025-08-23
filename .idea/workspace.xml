@@ -12,16 +12,37 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="4d8c55b6-5a63-439f-adcf-d024569129f5" name="Changes" comment="init">
-      <change afterPath="$PROJECT_DIR$/crates/rnode-server/src/templates.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/playground/src/template_example.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/playground/templates/index.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/playground/templates/user_profile.html" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/playground/src/routers/api.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/playground/src/routers/auth_api.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/playground/src/routers/common.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/playground/src/routers/cors.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/playground/src/routers/multipart.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/playground/src/routers/templates.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/playground/src/routers/users.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Cargo.lock" beforeDir="false" afterPath="$PROJECT_DIR$/Cargo.lock" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/crates/rnode-server/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/Cargo.toml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/lib.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/lib.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/handlers.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/handlers.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/middleware.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/middleware.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/server.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/server.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/templates.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/templates.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/types.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/types.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/auth.db" beforeDir="false" afterPath="$PROJECT_DIR$/playground/auth.db" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/playground/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/playground/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/public/app.js" beforeDir="false" afterPath="$PROJECT_DIR$/playground/public/app.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/public/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/playground/public/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/src/auth-database.js" beforeDir="false" afterPath="$PROJECT_DIR$/playground/src/auth-database.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/src/database.js" beforeDir="false" afterPath="$PROJECT_DIR$/playground/src/database.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/src/example.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/src/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/playground/src/index.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/src/multipart_example.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/src/static_example.ts" beforeDir="false" afterPath="$PROJECT_DIR$/playground/src/routers/static.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/src/template_example.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/templates/components/footer.html" beforeDir="false" afterPath="$PROJECT_DIR$/playground/templates/components/footer.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/templates/components/header.html" beforeDir="false" afterPath="$PROJECT_DIR$/playground/templates/components/header.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pnpm-lock.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/pnpm-lock.yaml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/index.cts" beforeDir="false" afterPath="$PROJECT_DIR$/src/index.cts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -50,7 +71,7 @@
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.rust.reset.selective.auto.import": "true",
     "junie.onboarding.icon.badge.shown": "true",
-    "last_opened_file_path": "/Users/s00d/Downloads/rnode-server/playground/src",
+    "last_opened_file_path": "/Users/s00d/Downloads/rnode-server/playground/src/routers",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
@@ -67,9 +88,11 @@
 }]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/playground/src/routers" />
       <recent name="$PROJECT_DIR$/playground/src" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/playground/src/routers" />
       <recent name="$PROJECT_DIR$/playground" />
       <recent name="$PROJECT_DIR$/text" />
     </key>
@@ -104,7 +127,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1755847651115</updated>
-      <workItem from="1755847652223" duration="31340000" />
+      <workItem from="1755847652223" duration="47194000" />
     </task>
     <task id="LOCAL-00001" summary="init">
       <option name="closed" value="true" />
@@ -186,7 +209,15 @@
       <option name="project" value="LOCAL" />
       <updated>1755896871253</updated>
     </task>
-    <option name="localTasksCounter" value="11" />
+    <task id="LOCAL-00011" summary="init">
+      <option name="closed" value="true" />
+      <created>1755933155665</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1755933155665</updated>
+    </task>
+    <option name="localTasksCounter" value="12" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

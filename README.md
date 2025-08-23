@@ -2,6 +2,18 @@
 
 A high-performance HTTP server built with Rust and Node.js, featuring Express-like API with advanced middleware support, authentication, and database integration.
 
+## ✨ Features
+
+- 🚀 **High Performance** - Built with Rust and Node.js
+- 🔧 **Express-like API** - Familiar routing and middleware
+- 📁 **Static File Serving** - With compression and caching
+- 📤 **File Upload** - Multipart form data support
+- 📥 **File Download** - Secure file serving
+- 🎨 **Template Engine** - Tera templates with inheritance
+- 🔒 **HTTPS Support** - SSL/TLS encryption
+- 🌐 **IP Detection** - Client IP from various proxy headers
+- 🔌 **Express Middleware** - Use existing Express plugins
+
 ## Features
 
 - **Express-like API** - Familiar routing and middleware patterns
@@ -563,6 +575,44 @@ app.get('/search', (req, res) => {
   });
 });
 ```
+
+
+## 🔒 HTTPS Support (Coming Soon)
+
+RNode Server will support HTTPS with SSL/TLS certificates, similar to Express.js. The infrastructure is already in place:
+
+```typescript
+import { createApp } from 'rnode-server';
+
+// SSL configuration
+const sslConfig = {
+  certPath: './ssl/server.crt',
+  keyPath: './ssl/server.key'
+};
+
+// Create app with SSL support
+const app = createApp({ ssl: sslConfig });
+
+// Start server (will use HTTPS when implemented)
+app.listen(3000, '127.0.0.1');
+```
+
+### SSL Certificate Generation
+
+```bash
+# Generate self-signed certificates
+cd playground
+pnpm run ssl:generate
+
+# Or manually with OpenSSL
+mkdir -p ssl
+openssl req -x509 -newkey rsa:4096 \
+  -keyout ssl/server.key \
+  -out ssl/server.crt \
+  -days 365 -nodes \
+  -subj "/C=US/ST=State/L=City/O=Organization/CN=localhost"
+```
+
 
 ## Server Capabilities
 

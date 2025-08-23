@@ -5,30 +5,25 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node src/example.js",
-    "start:rnode": "tsx src/index.ts",
+    "start": "tsx src/index.ts",
     "start:express": "node src/example_express.js",
-    "start:static": "tsx src/static_example.ts",
-    "start:multipart": "tsx src/multipart_example.ts",
-    "dev": "node --watch src/example.js",
-    "dev:rnode": "tsx watch src/index.ts",
+    "dev": "tsx watch src/index.ts",
     "dev:mini": "node --watch src/example_m.js",
-    "dev:template": "tsx watch src/template_example.ts",
     "dev:express": "node --watch src/example_express.js",
-    "dev:static": "tsx watch src/static_example.ts",
-    "dev:multipart": "tsx watch src/multipart_example.ts",
     "build": "tsc",
-    "build:watch": "tsc --watch"
+    "build:watch": "tsc --watch",
+    "ssl:generate": "chmod +x generate-ssl.sh && ./generate-ssl.sh"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20.11.16",
     "better-sqlite3": "^12.2.0",
     "express": "^5.1.0",
-    "typescript": "^5.9.2",
-    "tsx": "^4.7.0"
+    "tsx": "^4.7.0",
+    "typescript": "^5.9.2"
   },
   "dependencies": {
     "rnode-server": "link:.."
