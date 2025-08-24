@@ -179,7 +179,8 @@ export interface Response {
   redirect(url: string, status?: number): Response;
 }
 
-type Middleware = (req: Request, res: Response, next: () => void) => void;
+// Middleware type
+type Middleware = (req: Request, res: Response, next: (error?: any) => void) => void;
 
 export interface Router {
   get(path: string, handler: (req: Request, res: Response) => void): void;
@@ -870,21 +871,43 @@ function executeMiddleware(middlewareJson: string): string {
           const middleware = middlewareArray[i];
           console.log(`🔄 Executing middleware ${i + 1} of ${middlewareArray.length}`);
           
-          let shouldContinue = true;
-
           try {
             // Call middleware function with req and res objects
-            middleware(req, res, () => {
+            let middlewareError: any = null;
+            
+            console.log(`🔍 Executing middleware for pattern: ${middlewarePath}`);
+            console.log(`🔍 Request origin: ${req.headers.origin}`);
+            
+            middleware(req, res, (error?: any) => {
               // Next function - continue to next middleware
-              shouldContinue = true;
+              if (error) {
+                // If middleware throws an error, stop execution and return error
+                console.error('❌ Middleware error:', error);
+                middlewareError = error;
+              } else {
+                console.log('✅ Middleware completed without error');
+              }
             });
+            
+            // Check if middleware returned an error
+            if (middlewareError) {
+              console.log('❌ Middleware returned error, stopping execution');
+              console.log(`❌ Error details: ${middlewareError.message || middlewareError}`);
+              return JSON.stringify({ 
+                shouldContinue: false,
+                error: middlewareError.message || middlewareError.toString(),
+                req: {...req},
+                res: {...res}
+              });
+            }
             
             // Update accumulated params for next middleware
             console.log(`🔧 Updated params:`, req.customParams);
           } catch (error) {
-            console.error('❌ Middleware error:', error);
+            console.error('❌ Middleware execution error:', error);
             return JSON.stringify({ 
               shouldContinue: false,
+              error: error instanceof Error ? error.message : String(error),
               req: {...req},
               res: {...res}
             });
@@ -904,10 +927,12 @@ function executeMiddleware(middlewareJson: string): string {
     };
     
     const finalRes = {
-      headers: {},
-      content: '',
-      contentType: 'text/plain'
+      headers: res.getHeaders(),  // Используем реальные заголовки
+      content: res.content || '',
+      contentType: res.contentType || 'text/plain'
     };
+    
+    console.log(`🔧 Final response headers:`, finalRes.headers);
     
     return JSON.stringify({ 
       shouldContinue: true,
@@ -1003,39 +1028,99 @@ class RouterImpl implements Router {
     if (typeof middlewareOrPath === 'function') {
       // useExpress(middleware)
       const expressMiddleware = middlewareOrPath;
-      this.use((req: Request, res: Response, next: () => void) => {
-        // Convert RNode Request to Express Request
-        const expressReq = this.convertToExpressRequest(req);
-        
-        // Convert RNode Response to Express Response
-        const expressRes = this.convertToExpressResponse(res);
-        
-        // Create Express NextFunction
-        const expressNext: NextFunction = () => {
-          next();
-        };
-        
-        // Execute Express middleware
-        expressMiddleware(expressReq, expressRes, expressNext);
+      this.use((req: Request, res: Response, next: (error?: any) => void) => {
+        try {
+          // Convert RNode Request to Express Request
+          const expressReq = this.convertToExpressRequest(req);
+          
+          // Convert RNode Response to Express Response
+          const expressRes = this.convertToExpressResponse(res);
+          
+          // Create Express NextFunction that properly handles errors
+          const expressNext: NextFunction = (error?: any) => {
+            if (error) {
+              // If middleware calls next(error), reject the promise
+              console.log(`❌ Middleware error: ${error.message || error}`);
+              console.log(`❌ Origin: ${req.headers.origin}`);
+              console.log(`❌ CORS blocked request - calling next(error)`);
+              
+              // Call next with error to trigger error handling
+              next(error);
+              return;
+            }
+            
+            // Check if response was already sent by middleware
+            console.log(`🔧 Checking response state: headersSent=${expressRes.headersSent}, statusCode=${expressRes.statusCode}`);
+            if (expressRes.headersSent || expressRes.statusCode !== 200) {
+              console.log('✅ Middleware handled response');
+              console.log(`🔧 Response headers:`, res.getHeaders());
+              console.log(`🔧 Response status: ${expressRes.statusCode}`);
+              return;
+            }
+            
+            // Continue to next middleware/handler
+            console.log('✅ Middleware passed, continuing');
+            console.log(`🔧 Response headers after middleware:`, res.getHeaders());
+            next();
+          };
+          
+          // Execute Express middleware with proper error handling
+          console.log(`🔒 Executing Express middleware for origin: ${req.headers.origin}`);
+          
+          // Execute Express middleware
+          expressMiddleware(expressReq, expressRes, expressNext);
+        } catch (error) {
+          console.error('❌ Error in Express middleware:', error);
+          next(error);
+        }
       });
     } else if (typeof middlewareOrPath === 'string' && middleware) {
       // useExpress(path, middleware)
       const path = middlewareOrPath;
       const expressMiddleware = middleware;
-      this.use(path, (req: Request, res: Response, next: () => void) => {
-        // Convert RNode Request to Express Request
-        const expressReq = this.convertToExpressRequest(req);
-        
-        // Convert RNode Response to Express Response
-        const expressRes = this.convertToExpressResponse(res);
-        
-        // Create Express NextFunction
-        const expressNext: NextFunction = () => {
-          next();
-        };
-        
-        // Execute Express middleware
-        expressMiddleware(expressReq, expressRes, expressNext);
+      this.use(path, (req: Request, res: Response, next: (error?: any) => void) => {
+        try {
+          // Convert RNode Request to Express Request
+          const expressReq = this.convertToExpressRequest(req);
+          
+          // Convert RNode Response to Express Response
+          const expressRes = this.convertToExpressResponse(res);
+          
+          // Create Express NextFunction that properly handles errors
+          const expressNext: NextFunction = (error?: any) => {
+            if (error) {
+              // If middleware calls next(error), reject the promise
+              console.log(`❌ Middleware error: ${error.message || error}`);
+              console.log(`❌ Origin: ${req.headers.origin}`);
+              
+              // Call next with error to trigger error handling
+              next(error);
+              return;
+            }
+            
+            // Check if response was already sent by middleware
+            if (expressRes.headersSent || expressRes.statusCode !== 200) {
+              console.log('✅ Middleware handled response');
+              console.log(`🔧 Response headers:`, res.getHeaders());
+              console.log(`🔧 Response status: ${expressRes.statusCode}`);
+              return;
+            }
+            
+            // Continue to next middleware/handler
+            console.log('✅ Middleware passed, continuing');
+            console.log(`🔧 Response headers after middleware:`, res.getHeaders());
+            next();
+          };
+          
+          // Execute Express middleware with proper error handling
+          console.log(`🔒 Executing Express middleware for origin: ${req.headers.origin}`);
+          
+          // Execute Express middleware
+          expressMiddleware(expressReq, expressRes, expressNext);
+        } catch (error) {
+          console.error('❌ Error in Express middleware:', error);
+          next(error);
+        }
       });
     } else {
       throw new Error('Invalid useExpress call: useExpress(middleware) or useExpress(path, middleware)');
@@ -1054,7 +1139,7 @@ class RouterImpl implements Router {
 
   useExpressError(middleware: ExpressErrorMiddleware): void {
     // Error middleware - will be called when errors occur
-    this.use((req: Request, res: Response, next: () => void) => {
+    this.use((req: Request, res: Response, next: (error?: any) => void) => {
       try {
         // Convert RNode Request to Express Request
         const expressReq = this.convertToExpressRequest(req);
@@ -1063,15 +1148,15 @@ class RouterImpl implements Router {
         const expressRes = this.convertToExpressResponse(res);
         
         // Create Express NextFunction
-        const expressNext: NextFunction = () => {
-          next();
+        const expressNext: NextFunction = (error?: any) => {
+          next(error); // Pass error to the next middleware/handler
         };
         
-        // Execute Express error middleware (no error for now)
+        // Execute Express error middleware
         middleware(null, expressReq, expressRes, expressNext);
       } catch (error) {
         // If error middleware fails, continue
-        next();
+        next(error);
       }
     });
   }
@@ -1108,26 +1193,64 @@ class RouterImpl implements Router {
   }
 
   private convertToExpressResponse(res: Response): ExpressResponse {
-    return {
+    let headersSent = false;
+    let statusCode = 200;
+    
+    // Create a proxy that tracks changes to the response
+    const expressRes = {
       ...res,
       // Add Express-specific properties
       app: {} as any,
       locals: {},
       charset: 'utf-8',
-      headersSent: false,
-      statusMessage: '',
-      req: {} as any,
       // Only essential Express methods that make sense
       get: (field: string) => res.getHeader(field),
       set: (field: string, value: string) => {
+        console.log(`🔧 Setting header: ${field} = ${value}`);
         res.setHeader(field, value);
-        return res;
+        return expressRes;
       },
       header: (field: string, value: string) => {
+        console.log(`🔧 Setting header: ${field} = ${value}`);
         res.setHeader(field, value);
-        return res;
-      }
+        return expressRes;
+      },
+      json: (body: any) => {
+        console.log('🔧 Sending JSON response');
+        headersSent = true;
+        res.json(body);
+        return expressRes;
+      },
+      send: (body: any) => {
+        console.log('🔧 Sending response');
+        headersSent = true;
+        res.send(body);
+        return expressRes;
+      },
+      end: (chunk?: any) => {
+        console.log('🔧 Ending response');
+        headersSent = true;
+        res.end(chunk);
+        return expressRes;
+      },
+      status: (code: number) => {
+        console.log(`🔧 Setting status: ${code}`);
+        statusCode = code;
+        res.status(code);
+        return expressRes;
+      },
+      // Getters for tracking state
+      get headersSent() {
+        return headersSent;
+      },
+      get statusCode() {
+        return statusCode;
+      },
+      // Override getHeaders to return the actual headers from res
+      getHeaders: () => res.getHeaders()
     } as unknown as ExpressResponse;
+    
+    return expressRes;
   }
 
   getHandlers(): Map<string, { method: string; handler: (req: Request, res: Response) => void }> {

@@ -161,7 +161,25 @@ pub async fn execute_middleware(
             if let Some(should_continue) = middleware_result["shouldContinue"].as_bool() {
                 if !should_continue {
                     println!("🛑 Middleware interrupted execution: {}", actual_path);
-                    // Middleware interrupts execution
+                    
+                    // Check if middleware returned an error
+                    if let Some(error) = middleware_result.get("error") {
+                        println!("❌ Middleware error: {:?}", error);
+                        
+                        // Return error response
+                        let error_message = error.as_str().unwrap_or("Middleware error");
+                        let error_response = Response::builder()
+                            .status(StatusCode::FORBIDDEN)
+                            .header("content-type", "application/json")
+                            .body(Body::from(format!(
+                                r#"{{"success":false,"error":"{}","message":"{}"}}"#,
+                                "Middleware error", error_message
+                            )))
+                            .unwrap();
+                        return Err(error_response);
+                    }
+                    
+                    // Middleware interrupts execution without error
                     let content = middleware_result["content"]
                         .as_str()
                         .unwrap_or("")
@@ -247,6 +265,9 @@ pub async fn execute_middleware(
                 }
                 if let Some(headers) = complete_res.get("headers") {
                     println!("🔧 Response headers: {:?}", headers);
+                    // Save response headers for final response
+                    request_data.insert("responseHeaders".to_string(), headers.clone());
+                    println!("🔧 Saved response headers to request_data");
                 }
             }
             

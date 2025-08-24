@@ -510,10 +510,13 @@ pub async fn dynamic_handler(
             serde_json::json!({"content": format!("Failed to parse JS response: {}", result), "contentType": "text/plain"})
         });
 
+        // Use response content from handler (middleware only sets headers, not content)
         let response_text = response_json_value["content"]
             .as_str()
             .unwrap_or("")
             .to_string();
+        
+        // Use response content type from handler (middleware only sets headers, not content)
         let content_type = response_json_value["contentType"]
             .as_str()
             .unwrap_or("text/plain")
@@ -532,6 +535,16 @@ pub async fn dynamic_handler(
             }
         }
         response_builder = response_builder.status(status_code);
+
+        // Add headers from middleware first
+        if let Some(middleware_headers) = request_data.get("responseHeaders").and_then(|h| h.as_object()) {
+            println!("🔧 Adding middleware headers to response: {:?}", middleware_headers);
+            for (key, value) in middleware_headers {
+                if let Some(value_str) = value.as_str() {
+                    response_builder = response_builder.header(key, value_str);
+                }
+            }
+        }
 
         // Add headers from JavaScript response (excluding service header status)
         if let Some(headers) = response_json_value["headers"].as_object() {
