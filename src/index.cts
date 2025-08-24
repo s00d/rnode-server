@@ -183,12 +183,12 @@ export interface Response {
 type Middleware = (req: Request, res: Response, next: (error?: any) => void) => void;
 
 export interface Router {
-  get(path: string, handler: (req: Request, res: Response) => void): void;
-  post(path: string, handler: (req: Request, res: Response) => void): void;
-  put(path: string, handler: (req: Request, res: Response) => void): void;
-  delete(path: string, handler: (req: Request, res: Response) => void): void;
-  patch(path: string, handler: (req: Request, res: Response) => void): void;
-  options(path: string, handler: (req: Request, res: Response) => void): void;
+  get(path: string, handler: (req: Request, res: Response) => void): Router;
+  post(path: string, handler: (req: Request, res: Response) => void): Router;
+  put(path: string, handler: (req: Request, res: Response) => void): Router;
+  delete(path: string, handler: (req: Request, res: Response) => void): Router;
+  patch(path: string, handler: (req: Request, res: Response) => void): Router;
+  options(path: string, handler: (req: Request, res: Response) => void): Router;
   use(pathOrMiddleware: string | Middleware, middleware?: Middleware): void;
   
   // Express middleware support
