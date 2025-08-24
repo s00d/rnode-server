@@ -12,11 +12,13 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="4d8c55b6-5a63-439f-adcf-d024569129f5" name="Changes" comment="init">
+      <change afterPath="$PROJECT_DIR$/playground/src/cors_example.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/handlers.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/handlers.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/middleware.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/middleware.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/lib.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/lib.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/server.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/server.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/static_files.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/static_files.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/playground/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/playground/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pnpm-lock.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/pnpm-lock.yaml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/index.cts" beforeDir="false" afterPath="$PROJECT_DIR$/src/index.cts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -103,7 +105,7 @@
       <option name="presentableId" value="Default" />
       <updated>1755847651115</updated>
       <workItem from="1755847652223" duration="50023000" />
-      <workItem from="1755983601443" duration="2846000" />
+      <workItem from="1755983601443" duration="4081000" />
     </task>
     <task id="LOCAL-00001" summary="init">
       <option name="closed" value="true" />
@@ -201,7 +203,15 @@
       <option name="project" value="LOCAL" />
       <updated>1755976318675</updated>
     </task>
-    <option name="localTasksCounter" value="13" />
+    <task id="LOCAL-00013" summary="init">
+      <option name="closed" value="true" />
+      <created>1756016828319</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1756016828319</updated>
+    </task>
+    <option name="localTasksCounter" value="14" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
