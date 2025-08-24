@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createApp } from '../src/index.ct';
+import { createApp } from '../';
 import { makeHttpRequest } from './helpers';
 import * as fs from 'fs';
 import * as path from 'path';

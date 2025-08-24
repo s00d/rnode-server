@@ -101,7 +101,12 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 
     // Start real HTTP server
     std::thread::spawn(move || {
-        let rt = tokio::runtime::Runtime::new().unwrap();
+        // let rt = tokio::runtime::Runtime::new().unwrap();
+        let rt = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(num_cpus::get()) // кол-во потоков = кол-во ядер
+            .enable_all()
+            .build()
+            .unwrap();
         rt.block_on(async {
             // Create base router
             let mut app = Router::new();
