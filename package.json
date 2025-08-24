@@ -4,7 +4,7 @@
   "description": "",
   "main": "./lib/index.cjs",
   "scripts": {
-    "test": "tsc &&cargo test",
+    "test": "vitest",
     "typecheck": "tsc --noEmit",
     "cargo-build": "tsc &&cargo build --message-format=json-render-diagnostics > cargo.log",
     "cross-build": "tsc &&cross build --message-format=json-render-diagnostics > cross.log",
@@ -28,7 +28,9 @@
     "playground:dev:static": "pnpm --filter playground run dev:static",
     "playground:dev:multipart": "pnpm --filter playground run dev:multipart",
     "playground:build": "pnpm --filter playground run build",
-    "playground:build:watch": "pnpm --filter playground run build:watch"
+    "playground:build:watch": "pnpm --filter playground run build:watch",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run"
   },
   "author": "",
   "license": "ISC",
@@ -60,7 +62,9 @@
     "@types/express": "^5.0.3",
     "@types/micromatch": "^4.0.9",
     "@types/node": "^20.11.16",
-    "typescript": "^5.3.3"
+    "@vitest/ui": "^3.2.4",
+    "typescript": "^5.3.3",
+    "vitest": "^3.2.4"
   },
   "dependencies": {
     "@neon-rs/load": "^0.1.82",

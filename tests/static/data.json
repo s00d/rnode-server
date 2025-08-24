@@ -1,0 +1,30 @@
+{
+    "name": "Test JSON File",
+    "version": "1.0.0",
+    "description": "A test JSON file for static file serving tests",
+    "data": {
+        "users": [
+            {
+                "id": 1,
+                "name": "John Doe",
+                "email": "john@example.com",
+                "role": "admin"
+            },
+            {
+                "id": 2,
+                "name": "Jane Smith",
+                "email": "jane@example.com",
+                "role": "user"
+            }
+        ],
+        "settings": {
+            "theme": "dark",
+            "language": "en",
+            "notifications": true
+        }
+    },
+    "metadata": {
+        "created": "2024-01-01T00:00:00Z",
+        "updated": "2024-01-01T00:00:00Z"
+    }
+}

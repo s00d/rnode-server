@@ -70,7 +70,7 @@ usersRouter.post('', (req, res) => {
   } catch (error) {
     res.json({
       success: false,
-      message: `Error: ${error.message}`
+      message: `Error: ${(error as any).message}`
     });
   }
 });

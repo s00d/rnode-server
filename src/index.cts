@@ -5,7 +5,7 @@ import * as addon from './load.cjs';
 import micromatch from 'micromatch';
 
 // Express types for compatibility
-import type {NextFunction, Request as ExpressRequest, Response as ExpressResponse} from 'express';
+import { NextFunction, Request as ExpressRequest, Response as ExpressResponse } from 'express';
 
 // Express middleware wrapper types
 export interface ExpressMiddleware {
@@ -153,7 +153,7 @@ export interface Response {
   headers: Record<string, string | string[]>;
   content: string | Buffer;
   contentType: string;
-  
+
   // Methods
   status(code: number): Response;
   json(data: any): Response;
@@ -190,15 +190,15 @@ export interface Router {
   patch(path: string, handler: (req: Request, res: Response) => void): Router;
   options(path: string, handler: (req: Request, res: Response) => void): Router;
   use(pathOrMiddleware: string | Middleware, middleware?: Middleware): void;
-  
+
   // Express middleware support
   useExpress(middleware: ExpressMiddleware): void;
   useExpress(path: string, middleware: ExpressMiddleware): void;
   useExpressError(middleware: ExpressErrorMiddleware): void;
-  
+
   // SSL configuration
   setSslConfig(config: SslConfig): void;
-  
+
   // Static files
   static(path: string, options?: StaticOptions): void;
   static(paths: string[], options?: StaticOptions): void;
@@ -208,11 +208,11 @@ export interface Router {
   deleteFile(filename: string, uploadsDir: string): FileOperationResult;
   getFileContent(filename: string, uploadsDir: string): FileContentResult;
   fileExists(filename: string, uploadsDir: string): boolean;
-  
+
   // Template methods
   initTemplates(pattern: string, options: TemplateOptions): string;
   renderTemplate(templateName: string, context: object): string;
-  
+
   getHandlers(): Map<string, { method: string; handler: (req: Request, res: Response) => void }>;
   getMiddlewares(): Map<string, Middleware[]>;
 }
@@ -257,7 +257,7 @@ export interface RNodeAppInterface extends Router {
   // Server methods
   listen(port: number, callback?: () => void): void;
   listen(port: number, host: string, callback?: () => void): void;
-  
+
   // Router methods
   useRouter(path: string, router: Router): void;
 
@@ -268,31 +268,31 @@ export interface RNodeAppInterface extends Router {
   static(paths: string[], options?: StaticOptions): void;
   clearStaticCache(): void;
   getStaticStats(): string;
-  
+
   // File operations
   saveFile(filename: string, base64Data: string, uploadsDir: string): FileOperationResult;
   deleteFile(filename: string, uploadsDir: string): FileOperationResult;
   listFiles(uploadsDir: string): FileListResult;
   getFileContent(filename: string, uploadsDir: string): FileContentResult;
   fileExists(filename: string, uploadsDir: string): boolean;
-  
+
   // File upload/download
   download(path: string, options: DownloadOptions): Router;
   upload(path: string, options?: UploadOptions): Router;
-  
+
   // Template methods
   initTemplates(pattern: string, options: TemplateOptions): string;
   renderTemplate(templateName: string, context: object): string;
-  
+
   // Express middleware support
   useExpress(middleware: ExpressMiddleware): void;
   useExpress(path: string, middleware: ExpressMiddleware): void;
   useExpressError(middleware: ExpressErrorMiddleware): void;
-  
+
   // SSL configuration
   setSslConfig(config: SslConfig): void;
   getSslConfig(): SslConfig | undefined;
-  
+
   // Get all registered routes including router routes
   getAllRoutes(): Map<string, (req: Request, res: Response) => void>;
 }
@@ -471,7 +471,7 @@ function getHandler(requestJson: string): string {
         headers: {},
         content: '',
         contentType: 'text/plain',
-        
+
         // Methods
         status: (code: number) => {
           res.headers['status'] = code.toString();
@@ -646,7 +646,7 @@ function executeMiddleware(middlewareJson: string): string {
     const request = JSON.parse(middlewareJson);
     console.log('🔍 executeMiddleware called with path:', request.path);
     console.log('🔍 Available middleware patterns:', Array.from(middlewares.keys()));
-    
+
     // Create req and res objects at function level
     const req: Request = {
       ...request,
@@ -843,13 +843,13 @@ function executeMiddleware(middlewareJson: string): string {
         return res;
       }
     };
-    
+
     // Search for suitable middleware
     for (const [middlewarePath, middlewareArray] of middlewares) {
       console.log(`🔍 Checking middleware pattern: ${middlewarePath} against path: ${request.path}`);
-      
+
       let matches = false;
-      
+
       if (middlewarePath === '*') {
         // Global middleware matches everything
         matches = true;
@@ -859,25 +859,25 @@ function executeMiddleware(middlewareJson: string): string {
         matches = micromatch.isMatch(request.path, middlewarePath);
         console.log(`🔍 Micromatch check: ${request.path} matches ${middlewarePath} -> ${matches}`);
       }
-      
+
       // Execute middleware for this pattern
       if (matches) {
         console.log(`✅ Executing ${middlewareArray.length} middleware for pattern: ${middlewarePath}`);
-        
+
         // Execute all middleware for this path
         console.log(`🔧 Starting with params:`, req.customParams);
-        
+
         for (let i = 0; i < middlewareArray.length; i++) {
           const middleware = middlewareArray[i];
           console.log(`🔄 Executing middleware ${i + 1} of ${middlewareArray.length}`);
-          
+
           try {
             // Call middleware function with req and res objects
             let middlewareError: any = null;
-            
+
             console.log(`🔍 Executing middleware for pattern: ${middlewarePath}`);
             console.log(`🔍 Request origin: ${req.headers.origin}`);
-            
+
             middleware(req, res, (error?: any) => {
               // Next function - continue to next middleware
               if (error) {
@@ -888,24 +888,24 @@ function executeMiddleware(middlewareJson: string): string {
                 console.log('✅ Middleware completed without error');
               }
             });
-            
+
             // Check if middleware returned an error
             if (middlewareError) {
               console.log('❌ Middleware returned error, stopping execution');
               console.log(`❌ Error details: ${middlewareError.message || middlewareError}`);
-              return JSON.stringify({ 
+              return JSON.stringify({
                 shouldContinue: false,
                 error: middlewareError.message || middlewareError.toString(),
                 req: {...req},
                 res: {...res}
               });
             }
-            
+
             // Update accumulated params for next middleware
             console.log(`🔧 Updated params:`, req.customParams);
           } catch (error) {
             console.error('❌ Middleware execution error:', error);
-            return JSON.stringify({ 
+            return JSON.stringify({
               shouldContinue: false,
               error: error instanceof Error ? error.message : String(error),
               req: {...req},
@@ -925,23 +925,23 @@ function executeMiddleware(middlewareJson: string): string {
       headers: req.headers,
       cookies: req.cookies
     };
-    
+
     const finalRes = {
       headers: res.getHeaders(),  // Используем реальные заголовки
       content: res.content || '',
       contentType: res.contentType || 'text/plain'
     };
-    
+
     console.log(`🔧 Final response headers:`, finalRes.headers);
-    
-    return JSON.stringify({ 
+
+    return JSON.stringify({
       shouldContinue: true,
       req: finalReq,
       res: finalRes
     });
   } catch (error) {
     console.error('❌ executeMiddleware error:', error);
-    
+
     // Create default req and res objects for error case
     const errorReq = {
       customParams: {},
@@ -953,14 +953,14 @@ function executeMiddleware(middlewareJson: string): string {
       queryParams: {},
       pathParams: {}
     };
-    
+
     const errorRes = {
       headers: {},
       content: 'Middleware Error',
       contentType: 'text/plain'
     };
-    
-    return JSON.stringify({ 
+
+    return JSON.stringify({
       shouldContinue: false,
       req: errorReq,
       res: errorRes
@@ -1032,10 +1032,10 @@ class RouterImpl implements Router {
         try {
           // Convert RNode Request to Express Request
           const expressReq = this.convertToExpressRequest(req);
-          
+
           // Convert RNode Response to Express Response
           const expressRes = this.convertToExpressResponse(res);
-          
+
           // Create Express NextFunction that properly handles errors
           const expressNext: NextFunction = (error?: any) => {
             if (error) {
@@ -1043,12 +1043,12 @@ class RouterImpl implements Router {
               console.log(`❌ Middleware error: ${error.message || error}`);
               console.log(`❌ Origin: ${req.headers.origin}`);
               console.log(`❌ CORS blocked request - calling next(error)`);
-              
+
               // Call next with error to trigger error handling
               next(error);
               return;
             }
-            
+
             // Check if response was already sent by middleware
             console.log(`🔧 Checking response state: headersSent=${expressRes.headersSent}, statusCode=${expressRes.statusCode}`);
             if (expressRes.headersSent || expressRes.statusCode !== 200) {
@@ -1057,16 +1057,16 @@ class RouterImpl implements Router {
               console.log(`🔧 Response status: ${expressRes.statusCode}`);
               return;
             }
-            
+
             // Continue to next middleware/handler
             console.log('✅ Middleware passed, continuing');
             console.log(`🔧 Response headers after middleware:`, res.getHeaders());
             next();
           };
-          
+
           // Execute Express middleware with proper error handling
           console.log(`🔒 Executing Express middleware for origin: ${req.headers.origin}`);
-          
+
           // Execute Express middleware
           expressMiddleware(expressReq, expressRes, expressNext);
         } catch (error) {
@@ -1082,22 +1082,22 @@ class RouterImpl implements Router {
         try {
           // Convert RNode Request to Express Request
           const expressReq = this.convertToExpressRequest(req);
-          
+
           // Convert RNode Response to Express Response
           const expressRes = this.convertToExpressResponse(res);
-          
+
           // Create Express NextFunction that properly handles errors
           const expressNext: NextFunction = (error?: any) => {
             if (error) {
               // If middleware calls next(error), reject the promise
               console.log(`❌ Middleware error: ${error.message || error}`);
               console.log(`❌ Origin: ${req.headers.origin}`);
-              
+
               // Call next with error to trigger error handling
               next(error);
               return;
             }
-            
+
             // Check if response was already sent by middleware
             if (expressRes.headersSent || expressRes.statusCode !== 200) {
               console.log('✅ Middleware handled response');
@@ -1105,16 +1105,16 @@ class RouterImpl implements Router {
               console.log(`🔧 Response status: ${expressRes.statusCode}`);
               return;
             }
-            
+
             // Continue to next middleware/handler
             console.log('✅ Middleware passed, continuing');
             console.log(`🔧 Response headers after middleware:`, res.getHeaders());
             next();
           };
-          
+
           // Execute Express middleware with proper error handling
           console.log(`🔒 Executing Express middleware for origin: ${req.headers.origin}`);
-          
+
           // Execute Express middleware
           expressMiddleware(expressReq, expressRes, expressNext);
         } catch (error) {
@@ -1143,15 +1143,15 @@ class RouterImpl implements Router {
       try {
         // Convert RNode Request to Express Request
         const expressReq = this.convertToExpressRequest(req);
-        
+
         // Convert RNode Response to Express Response
         const expressRes = this.convertToExpressResponse(res);
-        
+
         // Create Express NextFunction
         const expressNext: NextFunction = (error?: any) => {
           next(error); // Pass error to the next middleware/handler
         };
-        
+
         // Execute Express error middleware
         middleware(null, expressReq, expressRes, expressNext);
       } catch (error) {
@@ -1195,7 +1195,7 @@ class RouterImpl implements Router {
   private convertToExpressResponse(res: Response): ExpressResponse {
     let headersSent = false;
     let statusCode = 200;
-    
+
     // Create a proxy that tracks changes to the response
     const expressRes = {
       ...res,
@@ -1249,7 +1249,7 @@ class RouterImpl implements Router {
       // Override getHeaders to return the actual headers from res
       getHeaders: () => res.getHeaders()
     } as unknown as ExpressResponse;
-    
+
     return expressRes;
   }
 
@@ -1475,7 +1475,7 @@ class RNodeApp extends RouterImpl {
     // Register router middleware
     for (const [routePath, middlewareArray] of routerMiddlewares) {
       let fullPath: string;
-      
+
       if (routePath === '*') {
         // Глобальный middleware для роутера - регистрируем для всех путей роутера
         fullPath = `${path}/*`;
@@ -1485,19 +1485,19 @@ class RNodeApp extends RouterImpl {
         fullPath = `${path}${routePath}`;
         console.log(`🔐 Registering router middleware for: ${fullPath}`);
       }
-      
+
       console.log(`🔍 Full path: '${fullPath}', routePath: '${routePath}', path: '${path}'`);
-      
+
       // Add to global middlewares
       const existing = middlewares.get(fullPath) || [];
       middlewares.set(fullPath, [...existing, ...middlewareArray]);
-      
+
       // Register each middleware individually in Rust addon
       for (const middleware of middlewareArray) {
         console.log(`🔧 Calling addon.use('${fullPath}', middleware)`);
         addon.use(fullPath, middleware);
       }
-      
+
       console.log(`✅ Registered router middleware: ${fullPath} (${middlewareArray.length} middleware functions)`);
       console.log(`📊 Global middlewares after registration:`, Array.from(middlewares.keys()));
     }
@@ -1526,173 +1526,173 @@ class RNodeApp extends RouterImpl {
   }
 
   listen(port: number, hostOrCallback?: string | (() => void), callback?: () => void): void {
-      // Copy handlers and register in Rust addon
-      for (const [key, value] of this.handlers) {
-        const [method, path] = key.split(':', 2);
-        handlers.set(key, value.handler);
+    // Copy handlers and register in Rust addon
+    for (const [key, value] of this.handlers) {
+      const [method, path] = key.split(':', 2);
+      handlers.set(key, value.handler);
 
-        // Register in Rust addon through existing methods
-        const addonMethod = method.toLowerCase() === 'delete' ? 'del' : method.toLowerCase();
-        (addon as any)[addonMethod](path, value.handler);
-      }
+      // Register in Rust addon through existing methods
+      const addonMethod = method.toLowerCase() === 'delete' ? 'del' : method.toLowerCase();
+      (addon as any)[addonMethod](path, value.handler);
+    }
 
-      // Copy middleware
-      for (const [key, value] of this.middlewares) {
-        console.log(`🔧 Copying middleware: ${key} -> ${value.length} functions`);
-        const existing = middlewares.get(key) || [];
-        middlewares.set(key, [...existing, ...value]);
-        
-        // Register each middleware individually in Rust addon
-        for (const middleware of value) {
-          console.log(`🔧 Calling addon.use('${key}', middleware) in listen`);
-          addon.use(key, middleware);
-        }
-      }
+    // Copy middleware
+    for (const [key, value] of this.middlewares) {
+      console.log(`🔧 Copying middleware: ${key} -> ${value.length} functions`);
+      const existing = middlewares.get(key) || [];
+      middlewares.set(key, [...existing, ...value]);
 
-      console.log('🔧 Global handlers updated:', Array.from(handlers.keys()));
-      console.log('🔧 Global middlewares updated:', Array.from(middlewares.keys()));
-      console.log('🔧 App middlewares:', Array.from(this.middlewares.keys()));
-
-      // Determine host and callback
-      let host: string = "127.0.0.1";
-      let actualCallback: (() => void) | undefined;
-
-      if (typeof hostOrCallback === 'string') {
-        host = hostOrCallback;
-        actualCallback = callback;
-      } else if (typeof hostOrCallback === 'function') {
-        actualCallback = hostOrCallback;
-      }
-
-      // Normalize host values
-      if (host === 'localhost') {
-        host = '127.0.0.1';
-      } else if (host === '0') {
-        host = '0.0.0.0';
-      }
-
-      // Check if SSL is configured
-      const sslConfig = this.getSslConfig();
-      if (sslConfig && sslConfig.certPath && sslConfig.keyPath) {
-        console.log(`🔒 Starting HTTPS server on ${host || '127.0.0.1'}:${port}`);
-        console.log(`   Certificate: ${sslConfig.certPath}`);
-        console.log(`   Private Key: ${sslConfig.keyPath}`);
-        // Start HTTPS server with SSL certificates
-        addon.listen(port, host, sslConfig.certPath, sslConfig.keyPath);
-      } else {
-        console.log(`🌐 Starting HTTP server on ${host || '127.0.0.1'}:${port}`);
-        // Start HTTP server
-        addon.listen(port, host);
-      }
-      
-      if (actualCallback) {
-        actualCallback();
+      // Register each middleware individually in Rust addon
+      for (const middleware of value) {
+        console.log(`🔧 Calling addon.use('${key}', middleware) in listen`);
+        addon.use(key, middleware);
       }
     }
 
-    // HTTP methods get, post, put, delete, patch and use are automatically inherited from RouterImpl
-    // and automatically registered in Rust addon
+    console.log('🔧 Global handlers updated:', Array.from(handlers.keys()));
+    console.log('🔧 Global middlewares updated:', Array.from(middlewares.keys()));
+    console.log('🔧 App middlewares:', Array.from(this.middlewares.keys()));
 
-    // Methods for working with files
-    saveFile(filename: string, base64Data: string, uploadsDir: string): FileOperationResult {
-      const result = addon.saveFile(filename, base64Data, uploadsDir);
-      return JSON.parse(result);
+    // Determine host and callback
+    let host: string = "127.0.0.1";
+    let actualCallback: (() => void) | undefined;
+
+    if (typeof hostOrCallback === 'string') {
+      host = hostOrCallback;
+      actualCallback = callback;
+    } else if (typeof hostOrCallback === 'function') {
+      actualCallback = hostOrCallback;
     }
 
-    deleteFile(filename: string, uploadsDir: string): FileOperationResult {
-      const result = addon.deleteFile(filename, uploadsDir);
-      return JSON.parse(result);
+    // Normalize host values
+    if (host === 'localhost') {
+      host = '127.0.0.1';
+    } else if (host === '0') {
+      host = '0.0.0.0';
     }
 
-    listFiles(uploadsDir: string): FileListResult {
-      const result = addon.listFiles(uploadsDir);
-      return JSON.parse(result);
+    // Check if SSL is configured
+    const sslConfig = this.getSslConfig();
+    if (sslConfig && sslConfig.certPath && sslConfig.keyPath) {
+      console.log(`🔒 Starting HTTPS server on ${host || '127.0.0.1'}:${port}`);
+      console.log(`   Certificate: ${sslConfig.certPath}`);
+      console.log(`   Private Key: ${sslConfig.keyPath}`);
+      // Start HTTPS server with SSL certificates
+      addon.listen(port, host, sslConfig.certPath, sslConfig.keyPath);
+    } else {
+      console.log(`🌐 Starting HTTP server on ${host || '127.0.0.1'}:${port}`);
+      // Start HTTP server
+      addon.listen(port, host);
     }
 
-    getFileContent(filename: string, uploadsDir: string): FileContentResult {
-      const result = addon.getFileContent(filename, uploadsDir);
-      return JSON.parse(result);
-    }
-
-    fileExists(filename: string, uploadsDir: string): boolean {
-      return addon.fileExists(filename, uploadsDir);
-    }
-
-    download(path: string, options: DownloadOptions): Router {
-      // Register route for file downloads in Rust backend
-      addon.registerDownloadRoute(path, JSON.stringify(options));
-      return this;
-    }
-
-    upload(path: string, options: UploadOptions): Router {
-      // Register route for file uploads in Rust backend
-      addon.registerUploadRoute(path, JSON.stringify(options));
-      return this;
-    }
-
-    // Methods for working with templates
-    initTemplates(pattern: string, options: TemplateOptions): string {
-      try {
-        return addon.initTemplates(pattern, options);
-      } catch (error) {
-        return JSON.stringify({
-          success: false,
-          error: `Failed to initialize templates: ${error}`
-        });
-      }
-    }
-
-    renderTemplate(templateName: string, context: object): string {
-      try {
-        const contextStr = JSON.stringify(context);
-        const result = addon.renderTemplate(templateName, contextStr);
-        return result;
-      } catch (error) {
-        return JSON.stringify({
-          success: false,
-          error: `Failed to render template: ${error}`
-        });
-      }
+    if (actualCallback) {
+      actualCallback();
     }
   }
 
-  // Function for creating application
-  export function createApp(options?: AppOptions): RNodeAppInterface {
-    const appInfo = addon.createApp();
-    console.log(`Creating ${appInfo.name} v${appInfo.version}`);
+  // HTTP methods get, post, put, delete, patch and use are automatically inherited from RouterImpl
+  // and automatically registered in Rust addon
 
-    // Create RNodeApp instance
-    const app = new RNodeApp();
+  // Methods for working with files
+  saveFile(filename: string, base64Data: string, uploadsDir: string): FileOperationResult {
+    const result = addon.saveFile(filename, base64Data, uploadsDir);
+    return JSON.parse(result);
+  }
 
-    // Store SSL configuration if provided
-    if (options?.ssl) {
-      const { certPath, keyPath } = options.ssl;
-      if (certPath && keyPath) {
-        console.log(`🔒 SSL configuration loaded:`);
-        console.log(`   Certificate: ${certPath}`);
-        console.log(`   Private Key: ${keyPath}`);
-        // Store SSL config in the app for later use
-        (app as any).sslConfig = { certPath, keyPath };
-      } else {
-        console.warn('SSL certificate paths are not provided in options.');
-      }
+  deleteFile(filename: string, uploadsDir: string): FileOperationResult {
+    const result = addon.deleteFile(filename, uploadsDir);
+    return JSON.parse(result);
+  }
+
+  listFiles(uploadsDir: string): FileListResult {
+    const result = addon.listFiles(uploadsDir);
+    return JSON.parse(result);
+  }
+
+  getFileContent(filename: string, uploadsDir: string): FileContentResult {
+    const result = addon.getFileContent(filename, uploadsDir);
+    return JSON.parse(result);
+  }
+
+  fileExists(filename: string, uploadsDir: string): boolean {
+    return addon.fileExists(filename, uploadsDir);
+  }
+
+  download(path: string, options: DownloadOptions): Router {
+    // Register route for file downloads in Rust backend
+    addon.registerDownloadRoute(path, JSON.stringify(options));
+    return this;
+  }
+
+  upload(path: string, options: UploadOptions): Router {
+    // Register route for file uploads in Rust backend
+    addon.registerUploadRoute(path, JSON.stringify(options));
+    return this;
+  }
+
+  // Methods for working with templates
+  initTemplates(pattern: string, options: TemplateOptions): string {
+    try {
+      return addon.initTemplates(pattern, options);
+    } catch (error) {
+      return JSON.stringify({
+        success: false,
+        error: `Failed to initialize templates: ${error}`
+      });
     }
-
-    return app;
   }
 
-  // Simple greeting function
-  export function greeting(name: string): { message: string } {
-    const message = addon.hello(name);
-    return { message };
+  renderTemplate(templateName: string, context: object): string {
+    try {
+      const contextStr = JSON.stringify(context);
+      const result = addon.renderTemplate(templateName, contextStr);
+      return result;
+    } catch (error) {
+      return JSON.stringify({
+        success: false,
+        error: `Failed to render template: ${error}`
+      });
+    }
+  }
+}
+
+// Function for creating application
+export function createApp(options?: AppOptions): RNodeAppInterface {
+  const appInfo = addon.createApp();
+  console.log(`Creating ${appInfo.name} v${appInfo.version}`);
+
+  // Create RNodeApp instance
+  const app = new RNodeApp();
+
+  // Store SSL configuration if provided
+  if (options?.ssl) {
+    const { certPath, keyPath } = options.ssl;
+    if (certPath && keyPath) {
+      console.log(`🔒 SSL configuration loaded:`);
+      console.log(`   Certificate: ${certPath}`);
+      console.log(`   Private Key: ${keyPath}`);
+      // Store SSL config in the app for later use
+      (app as any).sslConfig = { certPath, keyPath };
+    } else {
+      console.warn('SSL certificate paths are not provided in options.');
+    }
   }
 
-  // Default export for ES modules compatibility
-  export default {
-    createApp,
-    greeting,
-    RNodeApp
-  };
+  return app;
+}
 
-  // Export types for use
-  export type { StaticOptions };
+// Simple greeting function
+export function greeting(name: string): { message: string } {
+  const message = addon.hello(name);
+  return { message };
+}
+
+// Default export for ES modules compatibility
+export default {
+  createApp,
+  greeting,
+  RNodeApp
+};
+
+// Export types for use
+export type { StaticOptions };
