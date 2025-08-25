@@ -1,120 +1,44 @@
-import { createApp, Router } from 'rnode-server';
-import UserDatabase from './database.js';
-import AuthDatabase from './auth-database.js';
+import { createApp } from 'rnode-server';
+import path from "path";
 
-const app = createApp();
+const app = createApp({ logLevel: "warn" });
 const port = 4546;
-
-// Initialize databases
-const db = new UserDatabase();
-const authDb = new AuthDatabase();
-
-// Clean up expired sessions on startup
-authDb.cleanupExpiredSessions();
 
 // Load static files into memory
 app.static('./public');
 
-// ===== CREATING USERS ROUTER =====
-
-// Create users router
-const usersRouter = Router();
-
-// Middleware for users router
-usersRouter.use((req, res, next) => {
-  console.log('👥 Users Router Middleware:', req.method, req.url);
-  req.setParam('routerName', 'users');
+// Middleware for CORS
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   next();
 });
 
-// POST route for creating user
-usersRouter.post('', (req, res) => {
-  console.log('=== POST /api/users ===');
-  console.log('Body:', req.body);
-
-  try {
-    // Parse body if it's JSON
-    let userData = req.body;
-    if (typeof req.body === 'string') {
-      try {
-        userData = JSON.parse(req.body);
-      } catch (e) {
-        userData = { name: req.body, email: '', age: null };
-      }
-    }
-
-    // Check required fields
-    if (!userData.name || !userData.email) {
-      return res.json({
-        success: false,
-        message: 'Name and email are required'
-      });
-    }
-
-    // Create user in database
-    const result = db.createUser(userData);
-
-    if (result.success) {
-      res.json({
-        success: true,
-        message: result.message,
-        userId: result.id,
-        user: userData
-      });
-    } else {
-      res.json({
-        success: false,
-        message: result.message
-      });
-    }
-  } catch (error) {
-    res.json({
-      success: false,
-      message: `Error: ${(error as any).message}`
-    });
-  }
-});
-
-// GET route for getting all users
-usersRouter.get('', (req, res) => {
-  console.log('=== GET /api/users ===');
-
-  const result = db.getAllUsers();
-  res.json(result);
-});
-
-app.useRouter('/api/users', usersRouter);
-
+// GET route
 app.get('/hello', (req, res) => {
-  console.log('👋 Hello handler - parameters from global middleware:', req.getParams());
-
-  // Add our own parameters
-  req.setParam('handlerName', 'hello');
-  req.setParam('message', 'Hello World!');
-
-  res.json({
-    message: 'Hello World!',
-    globalParams: req.getParams(),
-    info: 'This response contains parameters from global middleware',
-    auth: {
-      isAuthenticated: req.getParam('isAuthenticated'),
-      user: req.getParam('user'),
-      userId: req.getParam('userId')
-    }
-  });
+  res.send('Hello World!');
 });
 
-app.get('/posts/{postId}/comments/{commentId}', (req, res) => {
-  const { postId, commentId } = req.params;
-  res.json({ postId, commentId, message: 'Comment details' });
+// POST route
+app.post('/api/users', (req, res) => {
+  res.json({ message: 'User created successfully' });
+});
+
+// GET route with parameters
+app.get('/api/users/:id', (req, res) => {
+  const userId = req.params.id;
+  res.json({ userId, message: 'User found' });
 });
 
 // Start server
 app.listen(port, () => {
-  console.log(`🚀 Server started on port ${port}`);
-  console.log(`�� SQLite database: users.db`);
-  console.log(`🔗 API endpoints:`);
-  console.log(`   📝 Users:`);
-  console.log(`      POST   /api/users - create user`);
-  console.log(`      GET    /api/users - get all users`);
+  console.log(`Express app listening on port ${port}`);
+  console.log(`Static files served from: ${path.join(__dirname, 'public')}`);
+  console.log(`Available routes:`);
+  console.log(`  GET /hello`);
+  console.log(`  POST /api/users`);
+  console.log(`  GET /api/users/:id`);
+  console.log(`  GET / (static index.html)`);
+  console.log(`  GET /style.css (static CSS)`);
 });

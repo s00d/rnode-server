@@ -150,7 +150,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
             }
             
             let addr = SocketAddr::from(([127, 0, 0, 1], port));
-            info!("Server listening on http://{}", addr);
+            warn!("Server listening on http://{}", addr);
             debug!("Registered dynamic routes:");
             for (_, route_info) in routes_map.iter() {
                 debug!("  {} {}", route_info.method, route_info.path);
@@ -673,7 +673,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                 match RustlsConfig::from_pem_file(cert_path, key_path).await {
                     Ok(tls_config) => {
                         info!("🔒 Starting HTTPS server with TLS configuration");
-                        info!("🔒 HTTPS server listening on https://{}", addr);
+                        warn!("🔒 HTTPS server listening on https://{}", addr);
                         
                         // Use axum-server with TLS
                         axum_server::bind_rustls(addr, tls_config)
@@ -687,14 +687,14 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                         
                         // Fallback to HTTP
                         let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-                        info!("🌐 HTTP server listening on http://{}", addr);
+                        warn!("🌐 HTTP server listening on http://{}", addr);
                         axum::serve(listener, app).await.unwrap();
                     }
                 }
             } else {
                 // Start HTTP server
                 let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-                info!("🌐 HTTP server listening on http://{}", addr);
+                warn!("🌐 HTTP server listening on http://{}", addr);
                 axum::serve(listener, app).await.unwrap();
             }
         });
