@@ -1,6 +1,6 @@
 {
   "name": "rnode-server",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "High-performance Node.js server built with Rust, featuring Express-like API with advanced middleware support, authentication, and database integration",
   "main": "./lib/index.cjs",
   "scripts": {
