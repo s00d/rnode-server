@@ -1,3 +1,15 @@
+
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-blue?style=for-the-badge)](https://github.com/s00d/rnode-server)
+[![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)](https://github.com/s00d/rnode-server/blob/main/LICENSE)
+[![GitHub release](https://img.shields.io/github/v/release/s00d/rnode-server?style=for-the-badge)](https://github.com/s00d/rnode-server/releases)
+[![GitHub downloads](https://img.shields.io/github/downloads/s00d/rnode-server/total?style=for-the-badge)](https://github.com/s00d/rnode-server/releases)
+[![GitHub issues](https://img.shields.io/badge/github-issues-orange?style=for-the-badge)](https://github.com/s00d/rnode-server/issues)
+[![GitHub stars](https://img.shields.io/badge/github-stars-yellow?style=for-the-badge)](https://github.com/s00d/rnode-server/stargazers)
+[![Rust](https://img.shields.io/badge/Rust-000000?style=for-the-badge&logo=rust&logoColor=white)](https://www.rust-lang.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Donate](https://img.shields.io/badge/Donate-Donationalerts-ff4081?style=for-the-badge)](https://www.donationalerts.com/r/s00d88)
+
 # RNode Server
 
 > **🚀 Experimental Project**: This is an experimental attempt to create a high-performance Node.js server built with Rust, featuring Express-like API with advanced middleware support, authentication, and database integration.
@@ -513,9 +525,102 @@ For complete Tera documentation and advanced features, visit: [https://keats.git
 - **`allowHiddenFiles`** - Allow hidden files
 - **`allowSystemFiles`** - Allow system files
 
-## Code Examples
+## 📚 **Examples & Playground**
 
-### Basic Server Setup
+### 🎮 **Live Examples**
+
+The project includes a comprehensive playground with real examples demonstrating all features:
+
+#### **🚀 Main Application** (`/playground/src/index.ts`)
+- **HTTP & HTTPS servers** with SSL configuration
+- **Router integration** with multiple API endpoints
+- **File upload/download** with wildcard subfolder support
+- **Static file serving** with security options
+- **Middleware integration** for logging and CORS
+
+#### **🔧 Router Examples** (`/playground/src/routers/`)
+- **`api.ts`** - Basic API endpoints and CRUD operations
+- **`auth_api.ts`** - Authentication system with sessions
+- **`common.ts`** - Common middleware and utilities
+- **`cors.ts`** - CORS configuration and preflight handling
+- **`multipart.ts`** - File upload and multipart form handling
+- **`static.ts`** - Static file serving examples
+- **`templates.ts`** - Tera template engine usage
+- **`users.ts`** - User management and database operations
+
+### 🎯 **Quick Start Examples**
+
+#### **Basic Server Setup**
+```typescript
+import { createApp } from 'rnode-server';
+
+const app = createApp({ logLevel: 'debug' });
+app.listen(3000, () => console.log('🚀 Server running on port 3000'));
+```
+
+#### **Router with Middleware**
+```typescript
+import { Router } from 'rnode-server';
+
+const userRouter = Router();
+
+userRouter.use((req, res, next) => {
+  console.log('👥 User Router Middleware:', req.method, req.url);
+  req.setParam('routerName', 'users');
+  next();
+});
+
+userRouter.get('/', (req, res) => {
+  res.json({ users: [], router: req.getParam('routerName') });
+});
+
+app.useRouter('/api/users', userRouter);
+```
+
+#### **File Upload with Wildcards**
+```typescript
+// Upload to specific subfolder with wildcard support
+app.upload('/upload/{*subfolder}', {
+  folder: './uploads',
+  allowedSubfolders: ['documents/*', 'images/*', 'files/*'],
+  maxFileSize: 50 * 1024 * 1024, // 50 MB
+  allowedExtensions: ['.png', '.jpg', '.pdf', '.txt'],
+  multiple: true,
+  maxFiles: 10
+});
+```
+
+#### **Static Files with Security**
+```typescript
+app.static('./public', {
+  cache: true,
+  maxAge: 3600, // 1 hour
+  maxFileSize: 10 * 1024 * 1024, // 10MB
+  gzip: true,
+  brotli: false,
+  allowHiddenFiles: false,
+  blockedPaths: ['.git', '.env', '.htaccess']
+});
+```
+
+### 🔍 **Explore the Playground**
+
+To see all examples in action:
+
+```bash
+cd playground
+pnpm install
+pnpm run dev:mini  # Start development server
+```
+
+Visit `http://localhost:4599` to explore:
+- **API endpoints** at `/api/*`
+- **File uploads** at `/upload` and `/upload-multiple`
+- **Template rendering** at `/templates/*`
+- **Static files** at `/static/*`
+- **CORS examples** at `/cors/*`
+
+## Code Examples
 ```javascript
 import { createApp } from 'rnode-server';
 
