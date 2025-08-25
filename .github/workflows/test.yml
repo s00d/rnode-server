@@ -6,17 +6,17 @@ run-name: |
 
 on:
   # Event: A maintainer has pushed commits or merged a PR to main.
-  push:
-    # Limiting push events to 'main' prevents duplicate runs of this workflow
-    # when maintainers push to internal PRs.
-    branches:
-      - main
-
-  # Event: A contributor has created or updated a PR.
-  pull_request:
-    types: [opened, synchronize, reopened, labeled]
-    branches:
-      - main
+#  push:
+#    # Limiting push events to 'main' prevents duplicate runs of this workflow
+#    # when maintainers push to internal PRs.
+#    branches:
+#      - main
+#
+#  # Event: A contributor has created or updated a PR.
+#  pull_request:
+#    types: [opened, synchronize, reopened, labeled]
+#    branches:
+#      - main
 
 jobs:
   pr:
