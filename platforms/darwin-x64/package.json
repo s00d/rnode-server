@@ -12,6 +12,14 @@
   "files": [
     "index.node"
   ],
+  "neon": {
+    "type": "binary",
+    "rust": "x86_64-apple-darwin",
+    "node": "darwin-x64",
+    "os": "darwin",
+    "arch": "x64",
+    "abi": null
+  },
   "author": "",
   "license": "ISC"
 }

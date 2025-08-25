@@ -12,6 +12,14 @@
   "files": [
     "index.node"
   ],
+  "neon": {
+    "type": "binary",
+    "rust": "aarch64-unknown-linux-gnu",
+    "node": "linux-arm64-gnu",
+    "os": "linux",
+    "arch": "arm64",
+    "abi": "gnu"
+  },
   "author": "",
   "license": "ISC"
 }
