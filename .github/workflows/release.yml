@@ -52,7 +52,7 @@ jobs:
         name: Validate Dry Run Event
         if: ${{ inputs.dryrun }}
         shell: bash
-        run: echo dryrun=true | tee -a $GITHUB_OUTPUT
+        run: echo "dryrun=true" >> $GITHUB_OUTPUT
       - id: publish
         name: Validate Publish Event
         if: ${{ !inputs.dryrun }}
@@ -72,7 +72,7 @@ jobs:
             echo "::error::See https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions for info about how to store GitHub repo secrets."
             exit 1
           fi
-          echo publish=true | tee -a $GITHUB_OUTPUT
+          echo "publish=true" >> $GITHUB_OUTPUT
       - name: Checkout Code
         uses: actions/checkout@v3
       - name: Setup Neon Environment
@@ -86,9 +86,9 @@ jobs:
         run: |
           git config --global user.name $ACTIONS_USER
           git config --global user.email $ACTIONS_EMAIL
-          npm version -m 'v%s' '${{ (inputs.version == 'custom' && inputs.custom) || inputs.version }}'
+          pnpm version -m 'v%s' '${{ (inputs.version == 'custom' && inputs.custom) || inputs.version }}'
           git push --follow-tags
-          echo tag=$(git describe --abbrev=0) | tee -a $GITHUB_OUTPUT
+          echo "tag=$(git describe --abbrev=0)" >> $GITHUB_OUTPUT
 
   build:
     name: Build
@@ -131,5 +131,5 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           for p in ./dist/*.tgz ; do
-            npm publish --access public $p
+            pnpm publish --access public --no-git-checks $p
           done
