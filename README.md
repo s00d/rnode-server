@@ -873,19 +873,6 @@ openssl req -x509 -newkey rsa:4096 \
 - Chained middleware execution
 - Custom middleware creation
 
-### Authentication & Security
-- Session-based authentication
-- Password hashing and validation
-- Protected route middleware
-- Cookie-based session management
-- Automatic session cleanup
-
-### Database Features
-- SQLite database integration
-- User management (CRUD operations)
-- Session storage and validation
-- Search and filtering capabilities
-
 ### Static File Handling
 - **Advanced Configuration**: Multiple folders with different settings
 - **Smart Caching**: In-memory caching with configurable TTL
