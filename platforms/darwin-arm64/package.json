@@ -12,6 +12,27 @@
   "files": [
     "index.node"
   ],
+  "author": "s00d <Virus191288@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/s00d/rnode-server.git"
+  },
+  "keywords": [
+    "rnode-server",
+    "neon",
+    "rust",
+    "native",
+    "addon",
+    "binary",
+    "server",
+    "http",
+    "fast"
+  ],
+  "bugs": {
+    "url": "https://github.com/s00d/rnode-server/issues"
+  },
+  "homepage": "https://github.com/s00d/rnode-server#readme",
+  "license": "MIT",
   "neon": {
     "type": "binary",
     "rust": "aarch64-apple-darwin",
@@ -19,7 +40,5 @@
     "os": "darwin",
     "arch": "arm64",
     "abi": null
-  },
-  "author": "",
-  "license": "ISC"
+  }
 }

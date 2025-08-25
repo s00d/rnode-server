@@ -1,12 +1,12 @@
 {
   "name": "rnode-server",
+  "private": false,
   "version": "0.1.8",
   "description": "High-performance Node.js server built with Rust, featuring Express-like API with advanced middleware support, authentication, and database integration",
   "main": "./lib/index.cjs",
   "workspaces": [
     "playground",
-    "packages/*",
-    "platforms/*"
+    "packages/*"
   ],
   "scripts": {
     "test": "vitest",
@@ -48,7 +48,11 @@
   "neon": {
     "type": "library",
     "org": "@rnode-server",
-    "platforms": "common",
+    "platforms": [
+      "extended",
+      "linux-arm64-musl",
+      "linux-x64-musl"
+    ],
     "load": "./src/load.cts"
   },
   "devDependencies": {
@@ -73,6 +77,11 @@
     "@rnode-server/darwin-x64": "0.1.8",
     "@rnode-server/darwin-arm64": "0.1.8",
     "@rnode-server/linux-x64-gnu": "0.1.8",
-    "@rnode-server/linux-arm64-gnu": "0.1.8"
+    "@rnode-server/linux-arm64-gnu": "0.1.8",
+    "@rnode-server/win32-arm64-msvc": "0.1.8",
+    "@rnode-server/linux-arm-gnueabihf": "0.1.8",
+    "@rnode-server/android-arm-eabi": "0.1.8",
+    "@rnode-server/linux-arm64-musl": "0.1.8",
+    "@rnode-server/linux-x64-musl": "0.1.8"
   }
 }

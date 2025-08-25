@@ -1,12 +1,12 @@
 {
-  "name": "@rnode-server/darwin-x64",
-  "description": "Prebuilt binary package for `rnode-server` on `darwin-x64`.",
+  "name": "@rnode-server/linux-arm64-musl",
+  "description": "Prebuilt binary package for `rnode-server` on `linux-arm64-musl`.",
   "version": "0.1.8",
   "os": [
-    "darwin"
+    "linux"
   ],
   "cpu": [
-    "x64"
+    "arm64"
   ],
   "main": "index.node",
   "files": [
@@ -14,11 +14,11 @@
   ],
   "neon": {
     "type": "binary",
-    "rust": "x86_64-apple-darwin",
-    "node": "darwin-x64",
-    "os": "darwin",
-    "arch": "x64",
-    "abi": null
+    "rust": "aarch64-unknown-linux-musl",
+    "node": "linux-arm64-musl",
+    "os": "linux",
+    "arch": "arm64",
+    "abi": "musl"
   },
   "author": "s00d <Virus191288@gmail.com>",
   "repository": {
