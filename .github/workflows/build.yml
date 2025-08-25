@@ -102,7 +102,8 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
-          echo filename=$(basename $(pnpm pack ./platforms/${{ matrix.cfg.platform }} --silent --pack-destination=./dist --json | jq -r '.[0].filename')) | tee -a $GITHUB_OUTPUT
+          pnpm pack ./platforms/${{ matrix.cfg.platform }} --silent --pack-destination=./dist > /dev/null 2>&1
+          echo filename=$(basename $(ls -t ./dist/*.tgz | head -1)) | tee -a $GITHUB_OUTPUT
       - name: Release
         if: ${{ inputs.github-release }}
         uses: softprops/action-gh-release@9d7c94cfd0a1f3ed45544c887983e9fa900f0564 # v2.0.4
@@ -128,7 +129,8 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
-          echo "filename=$(pnpm pack --silent --pack-destination=./dist)" | tee -a $GITHUB_OUTPUT
+          pnpm pack --silent --pack-destination=./dist > /dev/null 2>&1
+          echo "filename=$(basename $(ls -t ./dist/*.tgz | head -1))" | tee -a $GITHUB_OUTPUT
       - name: Release
         if: ${{ inputs.github-release }}
         uses: softprops/action-gh-release@9d7c94cfd0a1f3ed45544c887983e9fa900f0564 # v2.0.4
