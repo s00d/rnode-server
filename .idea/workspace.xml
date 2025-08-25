@@ -12,29 +12,18 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="4d8c55b6-5a63-439f-adcf-d024569129f5" name="Changes" comment="fix">
-      <change beforePath="$PROJECT_DIR$/.github/actions/setup/action.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/actions/setup/action.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.github/workflows/build.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/build.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.github/workflows/release.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/release.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crates/rnode-server/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/Cargo.toml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/platforms/darwin-arm64/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/platforms/darwin-arm64/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/platforms/darwin-arm64/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/platforms/darwin-arm64/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/platforms/darwin-x64/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/platforms/darwin-x64/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/platforms/darwin-x64/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/platforms/darwin-x64/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/platforms/linux-arm64-gnu/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/platforms/linux-arm64-gnu/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/platforms/linux-arm64-gnu/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/platforms/linux-arm64-gnu/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/platforms/linux-x64-gnu/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/platforms/linux-x64-gnu/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/platforms/linux-x64-gnu/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/platforms/linux-x64-gnu/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/platforms/win32-x64-msvc/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/platforms/win32-x64-msvc/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/platforms/win32-x64-msvc/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/platforms/win32-x64-msvc/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pnpm-workspace.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/pnpm-workspace.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/load.cts" beforeDir="false" afterPath="$PROJECT_DIR$/src/load.cts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ChangesViewManager">
+    <option name="groupingKeys">
+      <option value="directory" />
+      <option value="repository" />
+    </option>
   </component>
   <component name="ExecutionTargetManager" SELECTED_TARGET="RsBuildProfile:test" />
   <component name="Git.Settings">
@@ -129,7 +118,7 @@
       <updated>1755847651115</updated>
       <workItem from="1755847652223" duration="50023000" />
       <workItem from="1755983601443" duration="12392000" />
-      <workItem from="1756069919594" duration="16631000" />
+      <workItem from="1756069919594" duration="17328000" />
     </task>
     <task id="LOCAL-00001" summary="init">
       <option name="closed" value="true" />
@@ -387,7 +376,15 @@
       <option name="project" value="LOCAL" />
       <updated>1756115540002</updated>
     </task>
-    <option name="localTasksCounter" value="33" />
+    <task id="LOCAL-00033" summary="fix">
+      <option name="closed" value="true" />
+      <created>1756121889174</created>
+      <option name="number" value="00033" />
+      <option name="presentableId" value="LOCAL-00033" />
+      <option name="project" value="LOCAL" />
+      <updated>1756121889174</updated>
+    </task>
+    <option name="localTasksCounter" value="34" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
