@@ -131,5 +131,5 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           for p in ./dist/*.tgz ; do
-            pnpm publish --access public $p
+            pnpm publish --access public --no-git-checks $p
           done
