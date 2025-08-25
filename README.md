@@ -1180,7 +1180,3 @@ npm run build:watch
 curl http://localhost:4546/hello
 curl http://localhost:4546/api/users
 ```
-
-## License
-
-MIT License
