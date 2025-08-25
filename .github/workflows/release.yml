@@ -86,7 +86,7 @@ jobs:
         run: |
           git config --global user.name $ACTIONS_USER
           git config --global user.email $ACTIONS_EMAIL
-          pnpm version -m 'v%s' '${{ (inputs.version == 'custom' && inputs.custom) || inputs.version }}'
+          npm version -m 'v%s' '${{ (inputs.version == 'custom' && inputs.custom) || inputs.version }}'
           git push --follow-tags
           echo "tag=$(git describe --abbrev=0)" >> $GITHUB_OUTPUT
 
@@ -131,5 +131,5 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           for p in ./dist/*.tgz ; do
-            pnpm publish --access public --no-git-checks $p
+            npm publish --access public --no-git-checks $p
           done

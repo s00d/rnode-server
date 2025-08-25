@@ -1,8 +1,13 @@
 {
   "name": "rnode-server",
-  "version": "0.1.7",
+  "version": "0.1.9",
   "description": "High-performance Node.js server built with Rust, featuring Express-like API with advanced middleware support, authentication, and database integration",
   "main": "./lib/index.cjs",
+  "workspaces": [
+    "playground",
+    "packages/*",
+    "platforms/*"
+  ],
   "scripts": {
     "test": "vitest",
     "typecheck": "tsc --noEmit",
@@ -17,10 +22,10 @@
     "version": "neon bump --binaries platforms && git add .",
     "release": "gh workflow run release.yml -f dryrun=false -f version=patch",
     "dryrun": "gh workflow run publish.yml -f dryrun=true",
-    "playground:start": "pnpm --filter playground run start",
-    "playground:dev": "pnpm --filter playground run dev",
-    "playground:build": "pnpm --filter playground run build",
-    "playground:build:watch": "pnpm --filter playground run build:watch",
+    "playground:start": "npm --workspace playground run start",
+    "playground:dev": "npm --workspace playground run dev",
+    "playground:build": "npm --workspace playground run build",
+    "playground:build:watch": "npm --workspace playground run build:watch",
     "test:ui": "vitest --ui",
     "test:run": "vitest run"
   },
@@ -60,8 +65,14 @@
     "@neon-rs/load": "^0.1.82",
     "micromatch": "^4.0.8"
   },
-  "packageManager": "pnpm@9.15.9",
   "engines": {
     "node": ">=18.0.0"
+  },
+  "optionalDependencies": {
+    "@rnode-server/win32-x64-msvc": "0.1.9",
+    "@rnode-server/darwin-x64": "0.1.9",
+    "@rnode-server/darwin-arm64": "0.1.9",
+    "@rnode-server/linux-x64-gnu": "0.1.9",
+    "@rnode-server/linux-arm64-gnu": "0.1.9"
   }
 }

@@ -36,25 +36,21 @@ runs:
         path: ./.github/.env
         export-variables: true
         keys-case: bypass
-    - name: Setup pnpm
-      uses: pnpm/action-setup@v2
-      with:
-        version: ${{ env.PNPM_VERSION }}
-    - name: Install Node
+        - name: Install Node
       uses: actions/setup-node@v3
       with:
         node-version: ${{ env.NODE_VERSION }}
         registry-url: ${{ env.NPM_REGISTRY }}
-        cache: 'pnpm'
+        cache: 'npm'
     - name: Install Dependencies
-      shell: bash
-      run: pnpm install --frozen-lockfile
-    - name: Compute Rust Target
-      if: ${{ inputs['use-rust'] == 'true' }}
-      id: target
-      shell: bash
-      run: echo "target=$(pnpm exec neon list-platforms | jq -r '.["${{ inputs.platform }}"]')" >> $GITHUB_OUTPUT
-      working-directory: ${{ inputs.workspace }}
+      shell: bash  
+      run: npm ci
+          - name: Compute Rust Target
+        if: ${{ inputs['use-rust'] == 'true' }}
+        id: target
+        shell: bash
+        run: echo "target=$(npm exec neon list-platforms | jq -r '.["${{ inputs.platform }}"]')" >> $GITHUB_OUTPUT
+        working-directory: ${{ inputs.workspace }}
     - name: Install Rust
       if: ${{ inputs['use-rust'] == 'true' }}
       uses: actions-rs/toolchain@v1
