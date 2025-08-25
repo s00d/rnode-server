@@ -67,5 +67,12 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "optionalDependencies": {
+    "@rnode-server/win32-x64-msvc": "0.1.8",
+    "@rnode-server/darwin-x64": "0.1.8",
+    "@rnode-server/darwin-arm64": "0.1.8",
+    "@rnode-server/linux-x64-gnu": "0.1.8",
+    "@rnode-server/linux-arm64-gnu": "0.1.8"
   }
 }

@@ -1,0 +1,17 @@
+{
+  "name": "@rnode-server/linux-arm64-gnu",
+  "description": "Prebuilt binary package for `rnode-server` on `linux-arm64-gnu`.",
+  "version": "0.1.8",
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "arm64"
+  ],
+  "main": "index.node",
+  "files": [
+    "index.node"
+  ],
+  "author": "",
+  "license": "ISC"
+}

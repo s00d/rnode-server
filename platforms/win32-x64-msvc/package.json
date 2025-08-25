@@ -1,0 +1,17 @@
+{
+  "name": "@rnode-server/win32-x64-msvc",
+  "description": "Prebuilt binary package for `rnode-server` on `win32-x64-msvc`.",
+  "version": "0.1.8",
+  "os": [
+    "win32"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "main": "index.node",
+  "files": [
+    "index.node"
+  ],
+  "author": "",
+  "license": "ISC"
+}
