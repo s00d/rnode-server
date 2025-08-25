@@ -168,8 +168,6 @@ This isn't just another Express.js clone - it's a **fundamentally different appr
 - **Express-like API** - Familiar routing and middleware patterns
 - **High Performance** - Rust backend with Node.js bindings
 - **Template Engine** - Tera template engine integration
-- **Authentication System** - Session-based auth with SQLite
-- **Database Integration** - Built-in SQLite support for users and sessions
 - **Static File Serving** - In-memory static file handling
 - **CORS Support** - Configurable cross-origin resource sharing
 - **Cookie Management** - Advanced cookie handling with helpers
