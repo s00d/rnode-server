@@ -9,6 +9,28 @@ use std::convert::Infallible;
 use axum::http::HeaderMap;
 use log::{debug};
 
+// Helper function to build full URL from request parts
+fn build_full_url(headers: &HeaderMap, path: &str, query: &str) -> String {
+    let host = headers
+        .get("host")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("localhost");
+    
+    let scheme = if headers.contains_key("x-forwarded-proto") {
+        headers.get("x-forwarded-proto")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("http")
+    } else {
+        "http" // Default to http, can be overridden by server config
+    };
+    
+    if query.is_empty() {
+        format!("{}://{}{}", scheme, host, path)
+    } else {
+        format!("{}://{}{}?{}", scheme, host, path, query)
+    }
+}
+
 // Helper function to extract client IP address from various headers
 fn extract_client_ip(headers: &HeaderMap) -> (String, Vec<String>) {
     // Priority order for IP extraction (most trusted first)
@@ -329,6 +351,13 @@ pub async fn dynamic_handler(
         "path".to_string(),
         serde_json::Value::String(actual_path.clone()),
     ); // Actual path for req.url
+    // Build full URL using helper function
+    let full_url = build_full_url(&parts.headers, &actual_path, query_string);
+    
+    request_data.insert(
+        "url".to_string(),
+        serde_json::Value::String(full_url),
+    ); // Full URL with scheme, host, port, path and query
     request_data.insert("body".to_string(), body_data); // Request body (form fields or regular body)
     request_data.insert("files".to_string(), files_data); // Files (if any)
     request_data.insert(
