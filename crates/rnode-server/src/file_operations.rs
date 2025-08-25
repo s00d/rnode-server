@@ -8,6 +8,7 @@ use neon::prelude::*;
 use serde_json;
 use std::fs;
 use std::path::Path;
+use log::{info, debug};
 
 // Structure for file information
 #[derive(Debug, serde::Serialize)]
@@ -44,7 +45,7 @@ pub fn save_file(mut cx: FunctionContext) -> JsResult<JsString> {
         Ok(file_data) => {
             match fs::write(&file_path, file_data) {
                 Ok(_) => {
-                    println!("💾 File saved: {}", file_path);
+                    info!("💾 File saved: {}", file_path);
                     Ok(cx.string(format!("{{\"success\":true,\"message\":\"File saved successfully\",\"path\":\"{}\"}}", file_path)))
                 }
                 Err(e) => Ok(cx.string(format!(
@@ -70,7 +71,7 @@ pub fn delete_file(mut cx: FunctionContext) -> JsResult<JsString> {
     if Path::new(&file_path).exists() {
         match fs::remove_file(&file_path) {
             Ok(_) => {
-                println!("🗑️ File deleted: {}", file_path);
+                info!("🗑️ File deleted: {}", file_path);
                 Ok(cx.string(format!(
                     "{{\"success\":true,\"message\":\"File {} deleted successfully\"}}",
                     filename
@@ -313,21 +314,21 @@ pub fn register_download_route(mut cx: FunctionContext) -> JsResult<JsUndefined>
             .unwrap()
             .insert(path.clone(), config);
 
-        println!("📥 Registering download route: {} -> {}", path, folder);
-        println!("   Max size: {:?} bytes", max_file_size);
-        println!("   Allowed extensions: {:?}", allowed_extensions);
-        println!("   Blocked paths: {:?}", blocked_paths);
-        println!("   Allow hidden files: {}", allow_hidden);
-        println!("   Allow system files: {}", allow_system);
+        info!("📥 Registering download route: {} -> {}", path, folder);
+        debug!("   Max size: {:?} bytes", max_file_size);
+        debug!("   Allowed extensions: {:?}", allowed_extensions);
+        debug!("   Blocked paths: {:?}", blocked_paths);
+        debug!("   Allow hidden files: {}", allow_hidden);
+        debug!("   Allow system files: {}", allow_system);
 
         // Show current registered routes
         let routes = download_routes.read().unwrap();
-        println!(
+        info!(
             "📋 Total download routes registered: {}",
             routes.len()
         );
         for (route_path, _) in routes.iter() {
-            println!("   - {}", route_path);
+            debug!("   - {}", route_path);
         }
     }
 
@@ -389,23 +390,23 @@ pub fn register_upload_route(mut cx: FunctionContext) -> JsResult<JsUndefined> {
         let upload_routes = get_upload_routes();
         upload_routes.write().unwrap().insert(path.clone(), config);
 
-        println!("📤 Registering upload route: {} -> {}", path, folder);
-        println!("   Allowed subfolders: {:?}", allowed_subfolders);
-        println!("   Max size: {:?} bytes", max_file_size);
-        println!("   Allowed extensions: {:?}", allowed_extensions);
-        println!("   Allowed MIME types: {:?}", allowed_mime_types);
-        println!("   Max file count: {:?}", max_files);
-        println!("   Allow overwrite: {}", overwrite);
-        println!("   Multiple upload: {}", multiple);
+        info!("📤 Registering upload route: {} -> {}", path, folder);
+        debug!("   Allowed subfolders: {:?}", allowed_subfolders);
+        debug!("   Max size: {:?} bytes", max_file_size);
+        debug!("   Allowed extensions: {:?}", allowed_extensions);
+        debug!("   Allowed MIME types: {:?}", allowed_mime_types);
+        debug!("   Max file count: {:?}", max_files);
+        debug!("   Allow overwrite: {}", overwrite);
+        debug!("   Multiple upload: {}", multiple);
 
         // Show current registered routes
         let routes = upload_routes.read().unwrap();
-        println!(
+        info!(
             "📋 Total upload routes registered: {}",
             routes.len()
         );
         for (route_path, _) in routes.iter() {
-            println!("   - {}", route_path);
+            debug!("   - {}", route_path);
         }
     }
 

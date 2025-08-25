@@ -1,5 +1,6 @@
 use crate::types::{RouteInfo, get_routes};
 use neon::prelude::*;
+use log::info;
 
 // Universal function for route registration
 fn register_route(method: &str) -> impl Fn(FunctionContext) -> JsResult<JsUndefined> + '_ {
@@ -7,7 +8,7 @@ fn register_route(method: &str) -> impl Fn(FunctionContext) -> JsResult<JsUndefi
         let path = cx.argument::<JsString>(0)?.value(&mut cx);
         let _handler = cx.argument::<JsFunction>(1)?; // JS handler function
 
-        println!("Registering {} route: {}", method, path);
+        info!("Registering {} route: {}", method, path);
 
         // Just store route information without executing the handler
         let _response_content = format!("Route registered: {} {}", method, path);
@@ -35,7 +36,7 @@ fn register_route(method: &str) -> impl Fn(FunctionContext) -> JsResult<JsUndefi
             routes_map.insert(format!("{}:{}", method, path), route_info);
         }
 
-        println!("Stored route info for {} {}", method, path);
+        info!("Stored route info for {} {}", method, path);
 
         Ok(cx.undefined())
     }

@@ -13,6 +13,7 @@ use serde_json;
 use std::net::SocketAddr;
 use axum_server::tls_rustls::RustlsConfig;
 use globset::{Glob, GlobSetBuilder};
+use log::{info, warn, error, debug};
 
 // Structure for SSL/TLS configuration
 pub struct SslConfig {
@@ -44,7 +45,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
             match ip_parts {
                 Ok(parts) if parts.len() == 4 => Some([parts[0], parts[1], parts[2], parts[3]]),
                 _ => {
-                    println!("Invalid IP address: {}, using localhost", host_str);
+                    warn!("Invalid IP address: {}, using localhost", host_str);
                     Some([127, 0, 0, 1])
                 }
             }
@@ -63,11 +64,11 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
             
             match SslConfig::from_files(&cert_path, &key_path) {
                 Ok(config) => {
-                    println!("🔒 SSL enabled with certificate: {} and key: {}", cert_path, key_path);
+                    info!("🔒 SSL enabled with certificate: {} and key: {}", cert_path, key_path);
                     Some(config)
                 },
                 Err(e) => {
-                    println!("❌ Failed to load SSL certificate: {}, using HTTP only", e);
+                    error!("❌ Failed to load SSL certificate: {}, using HTTP only", e);
                     None
                 }
             }
@@ -79,7 +80,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     };
 
     let host = host.unwrap();
-    println!(
+    info!(
         "🚀 Starting server on {}:{} {}",
         host.iter()
             .map(|b| b.to_string())
@@ -120,7 +121,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                 .map(|(_, route_info)| (route_info.path.clone(), route_info.method.clone(), route_info.handler_id.clone()))
                 .collect();
 
-            println!("Routes found: {:?}", routes_vec);
+            debug!("Routes found: {:?}", routes_vec);
             
             for (path, method, handler_id) in routes_vec {
                 let path_clone = path.clone();
@@ -149,10 +150,10 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
             }
             
             let addr = SocketAddr::from(([127, 0, 0, 1], port));
-            println!("Server listening on http://{}", addr);
-            println!("Registered dynamic routes:");
+            info!("Server listening on http://{}", addr);
+            debug!("Registered dynamic routes:");
             for (_, route_info) in routes_map.iter() {
-                println!("  {} {}", route_info.method, route_info.path);
+                debug!("  {} {}", route_info.method, route_info.path);
             }
             
             // Release lock before starting server
@@ -178,13 +179,13 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                             if route_path.contains("{*name}") {
                                 // Extract filename from URL
                                 let path_parts: Vec<&str> = req.uri().path().split('/').collect();
-                                if path_parts.len() >= 3 {
-                                    let filename = path_parts[2..].join("/");
-                                    if !filename.is_empty() {
-                                        println!("📁 File for download from {{*name}} parameter: '{}'", filename);
-                                        result = Some(filename);
+                                                                    if path_parts.len() >= 3 {
+                                        let filename = path_parts[2..].join("/");
+                                        if !filename.is_empty() {
+                                            debug!("📁 File for download from {{*name}} parameter: '{}'", filename);
+                                            result = Some(filename);
+                                        }
                                     }
-                                }
                             }
                             
                             // If filename not found in path, check query parameter ?path=
@@ -200,7 +201,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                                     Ok(decoded) => decoded.to_string(),
                                                     Err(_) => path_value.to_string(),
                                                 };
-                                                println!("📁 File for download from query parameter ?path=: '{}'", decoded_value);
+                                                debug!("📁 File for download from query parameter ?path=: '{}'", decoded_value);
                                                 result = Some(decoded_value);
                                                 break;
                                             }
@@ -213,7 +214,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                             match result {
                                 Some(filename) => filename,
                                 None => {
-                                    println!("❌ File path for download not specified");
+                                    warn!("❌ File path for download not specified");
                                     return Err(http::StatusCode::BAD_REQUEST);
                                 }
                             }
@@ -303,7 +304,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                 // Register route (support wildcard for subfolders)
                 let actual_route = route_path.clone();
                 app = app.route(&actual_route, get(download_handler));
-                println!("📥 Download route registered: {} -> {}", route_path, actual_route);
+                info!("📥 Download route registered: {} -> {}", route_path, actual_route);
             }
             
             // Release lock
@@ -321,7 +322,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                         let config = config_clone.clone();
                         let route_path = route_path_clone.clone();
                         async move {
-                            println!("📤 File upload via route: {}", route_path);
+                            info!("📤 File upload via route: {}", route_path);
 
                             // Function for checking wildcard pattern
                             fn matches_pattern(pattern: &str, path: &str) -> bool {
@@ -356,7 +357,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                     if (request_path.starts_with("/upload/") || request_path.starts_with("/upload-multiple/")) && path_parts.len() >= 3 {
                                         let subfolder = path_parts[2..].join("/");
                                         if !subfolder.is_empty() {
-                                            println!("📁 Subfolder from {{*subfolder}} parameter: '{}'", subfolder);
+                                            debug!("📁 Subfolder from {{*subfolder}} parameter: '{}'", subfolder);
                                             result = Some(subfolder);
                                         }
                                     }
@@ -376,7 +377,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                                         Ok(decoded) => decoded.to_string(),
                                                         Err(_) => dir_value.to_string(),
                                                     };
-                                                    println!("📁 Subfolder from query parameter: '{}' (decoded: '{}')", dir_value, decoded_value);
+                                                    debug!("📁 Subfolder from query parameter: '{}' (decoded: '{}')", dir_value, decoded_value);
                                                     result = Some(decoded_value);
                                                     break;
                                                 }
@@ -450,43 +451,43 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                         if let Some(filename) = field.file_name() {
                                         // This is a file - process immediately
                                         let filename = filename.to_string();
-                                        println!("📄 Processing file: '{}'", filename);
+                                        debug!("📄 Processing file: '{}'", filename);
 
                                         // Check if subfolder is allowed
                                         let upload_folder = if let Some(ref subfolder) = subfolder_from_form {
-                                            println!("📁 Using subfolder from query parameter: '{}'", subfolder);
+                                            debug!("📁 Using subfolder from query parameter: '{}'", subfolder);
                                             // Check if subfolder is allowed with wildcard support
                                             if let Some(ref allowed_subfolders) = config.allowed_subfolders {
-                                                println!("📁 Checking allowed subfolders: {:?}", allowed_subfolders);
+                                                debug!("📁 Checking allowed subfolders: {:?}", allowed_subfolders);
 
                                                 let is_allowed = allowed_subfolders.iter().any(|allowed| {
                                                     matches_pattern(allowed, subfolder)
                                                 });
 
                                                 if !is_allowed {
-                                                    println!("❌ Subfolder '{}' not allowed", subfolder);
+                                                    warn!("❌ Subfolder '{}' not allowed", subfolder);
                                                     return axum::response::Response::builder()
                                                         .status(http::StatusCode::FORBIDDEN)
                                                         .body(axum::body::Body::from(format!("Subfolder '{}' not allowed", subfolder)))
                                                         .unwrap();
                                                 }
-                                                println!("✅ Subfolder '{}' allowed", subfolder);
+                                                debug!("✅ Subfolder '{}' allowed", subfolder);
                                             }
                                             let folder = format!("{}/{}", config.folder, subfolder);
-                                            println!("📁 Full upload folder: '{}'", folder);
+                                            debug!("📁 Full upload folder: '{}'", folder);
                                             folder
                                         } else {
-                                            println!("📁 Subfolder not specified, using root: '{}'", config.folder);
+                                            debug!("📁 Subfolder not specified, using root: '{}'", config.folder);
                                             config.folder.clone()
                                         };
 
                                         // Create relative file path
                                         let relative_path = if let Some(ref subfolder) = subfolder_from_form {
                                             let path = format!("{}/{}", subfolder, filename);
-                                            println!("📁 Relative file path: '{}'", path);
+                                            debug!("📁 Relative file path: '{}'", path);
                                             path
                                         } else {
-                                            println!("📁 Relative path (no subfolder): '{}'", filename);
+                                            debug!("📁 Relative path (no subfolder): '{}'", filename);
                                             filename.clone()
                                         };
 
@@ -497,6 +498,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                                 if !allowed_extensions.iter().any(|allowed| {
                                                     allowed.trim_start_matches('.').to_lowercase() == ext_str
                                                 }) {
+                                                    warn!("❌ File extension .{} not allowed", ext_str);
                                                     return axum::response::Response::builder()
                                                         .status(http::StatusCode::FORBIDDEN)
                                                         .body(axum::body::Body::from(format!("File extension .{} not allowed", ext_str)))
@@ -513,6 +515,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                         // Check MIME type for security
                                         if let Some(ref allowed_mime_types) = config.allowed_mime_types {
                                             if !allowed_mime_types.contains(&mime_type) {
+                                                warn!("❌ MIME type {} not allowed", mime_type);
                                                 return axum::response::Response::builder()
                                                     .status(http::StatusCode::FORBIDDEN)
                                                     .body(axum::body::Body::from(format!("MIME type {} not allowed", mime_type)))
@@ -534,6 +537,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                         // Check file size
                                         if let Some(max_size) = config.max_file_size {
                                             if data.len() as u64 > max_size {
+                                                warn!("❌ File size {} exceeds limit {}", data.len(), max_size);
                                                 return axum::response::Response::builder()
                                                     .status(http::StatusCode::PAYLOAD_TOO_LARGE)
                                                     .body(axum::body::Body::from(format!("File size {} exceeds limit {}", data.len(), max_size)))
@@ -544,6 +548,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                         // Check overwrite
                                         let file_path = format!("{}/{}", upload_folder, filename);
                                         if !config.overwrite && std::path::Path::new(&file_path).exists() {
+                                            warn!("❌ File {} already exists", relative_path);
                                             return axum::response::Response::builder()
                                                 .status(http::StatusCode::CONFLICT)
                                                 .body(axum::body::Body::from(format!("File {} already exists", relative_path)))
@@ -551,32 +556,33 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                         }
 
                                         // Create folder if it doesn't exist
-                                        println!("📁 Creating folder: '{}'", upload_folder);
+                                        debug!("📁 Creating folder: '{}'", upload_folder);
                                         if let Err(e) = std::fs::create_dir_all(&upload_folder) {
-                                            println!("❌ Error creating folder '{}': {}", upload_folder, e);
+                                            error!("❌ Error creating folder '{}': {}", upload_folder, e);
                                             return axum::response::Response::builder()
                                                 .status(http::StatusCode::INTERNAL_SERVER_ERROR)
                                                 .body(axum::body::Body::from(format!("Failed to create upload directory: {}", e)))
                                             .unwrap();
                                         }
-                                        println!("✅ Folder created successfully: '{}'", upload_folder);
+                                        debug!("✅ Folder created successfully: '{}'", upload_folder);
 
                                         // Save file
-                                        println!("💾 Saving file to: '{}'", file_path);
+                                        debug!("💾 Saving file to: '{}'", file_path);
                                         if let Err(e) = std::fs::write(&file_path, &data) {
-                                            println!("❌ Error saving file '{}': {}", file_path, e);
+                                            error!("❌ Error saving file '{}': {}", file_path, e);
                                             return axum::response::Response::builder()
                                                 .status(http::StatusCode::INTERNAL_SERVER_ERROR)
                                                 .body(axum::body::Body::from(format!("Failed to save file: {}", e)))
                                                 .unwrap();
                                         }
-                                        println!("✅ File saved successfully: '{}'", file_path);
+                                        debug!("✅ File saved successfully: '{}'", file_path);
 
                                         // Check file count based on upload type
                                         if config.multiple {
                                             // For multiple uploads check maxFiles
                                             if let Some(max_files) = config.max_files {
                                                 if uploaded_files.len() >= max_files as usize {
+                                                    warn!("❌ Maximum number of files ({}) exceeded", max_files);
                                                     return axum::response::Response::builder()
                                                         .status(http::StatusCode::PAYLOAD_TOO_LARGE)
                                                         .body(axum::body::Body::from(format!("Maximum number of files ({}) exceeded", max_files)))
@@ -586,6 +592,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                         } else {
                                             // For single upload allow only 1 file
                                             if uploaded_files.len() >= 1 {
+                                                warn!("❌ Single file upload route received multiple files");
                                                 return axum::response::Response::builder()
                                                     .status(http::StatusCode::BAD_REQUEST)
                                                     .body(axum::body::Body::from("Single file upload route received multiple files"))
@@ -602,11 +609,11 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                         };
 
                                         uploaded_files.push(file_info);
-                                        println!("💾 File saved: {} ({} bytes, {})", file_path, data.len(), mime_type);
+                                        debug!("💾 File saved: {} ({} bytes, {})", file_path, data.len(), mime_type);
                                     } else {
                                         // This is a regular form field
                                         let value = field.text().await.unwrap_or_else(|_| String::new());
-                                        println!("📝 Form field: '{}' = '{}'", field_name, value);
+                                        debug!("📝 Form field: '{}' = '{}'", field_name, value);
                                         form_fields.insert(field_name, value);
                                     }
                                 }
@@ -634,7 +641,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                     
                 // Register route
                 app = app.route(route_path, post(upload_handler));
-                println!("📤 Upload route registered: {}", route_path);
+                info!("📤 Upload route registered: {}", route_path);
             }
             
             // Release lock
@@ -665,8 +672,8 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                 
                 match RustlsConfig::from_pem_file(cert_path, key_path).await {
                     Ok(tls_config) => {
-                        println!("🔒 Starting HTTPS server with TLS configuration");
-                        println!("🔒 HTTPS server listening on https://{}", addr);
+                        info!("🔒 Starting HTTPS server with TLS configuration");
+                        info!("🔒 HTTPS server listening on https://{}", addr);
                         
                         // Use axum-server with TLS
                         axum_server::bind_rustls(addr, tls_config)
@@ -675,19 +682,19 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                             .unwrap();
                     }
                     Err(e) => {
-                        eprintln!("❌ Failed to create HTTPS configuration: {}", e);
-                        eprintln!("🔄 Falling back to HTTP server");
+                        error!("❌ Failed to create HTTPS configuration: {}", e);
+                        warn!("🔄 Falling back to HTTP server");
                         
                         // Fallback to HTTP
                         let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-                        println!("🌐 HTTP server listening on http://{}", addr);
+                        info!("🌐 HTTP server listening on http://{}", addr);
                         axum::serve(listener, app).await.unwrap();
                     }
                 }
             } else {
                 // Start HTTP server
                 let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-                println!("🌐 HTTP server listening on http://{}", addr);
+                info!("🌐 HTTP server listening on http://{}", addr);
                 axum::serve(listener, app).await.unwrap();
             }
         });

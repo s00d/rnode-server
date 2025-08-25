@@ -1,4 +1,6 @@
 use neon::prelude::*;
+use log::LevelFilter;
+use env_logger;
 
 // Simple greeting function
 pub fn hello_wrapper(mut cx: FunctionContext) -> JsResult<JsString> {
@@ -17,6 +19,46 @@ pub fn create_app(mut cx: FunctionContext) -> JsResult<JsObject> {
 
     let version = cx.string("0.1.0");
     obj.set(&mut cx, "version", version)?;
+
+    // Check if log level is passed as argument
+    if cx.len() > 0 {
+        if let Ok(log_level_str) = cx.argument::<JsString>(0) {
+            let level_str = log_level_str.value(&mut cx).to_lowercase();
+            let level_str_clone = level_str.clone();
+            
+            // Parse log level and set it
+            let level_filter = match level_str.as_str() {
+                "trace" => LevelFilter::Trace,
+                "debug" => LevelFilter::Debug,
+                "info" => LevelFilter::Info,
+                "warn" => LevelFilter::Warn,
+                "error" => LevelFilter::Error,
+                _ => LevelFilter::Info, // default
+            };
+            
+            // Set the log level
+            env_logger::Builder::new()
+                .filter_level(level_filter)
+                .init();
+            
+            // Add log level info to the app object
+            let log_level = cx.string(level_str);
+            obj.set(&mut cx, "logLevel", log_level)?;
+            
+            // Log the initialization
+            log::info!("🔧 RNode Server initialized with log level: {}", level_str_clone);
+        }
+    } else {
+        // Default log level
+        env_logger::Builder::new()
+            .filter_level(LevelFilter::Info)
+            .init();
+        
+        let log_level = cx.string("info");
+        obj.set(&mut cx, "logLevel", log_level)?;
+        
+        log::info!("🔧 RNode Server initialized with default log level: info");
+    }
 
     Ok(obj)
 }

@@ -5,6 +5,7 @@ use serde_json::{Map, Value as JsonValue};
 use std::sync::{Mutex, OnceLock};
 use std::error::Error as StdError;
 use tera::{Context, Tera};
+use log::{info, debug, warn, error};
 
 // Global Tera instance for template management
 static TEMPLATES: OnceLock<Mutex<Option<Tera>>> = OnceLock::new();
@@ -31,16 +32,16 @@ pub fn init_templates(
     let mut templates = templates.lock().unwrap();
     *templates = Some(tera);
     
-    println!("✅ Templates initialized from pattern: {} (autoescape: {})", pattern, autoescape);
-    println!("📁 Loaded {} templates:", template_names.len());
+    info!("✅ Templates initialized from pattern: {} (autoescape: {})", pattern, autoescape);
+    info!("📁 Loaded {} templates:", template_names.len());
     
     if template_names.is_empty() {
-        println!("   ⚠️  No templates found! Check pattern: {}", pattern);
-        println!("   🔍 Current working directory: {:?}", std::env::current_dir().unwrap_or_default());
-        println!("   📂 Pattern resolved to: {}", pattern);
+        warn!("   ⚠️  No templates found! Check pattern: {}", pattern);
+        debug!("   🔍 Current working directory: {:?}", std::env::current_dir().unwrap_or_default());
+        debug!("   📂 Pattern resolved to: {}", pattern);
     } else {
         for (i, name) in template_names.iter().enumerate() {
-            println!("   {}. {}", i + 1, name);
+            debug!("   {}. {}", i + 1, name);
         }
     }
     
@@ -65,7 +66,7 @@ pub fn render_template(template_name: &str, context: HashMap<String, JsonValue>)
         let result = tera.render(template_name, &tera_context)
             .map_err(|e| {
                 let error_msg = format!("{}", e);
-                println!("📝 Template render error: {}", error_msg);
+                error!("📝 Template render error: {}", error_msg);
                 
                 // Try to get the root cause of the error
                 let mut current_error: &dyn StdError = &e;
@@ -80,7 +81,7 @@ pub fn render_template(template_name: &str, context: HashMap<String, JsonValue>)
                 let specific_error = error_chain.last().unwrap_or(&error_msg);
                 let detailed_error = format!("Template error in '{}': {}", template_name, specific_error);
                 
-                println!("📝 Error chain: {:?}", error_chain);
+                debug!("📝 Error chain: {:?}", error_chain);
                 detailed_error
             })?;
         
@@ -156,12 +157,12 @@ pub fn render_template_wrapper(mut cx: FunctionContext) -> JsResult<JsString> {
             Ok(cx.string(response.to_string()))
         }
         Err(e) => {
-            println!("🔍 DEBUG: render_template returned error: {}", e);
+            debug!("🔍 DEBUG: render_template returned error: {}", e);
             let response = serde_json::json!({
                 "success": false,
                 "error": e
             });
-            println!("🔍 DEBUG: JSON response: {}", response.to_string());
+            debug!("🔍 DEBUG: JSON response: {}", response.to_string());
             Ok(cx.string(response.to_string()))
         }
     }

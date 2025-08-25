@@ -14,10 +14,16 @@
     <list default="true" id="4d8c55b6-5a63-439f-adcf-d024569129f5" name="Changes" comment="init">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Cargo.lock" beforeDir="false" afterPath="$PROJECT_DIR$/Cargo.lock" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/Cargo.toml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/crates/rnode-server/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/Cargo.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/file_operations.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/file_operations.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/handlers.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/handlers.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/middleware.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/middleware.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/routes.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/routes.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/server.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/server.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/templates.test.ts" beforeDir="false" afterPath="$PROJECT_DIR$/tests/templates.test.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/static_files.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/static_files.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/templates.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/templates.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/utils.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/utils.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/index.cts" beforeDir="false" afterPath="$PROJECT_DIR$/src/index.cts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -104,7 +110,7 @@
       <updated>1755847651115</updated>
       <workItem from="1755847652223" duration="50023000" />
       <workItem from="1755983601443" duration="12392000" />
-      <workItem from="1756069919594" duration="1897000" />
+      <workItem from="1756069919594" duration="4015000" />
     </task>
     <task id="LOCAL-00001" summary="init">
       <option name="closed" value="true" />
@@ -234,7 +240,15 @@
       <option name="project" value="LOCAL" />
       <updated>1756070220990</updated>
     </task>
-    <option name="localTasksCounter" value="17" />
+    <task id="LOCAL-00017" summary="init">
+      <option name="closed" value="true" />
+      <created>1756071897802</created>
+      <option name="number" value="00017" />
+      <option name="presentableId" value="LOCAL-00017" />
+      <option name="project" value="LOCAL" />
+      <updated>1756071897802</updated>
+    </task>
+    <option name="localTasksCounter" value="18" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

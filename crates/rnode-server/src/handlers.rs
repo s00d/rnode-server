@@ -7,6 +7,7 @@ use neon::prelude::*;
 use serde_json;
 use std::convert::Infallible;
 use axum::http::HeaderMap;
+use log::{debug};
 
 // Helper function to extract client IP address from various headers
 fn extract_client_ip(headers: &HeaderMap) -> (String, Vec<String>) {
@@ -207,11 +208,11 @@ pub async fn dynamic_handler(
     method: String,
     _handler_id: String,
 ) -> axum::response::Response<axum::body::Body> {
-    println!("🔍 Dynamic handler called:");
-    println!("  Method: {}", method);
-    println!("  Actual path: {}", actual_path);
-    println!("  Registered path: {}", registered_path);
-    println!("  Handler ID: {}", _handler_id);
+    debug!("🔍 Dynamic handler called:");
+    debug!("  Method: {}", method);
+    debug!("  Actual path: {}", actual_path);
+    debug!("  Registered path: {}", registered_path);
+    debug!("  Handler ID: {}", _handler_id);
     use axum::body::Body;
     use axum::http::StatusCode;
     use axum::response::Response;
@@ -399,7 +400,7 @@ pub async fn dynamic_handler(
 
                 if i < actual_segments.len() {
                     let param_value = actual_segments[i];
-                    println!(
+                    debug!(
                         "📝 Named parameter {{{}}}: '{}'",
                         param_name, param_value
                     );
@@ -424,7 +425,7 @@ pub async fn dynamic_handler(
                 // For wildcard parameter take all remaining segments
                 let param_value = actual_segments[i..].join("/");
                 if !param_value.is_empty() {
-                    println!(
+                    debug!(
                         "📁 Wildcard parameter {{*{}}}: '{}'",
                         param_name, param_value
                     );
@@ -538,7 +539,7 @@ pub async fn dynamic_handler(
 
         // Add headers from middleware first
         if let Some(middleware_headers) = request_data.get("responseHeaders").and_then(|h| h.as_object()) {
-            println!("🔧 Adding middleware headers to response: {:?}", middleware_headers);
+            debug!("🔧 Adding middleware headers to response: {:?}", middleware_headers);
             for (key, value) in middleware_headers {
                 if let Some(value_str) = value.as_str() {
                     response_builder = response_builder.header(key, value_str);

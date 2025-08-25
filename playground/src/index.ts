@@ -19,7 +19,7 @@ const sslConfig = {
 };
 
 // Create HTTP server
-const httpApp = createApp();
+const httpApp = createApp({ logLevel: 'debug' });
 httpApp.useRouter('/', commonRouter);
 httpApp.useRouter('/api/users', usersRouter);
 httpApp.useRouter('/api/auth', authApiRouter);

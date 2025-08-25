@@ -1,11 +1,28 @@
 // This module is the CJS entry point for the library.
+//
+// Usage examples:
+//
+// // Create app with default log level (info)
+// const app = createApp();
+//
+// // Create app with specific log level
+// const app = createApp({ logLevel: 'debug' });
+//
+// // Create app with SSL and log level
+// const app = createApp({ 
+//   ssl: { certPath: './cert.pem', keyPath: './key.pem' },
+//   logLevel: 'trace' 
+// });
+//
+// Log levels: 'trace', 'debug', 'info', 'warn', 'error'
+// Higher levels include lower levels (e.g., 'info' shows info, warn, and error)
 
 // The Rust addon.
 import * as addon from './load.cjs';
 import micromatch from 'micromatch';
 
 // Express types for compatibility
-import { NextFunction, Request as ExpressRequest, Response as ExpressResponse } from 'express';
+import {NextFunction, Request as ExpressRequest, Response as ExpressResponse} from 'express';
 
 // Express middleware wrapper types
 export interface ExpressMiddleware {
@@ -123,7 +140,7 @@ export interface Request {
 // which otherwise by default are `any`.
 declare module "./load.cjs" {
   function hello(name: string): string;
-  function createApp(): { name: string; version: string };
+  function createApp(logLevel?: string): { name: string; version: string; logLevel?: string };
   function get(path: string, handler: Function): void;
   function post(path: string, handler: Function): void;
   function put(path: string, handler: Function): void;
@@ -306,6 +323,7 @@ export interface SslConfig {
 // App creation options
 export interface AppOptions {
   ssl?: SslConfig;
+  logLevel?: string; // Log level: 'trace', 'debug', 'info', 'warn', 'error'
 }
 
 // Global storage for handlers and middleware in JavaScript
@@ -1645,8 +1663,7 @@ class RNodeApp extends RouterImpl {
   renderTemplate(templateName: string, context: object): string {
     try {
       const contextStr = JSON.stringify(context);
-      const result = addon.renderTemplate(templateName, contextStr);
-      return result;
+      return addon.renderTemplate(templateName, contextStr);
     } catch (error) {
       return JSON.stringify({
         success: false,
@@ -1658,11 +1675,25 @@ class RNodeApp extends RouterImpl {
 
 // Function for creating application
 export function createApp(options?: AppOptions): RNodeAppInterface {
-  const appInfo = addon.createApp();
-  console.log(`Creating ${appInfo.name} v${appInfo.version}`);
+  // Get log level from options or use default
+  const logLevel = options?.logLevel || 'info';
+  const level = logLevel.toLowerCase();
+  
+  console.log(`🔧 Setting log level to: ${level}`);
+  
+  // Set environment variable for Rust logging
+  process.env.RUST_LOG = level;
+  
+  // Create app with log level
+  const appInfo = addon.createApp(level);
+  console.log(`Creating ${appInfo.name} v${appInfo.version} with log level: ${level}`);
 
   // Create RNodeApp instance
   const app = new RNodeApp();
+  
+  // Add log level info to the app
+  (app as any).logLevel = level;
+  console.log(`🔧 App log level set to: ${level}`);
 
   // Store SSL configuration if provided
   if (options?.ssl) {
