@@ -13,7 +13,7 @@
 
 # RNode Server
 
-> **🚀 Experimental Project**: This is an experimental attempt to create a high-performance Node.js server built with Rust, featuring Express-like API with advanced middleware support, authentication, and database integration.
+> **🚀 Experimental Project**: This is an experimental attempt to create a high-performance Node.js server built with Rust, featuring Express-like API with advanced middleware support.
 
 ## 🎯 **Project Overview**
 
