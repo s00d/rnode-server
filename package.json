@@ -1,8 +1,35 @@
 {
   "name": "rnode-server",
   "version": "0.1.2",
-  "description": "",
+  "description": "High-performance Node.js server built with Rust, featuring Express-like API with advanced middleware support, authentication, and database integration",
   "main": "./lib/index.cjs",
+  "homepage": "https://github.com/s00d/rnode-server#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/s00d/rnode-server.git"
+  },
+  "bugs": {
+    "url": "https://github.com/s00d/rnode-server/issues"
+  },
+  "keywords": [
+    "rnode",
+    "server",
+    "rust",
+    "nodejs",
+    "express",
+    "web-server",
+    "http-server",
+    "https-server",
+    "middleware",
+    "authentication",
+    "database",
+    "high-performance",
+    "neon",
+    "typescript",
+    "javascript"
+  ],
+  "author": "s00d <Virus191288@gmail.com>",
+  "license": "MIT",
   "scripts": {
     "test": "vitest",
     "typecheck": "tsc --noEmit",
@@ -18,22 +45,12 @@
     "release": "gh workflow run release.yml -f dryrun=false -f version=patch",
     "dryrun": "gh workflow run publish.yml -f dryrun=true",
     "playground:start": "pnpm --filter playground run start",
-    "playground:rnode": "pnpm --filter playground run start:rnode",
-    "playground:express": "pnpm --filter playground run start:express",
     "playground:dev": "pnpm --filter playground run dev",
-    "playground:dev:rnode": "pnpm --filter playground run dev:rnode",
-    "playground:dev:express": "pnpm --filter playground run dev:express",
-    "playground:static": "pnpm --filter playground run start:static",
-    "playground:multipart": "pnpm --filter playground run start:multipart",
-    "playground:dev:static": "pnpm --filter playground run dev:static",
-    "playground:dev:multipart": "pnpm --filter playground run dev:multipart",
     "playground:build": "pnpm --filter playground run build",
     "playground:build:watch": "pnpm --filter playground run build:watch",
     "test:ui": "vitest --ui",
     "test:run": "vitest run"
   },
-  "author": "",
-  "license": "ISC",
   "exports": {
     ".": {
       "import": {
@@ -70,5 +87,17 @@
     "@neon-rs/load": "^0.1.82",
     "micromatch": "^4.0.8"
   },
-  "packageManager": "pnpm@9.15.9"
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ]
 }

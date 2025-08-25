@@ -1,7 +1,15 @@
 [package]
 name = "rnode-server"
-version = "0.1.0"
-license = "ISC"
+version = "0.1.2"
+description = "High-performance Node.js server built with Rust, featuring Express-like API with advanced middleware support, authentication, and database integration"
+authors = ["s00d <Virus191288@gmail.com>"]
+license = "MIT"
+repository = "https://github.com/s00d/rnode-server"
+homepage = "https://github.com/s00d/rnode-server#readme"
+documentation = "https://github.com/s00d/rnode-server#readme"
+readme = "../../README.md"
+keywords = ["rnode", "server", "rust", "nodejs", "express", "web-server", "http-server", "https-server", "middleware", "authentication", "database", "high-performance", "neon"]
+categories = ["web-programming", "asynchronous", "api-bindings"]
 edition = "2024"
 exclude = ["index.node"]
 
