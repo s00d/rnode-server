@@ -1,7 +1,7 @@
 {
   "name": "rnode-server-linux-x64-gnu",
   "description": "Prebuilt binary package for `rnode-server` on `linux-x64-gnu`.",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "os": [
     "linux"
   ],
@@ -12,7 +12,6 @@
   "files": [
     "index.node"
   ],
-
   "author": "",
   "license": "ISC"
 }
