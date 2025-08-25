@@ -24,6 +24,104 @@ import micromatch from 'micromatch';
 // Express types for compatibility
 import {NextFunction, Request as ExpressRequest, Response as ExpressResponse} from 'express';
 
+// Logger class with levels similar to backend
+class Logger {
+  private currentLevel: string = 'info';
+  
+  // Log level hierarchy (higher levels include lower levels)
+  private readonly levels = {
+    trace: 0,
+    debug: 1,
+    info: 2,
+    warn: 3,
+    error: 4
+  };
+
+  setLevel(level: string): void {
+    this.currentLevel = level.toLowerCase();
+  }
+
+  private shouldLog(level: string): boolean {
+    const currentLevelNum = this.levels[this.currentLevel as keyof typeof this.levels] ?? 2;
+    const messageLevelNum = this.levels[level as keyof typeof this.levels] ?? 2;
+    return messageLevelNum >= currentLevelNum;
+  }
+
+  private formatMessage(message: any): string {
+    if (typeof message === 'string') {
+      return message;
+    }
+    if (message === null) {
+      return 'null';
+    }
+    if (message === undefined) {
+      return 'undefined';
+    }
+    if (typeof message === 'object') {
+      try {
+        return JSON.stringify(message, null, 2);
+      } catch {
+        return String(message);
+      }
+    }
+    return String(message);
+  }
+
+  log(level: string, message: any, module?: string): void {
+    if (!this.shouldLog(level)) return;
+
+    // Format timestamp without milliseconds (like backend: 2025-08-25T06:39:50Z)
+    const now = new Date();
+    const timestamp = now.getFullYear() + '-' + 
+                     String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+                     String(now.getDate()).padStart(2, '0') + 'T' + 
+                     String(now.getHours()).padStart(2, '0') + ':' + 
+                     String(now.getMinutes()).padStart(2, '0') + ':' + 
+                     String(now.getSeconds()).padStart(2, '0') + 'Z';
+    
+    const levelUpper = level.toUpperCase();
+    const formattedMessage = this.formatMessage(message);
+    
+    // ANSI color codes
+    const colors = {
+      trace: '\x1b[90m',    // Gray
+      debug: '\x1b[36m',    // Cyan
+      info: '\x1b[32m',     // Green
+      warn: '\x1b[33m',     // Yellow
+      error: '\x1b[31m',    // Red
+      reset: '\x1b[0m'      // Reset
+    };
+    
+    const color = colors[level as keyof typeof colors] || colors.reset;
+    const moduleStr = module ? ` ${module}` : '';
+    
+    console.log(`[${timestamp} ${color}${levelUpper.padEnd(5)}\x1b[0m${moduleStr}] ${formattedMessage}`);
+  }
+
+  trace(message: any, module?: string): void {
+    this.log('trace', message, module);
+  }
+
+  debug(message: any, module?: string): void {
+    this.log('debug', message, module);
+  }
+
+  info(message: any, module?: string): void {
+    this.log('info', message, module);
+  }
+
+  warn(message: any, module?: string): void {
+    this.log('warn', message, module);
+  }
+
+  error(message: any, module?: string): void {
+    this.log('error', message, module);
+  }
+}
+
+// Global logger instance
+const logger = new Logger();
+
 // Express middleware wrapper types
 export interface ExpressMiddleware {
   (req: ExpressRequest, res: ExpressResponse, next: NextFunction): void;
@@ -84,18 +182,6 @@ export interface FileContentResult {
 // Types for template operations
 export interface TemplateOptions {
   autoescape: boolean;
-}
-
-export interface TemplateInitResult {
-  success: boolean;
-  message?: string;
-  error?: string;
-}
-
-export interface TemplateRenderResult {
-  success: boolean;
-  content?: string;
-  error?: string;
 }
 
 // Express-подобные типы
@@ -310,6 +396,10 @@ export interface RNodeAppInterface extends Router {
   setSslConfig(config: SslConfig): void;
   getSslConfig(): SslConfig | undefined;
 
+  // Logging configuration
+  setLogLevel(level: string): void;
+  getLogLevel(): string;
+
   // Get all registered routes including router routes
   getAllRoutes(): Map<string, (req: Request, res: Response) => void>;
 }
@@ -338,19 +428,19 @@ function getHandler(requestJson: string): string {
     const request = JSON.parse(requestJson);
     const { method, path, registeredPath, pathParams, queryParams, body, cookies, headers, ip, ips, ipSource } = request;
 
-    console.log('🔍 getHandler called:');
-    console.log('  Method:', method);
-    console.log('  Path:', path);
-    console.log('  RegisteredPath:', registeredPath);
-    console.log('  HandlerKey:', `${method}:${registeredPath}`);
-    console.log('  Available handlers:', Array.from(handlers.keys()));
+    logger.debug('🔍 getHandler called:', 'rnode_server::handler');
+    logger.debug(`  Method: ${method}`, 'rnode_server::handler');
+    logger.debug(`  Path: ${path}`, 'rnode_server::handler');
+    logger.debug(`  RegisteredPath: ${registeredPath}`, 'rnode_server::handler');
+    logger.debug(`  HandlerKey: ${method}:${registeredPath}`, 'rnode_server::handler');
+    logger.debug(`  Available handlers: ${Array.from(handlers.keys()).join(', ')}`, 'rnode_server::handler');
 
     // Search for handler by registered path
     const handlerKey = `${method}:${registeredPath}`;
     const handler = handlers.get(handlerKey);
 
     if (handler) {
-      console.log('✅ Handler found for:', handlerKey);
+      logger.debug(`✅ Handler found for: ${handlerKey}`, 'rnode_server::handler');
 
       // Create mock req and res objects
       let responseData: any = '';
@@ -662,8 +752,8 @@ function getHandler(requestJson: string): string {
 function executeMiddleware(middlewareJson: string): string {
   try {
     const request = JSON.parse(middlewareJson);
-    console.log('🔍 executeMiddleware called with path:', request.path);
-    console.log('🔍 Available middleware patterns:', Array.from(middlewares.keys()));
+    logger.debug(`🔍 executeMiddleware called with path: ${request.path}`, 'rnode_server::middleware');
+    logger.debug(`🔍 Available middleware patterns: ${Array.from(middlewares.keys()).join(', ')}`, 'rnode_server::middleware');
 
     // Create req and res objects at function level
     const req: Request = {
@@ -675,30 +765,30 @@ function executeMiddleware(middlewareJson: string): string {
       setParam: (name: string, value: any) => {
         if (!req.customParams) req.customParams = {};
         req.customParams[name] = value;
-        console.log(`🔧 Middleware setParam: ${name} = ${value}`);
+        logger.debug(`🔧 Middleware setParam: ${name} = ${value}`);
       },
       getParam: (name: string) => {
         if (!req.customParams) return undefined;
         const value = req.customParams[name];
-        console.log(`🔧 Middleware getParam: ${name} = ${value}`);
+        logger.debug(`🔧 Middleware getParam: ${name} = ${value}`);
         return value;
       },
       hasParam: (name: string) => {
         if (!req.customParams) return false;
         const has = name in req.customParams;
-        console.log(`🔧 Middleware hasParam: ${name} = ${has}`);
+        logger.debug(`🔧 Middleware hasParam: ${name} = ${has}`);
         return has;
       },
-      getParams: () => {
-        if (!req.customParams) return {};
-        console.log(`🔧 Middleware getParams:`, req.customParams);
-        return { ...req.customParams };
-      },
+              getParams: () => {
+          if (!req.customParams) return {};
+          logger.debug(`🔧 Middleware getParams: ${JSON.stringify(req.customParams)}`, 'rnode_server::middleware');
+          return { ...req.customParams };
+        },
       // Allow middleware to modify headers
       setHeader: (name: string, value: string) => {
         if (!req.headers) req.headers = {};
         req.headers[name] = value;
-        console.log(`🔧 Middleware setHeader: ${name} = ${value}`);
+        logger.debug(`🔧 Middleware setHeader: ${name} = ${value}`);
       },
       // Allow middleware to modify cookies
       setCookie: (name: string, value: string) => {
@@ -710,7 +800,7 @@ function executeMiddleware(middlewareJson: string): string {
         } else {
           req.cookies = existingCookies ? `${existingCookies}; ${name}=${value}` : `${name}=${value}`;
         }
-        console.log(`🔧 Middleware setCookie: ${name} = ${value}`);
+        logger.debug(`🔧 Middleware setCookie: ${name} = ${value}`);
       },
       getCookie: (name: string) => {
         const cookiesStr = req.cookies || '';
@@ -864,53 +954,53 @@ function executeMiddleware(middlewareJson: string): string {
 
     // Search for suitable middleware
     for (const [middlewarePath, middlewareArray] of middlewares) {
-      console.log(`🔍 Checking middleware pattern: ${middlewarePath} against path: ${request.path}`);
+      logger.debug(`🔍 Checking middleware pattern: ${middlewarePath} against path: ${request.path}`);
 
       let matches = false;
 
       if (middlewarePath === '*') {
         // Global middleware matches everything
         matches = true;
-        console.log('✅ Global middleware (*) matches');
+        logger.debug('✅ Global middleware (*) matches');
       } else {
         // Use micromatch for pattern matching (supports glob, regex, etc.)
         matches = micromatch.isMatch(request.path, middlewarePath);
-        console.log(`🔍 Micromatch check: ${request.path} matches ${middlewarePath} -> ${matches}`);
+        logger.debug(`🔍 Micromatch check: ${request.path} matches ${middlewarePath} -> ${matches}`);
       }
 
       // Execute middleware for this pattern
       if (matches) {
-        console.log(`✅ Executing ${middlewareArray.length} middleware for pattern: ${middlewarePath}`);
+        logger.debug(`✅ Executing ${middlewareArray.length} middleware for pattern: ${middlewarePath}`);
 
         // Execute all middleware for this path
-        console.log(`🔧 Starting with params:`, req.customParams);
+        logger.debug(`🔧 Starting with params: ${JSON.stringify(req.customParams)}`, 'rnode_server::middleware');
 
         for (let i = 0; i < middlewareArray.length; i++) {
           const middleware = middlewareArray[i];
-          console.log(`🔄 Executing middleware ${i + 1} of ${middlewareArray.length}`);
+          logger.debug(`🔄 Executing middleware ${i + 1} of ${middlewareArray.length}`);
 
           try {
             // Call middleware function with req and res objects
             let middlewareError: any = null;
 
-            console.log(`🔍 Executing middleware for pattern: ${middlewarePath}`);
-            console.log(`🔍 Request origin: ${req.headers.origin}`);
+            logger.debug(`🔍 Executing middleware for pattern: ${middlewarePath}`);
+            logger.debug(`🔍 Request origin: ${req.headers.origin}`);
 
             middleware(req, res, (error?: any) => {
               // Next function - continue to next middleware
               if (error) {
                 // If middleware throws an error, stop execution and return error
-                console.error('❌ Middleware error:', error);
+                logger.error('❌ Middleware error:', error);
                 middlewareError = error;
               } else {
-                console.log('✅ Middleware completed without error');
+                logger.debug('✅ Middleware completed without error');
               }
             });
 
             // Check if middleware returned an error
             if (middlewareError) {
-              console.log('❌ Middleware returned error, stopping execution');
-              console.log(`❌ Error details: ${middlewareError.message || middlewareError}`);
+              logger.debug('❌ Middleware returned error, stopping execution');
+              logger.debug(`❌ Error details: ${middlewareError.message || middlewareError}`);
               return JSON.stringify({
                 shouldContinue: false,
                 error: middlewareError.message || middlewareError.toString(),
@@ -919,10 +1009,10 @@ function executeMiddleware(middlewareJson: string): string {
               });
             }
 
-            // Update accumulated params for next middleware
-            console.log(`🔧 Updated params:`, req.customParams);
+                          // Update accumulated params for next middleware
+              logger.debug(`🔧 Updated params: ${JSON.stringify(req.customParams)}`, 'rnode_server::middleware');
           } catch (error) {
-            console.error('❌ Middleware execution error:', error);
+            logger.error(`❌ Middleware execution error: ${error instanceof Error ? error.message : String(error)}`, 'rnode_server::middleware');
             return JSON.stringify({
               shouldContinue: false,
               error: error instanceof Error ? error.message : String(error),
@@ -934,7 +1024,7 @@ function executeMiddleware(middlewareJson: string): string {
       }
     }
 
-    console.log('✅ All middleware executed, continuing');
+    logger.debug('✅ All middleware executed, continuing');
     // Always return accumulated parameters, even when continuing
     // Create req and res objects with accumulated data
     const finalReq = {
@@ -950,7 +1040,7 @@ function executeMiddleware(middlewareJson: string): string {
       contentType: res.contentType || 'text/plain'
     };
 
-    console.log(`🔧 Final response headers:`, finalRes.headers);
+    logger.debug(`🔧 Final response headers: ${JSON.stringify(finalRes.headers)}`, 'rnode_server::middleware');
 
     return JSON.stringify({
       shouldContinue: true,
@@ -958,7 +1048,7 @@ function executeMiddleware(middlewareJson: string): string {
       res: finalRes
     });
   } catch (error) {
-    console.error('❌ executeMiddleware error:', error);
+    logger.error(`❌ executeMiddleware error: ${error instanceof Error ? error.message : String(error)}`, 'rnode_server::middleware');
 
     // Create default req and res objects for error case
     const errorReq = {
@@ -1058,9 +1148,9 @@ class RouterImpl implements Router {
           const expressNext: NextFunction = (error?: any) => {
             if (error) {
               // If middleware calls next(error), reject the promise
-              console.log(`❌ Middleware error: ${error.message || error}`);
-              console.log(`❌ Origin: ${req.headers.origin}`);
-              console.log(`❌ CORS blocked request - calling next(error)`);
+              logger.error(`❌ Middleware error: ${error.message || error}`);
+              logger.debug(`❌ Origin: ${req.headers.origin}`);
+              logger.debug(`❌ CORS blocked request - calling next(error)`);
 
               // Call next with error to trigger error handling
               next(error);
@@ -1068,27 +1158,27 @@ class RouterImpl implements Router {
             }
 
             // Check if response was already sent by middleware
-            console.log(`🔧 Checking response state: headersSent=${expressRes.headersSent}, statusCode=${expressRes.statusCode}`);
+            logger.debug(`🔧 Checking response state: headersSent=${expressRes.headersSent}, statusCode=${expressRes.statusCode}`, 'rnode_server::express');
             if (expressRes.headersSent || expressRes.statusCode !== 200) {
-              console.log('✅ Middleware handled response');
-              console.log(`🔧 Response headers:`, res.getHeaders());
-              console.log(`🔧 Response status: ${expressRes.statusCode}`);
+              logger.debug('✅ Middleware handled response', 'rnode_server::express');
+              logger.debug(`🔧 Response headers: ${JSON.stringify(res.getHeaders())}`, 'rnode_server::express');
+              logger.debug(`🔧 Response status: ${expressRes.statusCode}`, 'rnode_server::express');
               return;
             }
 
             // Continue to next middleware/handler
-            console.log('✅ Middleware passed, continuing');
-            console.log(`🔧 Response headers after middleware:`, res.getHeaders());
+            logger.debug('✅ Middleware passed, continuing', 'rnode_server::express');
+            logger.debug(`🔧 Response headers after middleware: ${JSON.stringify(res.getHeaders())}`, 'rnode_server::express');
             next();
           };
 
           // Execute Express middleware with proper error handling
-          console.log(`🔒 Executing Express middleware for origin: ${req.headers.origin}`);
+          logger.debug(`🔒 Executing Express middleware for origin: ${req.headers.origin}`);
 
           // Execute Express middleware
           expressMiddleware(expressReq, expressRes, expressNext);
         } catch (error) {
-          console.error('❌ Error in Express middleware:', error);
+          logger.error('❌ Error in Express middleware:', error instanceof Error ? error.message : String(error));
           next(error);
         }
       });
@@ -1108,8 +1198,8 @@ class RouterImpl implements Router {
           const expressNext: NextFunction = (error?: any) => {
             if (error) {
               // If middleware calls next(error), reject the promise
-              console.log(`❌ Middleware error: ${error.message || error}`);
-              console.log(`❌ Origin: ${req.headers.origin}`);
+              logger.error(`❌ Middleware error: ${error.message || error}`);
+              logger.debug(`❌ Origin: ${req.headers.origin}`);
 
               // Call next with error to trigger error handling
               next(error);
@@ -1118,25 +1208,25 @@ class RouterImpl implements Router {
 
             // Check if response was already sent by middleware
             if (expressRes.headersSent || expressRes.statusCode !== 200) {
-              console.log('✅ Middleware handled response');
-              console.log(`🔧 Response headers:`, res.getHeaders());
-              console.log(`🔧 Response status: ${expressRes.statusCode}`);
+              logger.debug('✅ Middleware handled response', 'rnode_server::express');
+              logger.debug(`🔧 Response headers: ${JSON.stringify(res.getHeaders())}`, 'rnode_server::express');
+              logger.debug(`🔧 Response status: ${expressRes.statusCode}`, 'rnode_server::express');
               return;
             }
 
             // Continue to next middleware/handler
-            console.log('✅ Middleware passed, continuing');
-            console.log(`🔧 Response headers after middleware:`, res.getHeaders());
+            logger.debug('✅ Middleware passed, continuing', 'rnode_server::express');
+            logger.debug(`🔧 Response headers after middleware: ${JSON.stringify(res.getHeaders())}`, 'rnode_server::express');
             next();
           };
 
           // Execute Express middleware with proper error handling
-          console.log(`🔒 Executing Express middleware for origin: ${req.headers.origin}`);
+          logger.debug(`🔒 Executing Express middleware for origin: ${req.headers.origin}`);
 
           // Execute Express middleware
           expressMiddleware(expressReq, expressRes, expressNext);
         } catch (error) {
-          console.error('❌ Error in Express middleware:', error);
+          logger.error('❌ Error in Express middleware:', error instanceof Error ? error.message : String(error));
           next(error);
         }
       });
@@ -1224,35 +1314,35 @@ class RouterImpl implements Router {
       // Only essential Express methods that make sense
       get: (field: string) => res.getHeader(field),
       set: (field: string, value: string) => {
-        console.log(`🔧 Setting header: ${field} = ${value}`);
+        logger.debug(`🔧 Setting header: ${field} = ${value}`);
         res.setHeader(field, value);
         return expressRes;
       },
       header: (field: string, value: string) => {
-        console.log(`🔧 Setting header: ${field} = ${value}`);
+        logger.debug(`🔧 Setting header: ${field} = ${value}`);
         res.setHeader(field, value);
         return expressRes;
       },
       json: (body: any) => {
-        console.log('🔧 Sending JSON response');
+        logger.debug('🔧 Sending JSON response');
         headersSent = true;
         res.json(body);
         return expressRes;
       },
       send: (body: any) => {
-        console.log('🔧 Sending response');
+        logger.debug('🔧 Sending response');
         headersSent = true;
         res.send(body);
         return expressRes;
       },
       end: (chunk?: any) => {
-        console.log('🔧 Ending response');
+        logger.debug('🔧 Ending response');
         headersSent = true;
         res.end(chunk);
         return expressRes;
       },
       status: (code: number) => {
-        console.log(`🔧 Setting status: ${code}`);
+        logger.debug(`🔧 Setting status: ${code}`);
         statusCode = code;
         res.status(code);
         return expressRes;
@@ -1284,10 +1374,10 @@ class RouterImpl implements Router {
     try {
       const result = addon.listFiles(folder);
       const parsedResult = JSON.parse(result);
-      console.log(`📁 Files listed from folder: ${folder}`, parsedResult);
+      logger.debug(`📁 Files listed from folder: ${folder}`, parsedResult);
       return parsedResult;
     } catch (error) {
-      console.error('❌ Error listing files:', error);
+      logger.error('❌ Error listing files:', error instanceof Error ? error.message : String(error));
       return {
         success: false,
         error: `Failed to list files from ${folder}: ${error}`,
@@ -1302,10 +1392,10 @@ class RouterImpl implements Router {
     try {
       const result = addon.saveFile(filename, base64Data, uploadsDir);
       const parsedResult = JSON.parse(result);
-      console.log(`💾 File saved: ${filename} in ${uploadsDir}`, parsedResult);
+      logger.debug(`💾 File saved: ${filename} in ${uploadsDir}`, parsedResult);
       return parsedResult;
     } catch (error) {
-      console.error('❌ Error saving file:', error);
+      logger.error('❌ Error saving file:', error instanceof Error ? error.message : String(error));
       return {
         success: false,
         error: `Failed to save file ${filename}: ${error}`,
@@ -1319,10 +1409,10 @@ class RouterImpl implements Router {
     try {
       const result = addon.deleteFile(filename, uploadsDir);
       const parsedResult = JSON.parse(result);
-      console.log(`🗑️ File deleted: ${filename} from ${uploadsDir}`, parsedResult);
+      logger.debug(`🗑️ File deleted: ${filename} from ${uploadsDir}`, parsedResult);
       return parsedResult;
     } catch (error) {
-      console.error('❌ Error deleting file:', error);
+      logger.error('❌ Error deleting file:', error instanceof Error ? error.message : String(error));
       return {
         success: false,
         error: `Failed to delete file ${filename}: ${error}`,
@@ -1336,13 +1426,13 @@ class RouterImpl implements Router {
     try {
       const result = addon.getFileContent(filename, uploadsDir);
       const parsedResult = JSON.parse(result);
-      console.log(`📄 File content retrieved: ${filename} from ${uploadsDir}`, {
+      logger.debug(`📄 File content retrieved: ${filename} from ${uploadsDir}`, {
         ...parsedResult,
         content: parsedResult.content ? `${parsedResult.content.substring(0, 50)}...` : 'No content'
       });
       return parsedResult;
     } catch (error) {
-      console.error('❌ Error getting file content:', error);
+      logger.error('❌ Error getting file content:', error instanceof Error ? error.message : String(error));
       return {
         success: false,
         error: `Failed to get content of file ${filename}: ${error}`,
@@ -1358,10 +1448,10 @@ class RouterImpl implements Router {
   fileExists(filename: string, uploadsDir: string): boolean {
     try {
       const exists = addon.fileExists(filename, uploadsDir);
-      console.log(`🔍 File exists check: ${filename} in ${uploadsDir} -> ${exists}`);
+      logger.debug(`🔍 File exists check: ${filename} in ${uploadsDir} -> ${exists}`);
       return exists;
     } catch (error) {
-      console.error('❌ Error checking file existence:', error);
+      logger.error('❌ Error checking file existence:', error instanceof Error ? error.message : String(error));
       return false;
     }
   }
@@ -1387,12 +1477,12 @@ class RouterImpl implements Router {
       // Multiple paths
       for (const path of pathOrPaths) {
         addon.loadStaticFiles(path, defaultOptions);
-        console.log(`Registered static files from: ${path} with secure options:`, defaultOptions);
+        logger.debug(`Registered static files from: ${path} with secure options:`, JSON.stringify(defaultOptions));
       }
     } else {
       // Single path
       addon.loadStaticFiles(pathOrPaths, defaultOptions);
-      console.log(`Registered static files from: ${pathOrPaths} with secure options:`, defaultOptions);
+      logger.debug(`Registered static files from: ${pathOrPaths} with secure options:`, JSON.stringify(defaultOptions));
     }
   }
 
@@ -1401,10 +1491,10 @@ class RouterImpl implements Router {
     try {
       // Call Rust addon to initialize templates
       const result = addon.initTemplates(pattern, options);
-      console.log(`✅ Templates initialized with pattern: ${pattern}`);
+      logger.debug(`✅ Templates initialized with pattern: ${pattern}`);
       return result;
     } catch (error) {
-      console.error('❌ Error initializing templates:', error);
+      logger.error('❌ Error initializing templates:', error instanceof Error ? error.message : String(error));
       return `Template initialization error: ${error}`;
     }
   }
@@ -1413,10 +1503,9 @@ class RouterImpl implements Router {
   renderTemplate(templateName: string, context: object): string {
     try {
       // Call Rust addon to render template
-      const result = addon.renderTemplate(templateName, JSON.stringify(context));
-      return result;
+      return addon.renderTemplate(templateName, JSON.stringify(context));
     } catch (error) {
-      console.error('❌ Error rendering template:', error);
+      logger.error('❌ Error rendering template:', error instanceof Error ? error.message : String(error));
       return `<!-- Template rendering error: ${templateName} -->`;
     }
   }
@@ -1429,6 +1518,9 @@ export function Router(): Router {
 
 // RNodeApp class inherits from RouterImpl
 class RNodeApp extends RouterImpl {
+  // Properties
+  private logLevel: string = 'info';
+  
   // Additional methods for RNodeApp
   static(pathOrPaths: string | string[], options?: StaticOptions): void {
     // Default settings
@@ -1450,19 +1542,19 @@ class RNodeApp extends RouterImpl {
       // Multiple paths
       for (const path of pathOrPaths) {
         addon.loadStaticFiles(path, defaultOptions);
-        console.log(`Registered static files from: ${path} with secure options:`, defaultOptions);
+        logger.info(`📁 Registered static files from: ${path} with secure options`, 'rnode_server::static');
       }
     } else {
       // Single path
       addon.loadStaticFiles(pathOrPaths, defaultOptions);
-      console.log(`Registered static files from: ${pathOrPaths} with secure options:`, defaultOptions);
+      logger.info(`📁 Registered static files from: ${pathOrPaths} with secure options`, 'rnode_server::static');
     }
   }
 
   // Clear static files cache
   clearStaticCache(): void {
     addon.clearStaticCache();
-    console.log('Static files cache cleared');
+    logger.info('🗑️ Static files cache cleared', 'rnode_server::static');
   }
 
   // Get static files statistics
@@ -1482,13 +1574,13 @@ class RNodeApp extends RouterImpl {
   }
 
   useRouter(path: string, router: Router): void {
-    console.log(`🔧 Registering router for path: ${path}`);
+    logger.info(`🔧 Registering router for path: ${path}`, 'rnode_server::router');
 
     // Register all routes from router with prefix
     const routerHandlers = router.getHandlers();
     const routerMiddlewares = router.getMiddlewares();
 
-    console.log(`📝 Router contains ${routerHandlers.size} handlers and ${routerMiddlewares.size} middleware`);
+    logger.debug(`📝 Router contains ${routerHandlers.size} handlers and ${routerMiddlewares.size} middleware`, 'rnode_server::router');
 
     // Register router middleware
     for (const [routePath, middlewareArray] of routerMiddlewares) {
@@ -1497,14 +1589,14 @@ class RNodeApp extends RouterImpl {
       if (routePath === '*') {
         // Глобальный middleware для роутера - регистрируем для всех путей роутера
         fullPath = `${path}/*`;
-        console.log(`🔐 Registering global router middleware for: ${fullPath}`);
+        logger.debug(`🔐 Registering global router middleware for: ${fullPath}`, 'rnode_server::router');
       } else {
         // Обычный middleware с путем
         fullPath = `${path}${routePath}`;
-        console.log(`🔐 Registering router middleware for: ${fullPath}`);
+        logger.debug(`🔐 Registering router middleware for: ${fullPath}`, 'rnode_server::router');
       }
 
-      console.log(`🔍 Full path: '${fullPath}', routePath: '${routePath}', path: '${path}'`);
+      logger.debug(`🔍 Full path: '${fullPath}', routePath: '${routePath}', path: '${path}'`, 'rnode_server::router');
 
       // Add to global middlewares
       const existing = middlewares.get(fullPath) || [];
@@ -1512,12 +1604,12 @@ class RNodeApp extends RouterImpl {
 
       // Register each middleware individually in Rust addon
       for (const middleware of middlewareArray) {
-        console.log(`🔧 Calling addon.use('${fullPath}', middleware)`);
+        logger.debug(`🔧 Calling addon.use('${fullPath}', middleware)`, 'rnode_server::router');
         addon.use(fullPath, middleware);
       }
 
-      console.log(`✅ Registered router middleware: ${fullPath} (${middlewareArray.length} middleware functions)`);
-      console.log(`📊 Global middlewares after registration:`, Array.from(middlewares.keys()));
+      logger.info(`✅ Registered router middleware: ${fullPath} (${middlewareArray.length} middleware functions)`, 'rnode_server::router');
+      logger.debug(`📊 Global middlewares after registration: ${Array.from(middlewares.keys()).join(', ')}`, 'rnode_server::router');
     }
 
     // Register router handlers
@@ -1526,7 +1618,7 @@ class RNodeApp extends RouterImpl {
       const fullPath = `${path}${routePath}`;
       const { handler } = handlerInfo;
 
-      console.log(`🔧 Registering handler: ${method} ${fullPath} (original path: ${routePath})`);
+      logger.debug(`🔧 Registering handler: ${method} ${fullPath} (original path: ${routePath})`, 'rnode_server::router');
 
       // Add to global handlers with full path
       handlers.set(`${method}:${fullPath}`, handler);
@@ -1535,12 +1627,12 @@ class RNodeApp extends RouterImpl {
       const addonMethod = method.toLowerCase() === 'delete' ? 'del' : method.toLowerCase();
       (addon as any)[addonMethod](fullPath, handler);
 
-      console.log(`✅ Router handler registered: ${method} ${fullPath}`);
+      logger.info(`✅ Router handler registered: ${method} ${fullPath}`, 'rnode_server::router');
     }
 
-    console.log(`🎯 Router registered for path: ${path}`);
-    console.log(`📊 Total handlers in system: ${router.getHandlers().size}`);
-    console.log(`🔧 Global handlers updated:`, Array.from(handlers.keys()));
+    logger.info(`🎯 Router registered for path: ${path}`, 'rnode_server::router');
+    logger.debug(`📊 Total handlers in system: ${router.getHandlers().size}`, 'rnode_server::router');
+    logger.debug(`🔧 Global handlers updated: ${Array.from(handlers.keys()).join(', ')}`, 'rnode_server::router');
   }
 
   listen(port: number, hostOrCallback?: string | (() => void), callback?: () => void): void {
@@ -1556,20 +1648,20 @@ class RNodeApp extends RouterImpl {
 
     // Copy middleware
     for (const [key, value] of this.middlewares) {
-      console.log(`🔧 Copying middleware: ${key} -> ${value.length} functions`);
+      logger.debug(`🔧 Copying middleware: ${key} -> ${value.length} functions`, 'rnode_server::server');
       const existing = middlewares.get(key) || [];
       middlewares.set(key, [...existing, ...value]);
 
       // Register each middleware individually in Rust addon
       for (const middleware of value) {
-        console.log(`🔧 Calling addon.use('${key}', middleware) in listen`);
+        logger.debug(`🔧 Calling addon.use('${key}', middleware) in listen`, 'rnode_server::server');
         addon.use(key, middleware);
       }
     }
 
-    console.log('🔧 Global handlers updated:', Array.from(handlers.keys()));
-    console.log('🔧 Global middlewares updated:', Array.from(middlewares.keys()));
-    console.log('🔧 App middlewares:', Array.from(this.middlewares.keys()));
+    logger.debug(`🔧 Global handlers updated: ${Array.from(handlers.keys()).join(', ')}`, 'rnode_server::server');
+    logger.debug(`🔧 Global middlewares updated: ${Array.from(middlewares.keys()).join(', ')}`, 'rnode_server::server');
+    logger.debug(`🔧 App middlewares: ${Array.from(this.middlewares.keys()).join(', ')}`, 'rnode_server::server');
 
     // Determine host and callback
     let host: string = "127.0.0.1";
@@ -1592,13 +1684,13 @@ class RNodeApp extends RouterImpl {
     // Check if SSL is configured
     const sslConfig = this.getSslConfig();
     if (sslConfig && sslConfig.certPath && sslConfig.keyPath) {
-      console.log(`🔒 Starting HTTPS server on ${host || '127.0.0.1'}:${port}`);
-      console.log(`   Certificate: ${sslConfig.certPath}`);
-      console.log(`   Private Key: ${sslConfig.keyPath}`);
+      logger.info(`🔒 Starting HTTPS server on ${host || '127.0.0.1'}:${port}`, 'rnode_server::server');
+      logger.info(`   Certificate: ${sslConfig.certPath}`, 'rnode_server::server');
+      logger.info(`   Private Key: ${sslConfig.keyPath}`, 'rnode_server::server');
       // Start HTTPS server with SSL certificates
       addon.listen(port, host, sslConfig.certPath, sslConfig.keyPath);
     } else {
-      console.log(`🌐 Starting HTTP server on ${host || '127.0.0.1'}:${port}`);
+      logger.info(`🌐 Starting HTTP server on ${host || '127.0.0.1'}:${port}`, 'rnode_server::server');
       // Start HTTP server
       addon.listen(port, host);
     }
@@ -1671,6 +1763,26 @@ class RNodeApp extends RouterImpl {
       });
     }
   }
+
+  // Logging configuration
+  setLogLevel(level: string): void {
+    const newLevel = level.toLowerCase();
+    
+    // Set log level in the logger
+    logger.setLevel(newLevel);
+    
+    // Update environment variable for Rust logging
+    process.env.RUST_LOG = newLevel;
+    
+    // Store log level in the app
+    this.logLevel = newLevel;
+    
+    logger.info(`🔧 Log level changed to: ${newLevel}`, 'rnode_server::app');
+  }
+
+  getLogLevel(): string {
+    return this.logLevel;
+  }
 }
 
 // Function for creating application
@@ -1679,33 +1791,35 @@ export function createApp(options?: AppOptions): RNodeAppInterface {
   const logLevel = options?.logLevel || 'info';
   const level = logLevel.toLowerCase();
   
-  console.log(`🔧 Setting log level to: ${level}`);
+  // Set log level in the logger (this will filter messages based on level)
+  logger.setLevel(level);
+  
+  logger.info(`🔧 Setting log level to: ${level}`, 'rnode_server::app');
   
   // Set environment variable for Rust logging
   process.env.RUST_LOG = level;
   
   // Create app with log level
   const appInfo = addon.createApp(level);
-  console.log(`Creating ${appInfo.name} v${appInfo.version} with log level: ${level}`);
+  logger.info(`🚀 Creating ${appInfo.name} v${appInfo.version} with log level: ${level}`, 'rnode_server::app');
 
   // Create RNodeApp instance
   const app = new RNodeApp();
   
-  // Add log level info to the app
-  (app as any).logLevel = level;
-  console.log(`🔧 App log level set to: ${level}`);
+  // Set log level using the method
+  app.setLogLevel(level);
 
   // Store SSL configuration if provided
   if (options?.ssl) {
     const { certPath, keyPath } = options.ssl;
     if (certPath && keyPath) {
-      console.log(`🔒 SSL configuration loaded:`);
-      console.log(`   Certificate: ${certPath}`);
-      console.log(`   Private Key: ${keyPath}`);
+      logger.info(`🔒 SSL configuration loaded:`, 'rnode_server::app');
+      logger.info(`   Certificate: ${certPath}`, 'rnode_server::app');
+      logger.info(`   Private Key: ${keyPath}`, 'rnode_server::app');
       // Store SSL config in the app for later use
       (app as any).sslConfig = { certPath, keyPath };
     } else {
-      console.warn('SSL certificate paths are not provided in options.');
+      logger.warn('⚠️ SSL certificate paths are not provided in options.', 'rnode_server::app');
     }
   }
 
@@ -1727,3 +1841,37 @@ export default {
 
 // Export types for use
 export type { StaticOptions };
+
+
+// Graceful shutdown handling
+process.on('SIGINT', (signal) => {
+  logger.info(`🛑 Received ${signal}, shutting down gracefully...`, 'rnode_server::shutdown');
+  
+  // Force exit after a short delay if graceful shutdown fails
+  setTimeout(() => {
+    logger.warn('⚠️ Force exit after timeout', 'rnode_server::shutdown');
+    process.exit(1);
+  }, 5000);
+  
+  // Try to exit gracefully
+  process.exit(0);
+});
+
+process.on('SIGTERM', (signal) => {
+  logger.info(`🛑 Received ${signal}, shutting down gracefully...`, 'rnode_server::shutdown');
+  process.exit(0);
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  logger.error(`💥 Uncaught Exception: ${error.message}`, 'rnode_server::error');
+  logger.error(`Stack trace: ${error.stack}`, 'rnode_server::error');
+  process.exit(1);
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error(`💥 Unhandled Rejection at: ${promise}`, 'rnode_server::error');
+  logger.error(`Reason: ${reason}`, 'rnode_server::error');
+  process.exit(1);
+});

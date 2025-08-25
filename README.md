@@ -10,7 +10,7 @@ A high-performance HTTP server built with Rust and Node.js, featuring Express-li
 - 📤 **File Upload** - Multipart form data support
 - 📥 **File Download** - Secure file serving
 - 🎨 **Template Engine** - Tera templates with inheritance
-- 🔒 **HTTPS Support** - SSL/TLS encryption
+- 🔒 **HTTPS Support** - SSL/TLS encryption with certificate support
 - 🌐 **IP Detection** - Client IP from various proxy headers
 - 🔌 **Express Middleware** - Use existing Express plugins
 
@@ -577,27 +577,30 @@ app.get('/search', (req, res) => {
 ```
 
 
-## 🔒 HTTPS Support (Coming Soon)
+## Configuration
 
-RNode Server will support HTTPS with SSL/TLS certificates, similar to Express.js. The infrastructure is already in place:
+RNode Server supports various configuration options for SSL/TLS encryption and logging levels:
 
 ```typescript
 import { createApp } from 'rnode-server';
 
-// SSL configuration
-const sslConfig = {
-  certPath: './ssl/server.crt',
-  keyPath: './ssl/server.key'
-};
+// Create app with configuration options
+const app = createApp({ 
+  // SSL configuration (optional)
+  ssl: { 
+    certPath: './ssl/server.crt', 
+    keyPath: './ssl/server.key' 
+  },
+  // Log level: 'trace', 'debug', 'info', 'warn', 'error' (default: 'info')
+  // Higher levels include lower levels (e.g., 'info' shows info, warn, and error)
+  logLevel: 'debug' 
+});
 
-// Create app with SSL support
-const app = createApp({ ssl: sslConfig });
-
-// Start server (will use HTTPS when implemented)
+// Start server (will use HTTPS if SSL is configured)
 app.listen(3000, '127.0.0.1');
 ```
 
-### SSL Certificate Generation
+#### SSL Certificate Generation
 
 ```bash
 # Generate self-signed certificates
@@ -613,8 +616,7 @@ openssl req -x509 -newkey rsa:4096 \
   -subj "/C=US/ST=State/L=City/O=Organization/CN=localhost"
 ```
 
-
-## Server Capabilities
+### Server Capabilities
 
 ### HTTP Methods Support
 - GET, POST, PUT, DELETE, PATCH requests

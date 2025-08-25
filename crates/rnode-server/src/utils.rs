@@ -1,6 +1,10 @@
 use neon::prelude::*;
 use log::LevelFilter;
 use env_logger;
+use std::sync::Once;
+
+// Static flag to ensure logger is initialized only once
+static INIT: Once = Once::new();
 
 // Simple greeting function
 pub fn hello_wrapper(mut cx: FunctionContext) -> JsResult<JsString> {
@@ -36,10 +40,12 @@ pub fn create_app(mut cx: FunctionContext) -> JsResult<JsObject> {
                 _ => LevelFilter::Info, // default
             };
             
-            // Set the log level
-            env_logger::Builder::new()
-                .filter_level(level_filter)
-                .init();
+            // Initialize logger only once, then just set the level
+            INIT.call_once(|| {
+                env_logger::Builder::new()
+                    .filter_level(level_filter)
+                    .init();
+            });
             
             // Add log level info to the app object
             let log_level = cx.string(level_str);
@@ -50,9 +56,11 @@ pub fn create_app(mut cx: FunctionContext) -> JsResult<JsObject> {
         }
     } else {
         // Default log level
-        env_logger::Builder::new()
-            .filter_level(LevelFilter::Info)
-            .init();
+        INIT.call_once(|| {
+            env_logger::Builder::new()
+                .filter_level(LevelFilter::Info)
+                .init();
+        });
         
         let log_level = cx.string("info");
         obj.set(&mut cx, "logLevel", log_level)?;
