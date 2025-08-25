@@ -1,6 +1,142 @@
 # RNode Server
 
-A high-performance HTTP server built with Rust and Node.js, featuring Express-like API with advanced middleware support, authentication, and database integration.
+> **🚀 Experimental Project**: This is an experimental attempt to create a high-performance Node.js server built with Rust, featuring Express-like API with advanced middleware support, authentication, and database integration.
+
+## 🎯 **Project Overview**
+
+RNode Server is **not just another Express.js alternative** - it's a **full-featured server implementation** built from the ground up with Rust and Node.js bindings. The goal is to create a production-ready server with all the necessary configurations for fast deployment and optimal performance.
+
+### 🔬 **Why This Experiment?**
+
+- **Performance**: Leverage Rust's speed and memory safety for HTTP handling
+- **Node.js Integration**: Maintain familiar JavaScript/TypeScript API
+- **Full Control**: Custom implementation of all server features
+- **Modern Architecture**: Built with modern async patterns and efficient data structures
+
+## ⚡ **Performance Comparison**
+
+> **Note**: Performance tests were conducted on a personal laptop. Results may vary depending on server configuration, hardware, and environment.
+
+| Metric                   | Express (`:4547/hello`) | RNode Server (`:4546/hello`) | Difference                          |
+|--------------------------|-------------------------|------------------------------|-------------------------------------|
+| **Requests/sec (RPS)**   | 9,315                   | 25,378                       | **~2.7× faster**                    |
+| **Average time/request** | 10.7 ms                 | 3.9 ms                       | **~2.7× faster**                    |
+| **p50 (median)**         | 10 ms                   | 4 ms                         | **~2.5× faster**                    |
+| **p95**                  | 14 ms                   | 7 ms                         | **~2× faster**                      |
+| **Maximum (max)**        | 18 ms                   | 13 ms                        | **Shorter tail**                    |
+| **Transfer rate**        | 3.3 MB/s                | 6.6 MB/s                     | **~2× higher**                      |
+| **Total transferred**    | 3.63 MB                 | 2.66 MB                      | Express sent more (headers/wrapper) |
+
+### 🚀 **Key Performance Advantages**
+
+- **~2.7× faster** request processing
+- **~2.7× lower** average response time  
+- **~2× better** transfer rates
+- **Shorter latency tails** for better user experience
+- **Efficient memory usage** with Rust backend
+
+## 🏗️ **Architecture & How It Works**
+
+### 🔄 **Request Flow Architecture**
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant RustBackend as Rust Backend (Axum)
+    participant NodeJS as Node.js (Neon FFI)
+    participant JSHandlers as JavaScript Handlers
+
+    Client->>RustBackend: HTTP Request
+    Note over RustBackend: Parse headers, body, query params
+    
+    RustBackend->>NodeJS: Execute JavaScript
+    Note over NodeJS: Route to appropriate handler
+    
+    NodeJS->>JSHandlers: Run middleware & handlers
+    Note over JSHandlers: Process request, generate response
+    
+    JSHandlers-->>NodeJS: Response data
+    NodeJS-->>RustBackend: Serialized response
+    
+    Note over RustBackend: Format HTTP response
+    RustBackend-->>Client: HTTP Response
+```
+
+### 🔄 **Data Flow Architecture**
+
+```mermaid
+flowchart TD
+    A[Client Request] --> B[Rust Backend]
+    B --> C{Parse Request}
+    C --> D[Route to Handler]
+    D --> E[Execute JavaScript]
+    E --> F[Process Middleware]
+    F --> G[Run Route Handler]
+    G --> H[Generate Response]
+    H --> I[Serialize Data]
+    I --> J[Rust Response]
+    J --> K[Send to Client]
+    
+    style B fill:#ff6b6b
+    style E fill:#4ecdc4
+    style J fill:#45b7d1
+```
+
+### 🧠 **Core Concept: JavaScript Execution Through Rust**
+
+RNode Server uses a **unique hybrid approach** where **all JavaScript code execution happens through Rust backend**. This architecture provides both advantages and challenges:
+
+#### ✅ **Advantages of This Approach**
+
+- **🚀 Performance**: Rust handles HTTP parsing, routing, and response generation at native speed
+- **🔒 Security**: Rust's memory safety prevents common server vulnerabilities
+- **⚡ Efficiency**: Minimal overhead between HTTP layer and JavaScript execution
+- **🔄 Control**: Full control over request/response lifecycle
+- **🧩 Flexibility**: Can implement custom optimizations at any layer
+
+#### ⚠️ **Challenges & Considerations**
+
+- **🔄 Complexity**: JavaScript execution requires FFI (Foreign Function Interface) calls
+- **📊 Memory**: Data serialization between Rust and JavaScript layers
+- **🔧 Debugging**: More complex debugging across language boundaries
+- **📚 Learning Curve**: Requires understanding of both Rust and Node.js ecosystems
+
+#### 🎯 **What This Enables**
+
+- **🚀 Custom HTTP Optimizations**: Implement protocol-level improvements
+- **🔒 Advanced Security**: Rust-level security checks before JavaScript execution
+- **⚡ Performance Monitoring**: Detailed metrics at every layer
+- **🧩 Protocol Extensions**: Custom HTTP methods, headers, and behaviors
+- **🔄 Real-time Processing**: Low-latency data transformation between layers
+
+### 🔧 **Technical Implementation**
+
+#### **Rust Backend (Axum)**
+- **HTTP Server**: Handles all incoming HTTP requests
+- **Request Parsing**: Parses headers, body, and query parameters
+- **Routing**: Determines which JavaScript handler to execute
+- **Response Generation**: Formats and sends HTTP responses
+
+#### **Node.js Integration (Neon FFI)**
+- **JavaScript Execution**: Runs your Express-like code
+- **Data Serialization**: Converts between Rust and JavaScript data types
+- **Middleware Chain**: Executes middleware and route handlers
+- **Response Processing**: Handles JSON, files, and custom responses
+
+#### **Communication Layer**
+- **Zero-Copy**: Minimizes data copying between layers
+- **Type Safety**: Maintains type safety across language boundaries
+- **Error Handling**: Graceful error propagation between layers
+
+### 🌟 **Why This Architecture Matters**
+
+This isn't just another Express.js clone - it's a **fundamentally different approach** that allows you to:
+
+- **🚀 Build faster servers** with Rust's performance
+- **🔒 Implement custom security** at the protocol level
+- **⚡ Create custom optimizations** for your specific use case
+- **🧩 Extend HTTP protocol** with custom methods and behaviors
+- **📊 Monitor performance** at every layer of your application
 
 ## ✨ Features
 
