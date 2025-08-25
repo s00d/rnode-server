@@ -49,9 +49,7 @@
     "type": "library",
     "org": "@rnode-server",
     "platforms": [
-      "extended",
-      "linux-arm64-musl",
-      "linux-x64-musl"
+      "extended"
     ],
     "load": "./src/load.cts"
   },
@@ -79,7 +77,6 @@
     "@rnode-server/linux-x64-gnu": "0.1.8",
     "@rnode-server/linux-arm64-gnu": "0.1.8",
     "@rnode-server/win32-arm64-msvc": "0.1.8",
-    "@rnode-server/linux-arm-gnueabihf": "0.1.8",
     "@rnode-server/android-arm-eabi": "0.1.8",
     "@rnode-server/linux-arm64-musl": "0.1.8",
     "@rnode-server/linux-x64-musl": "0.1.8"
