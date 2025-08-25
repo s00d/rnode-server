@@ -53,7 +53,7 @@ runs:
       if: ${{ inputs['use-rust'] == 'true' }}
       id: target
       shell: bash
-      run: echo target=$(pnpm exec neon list-platforms | jq -r '.["${{ inputs.platform }}"]') | tee -a $GITHUB_OUTPUT
+      run: echo "target=$(pnpm exec neon list-platforms | jq -r '.["${{ inputs.platform }}"]')" >> $GITHUB_OUTPUT
       working-directory: ${{ inputs.workspace }}
     - name: Install Rust
       if: ${{ inputs['use-rust'] == 'true' }}
@@ -71,10 +71,10 @@ runs:
       id: node
       shell: bash
       run: |
-        echo version=$(node -e 'console.log(process.versions.node)') | tee -a $GITHUB_OUTPUT
+        echo "version=$(node -e 'console.log(process.versions.node)')" >> $GITHUB_OUTPUT
     - name: Rust Version
       if: ${{ inputs['use-rust'] == 'true' }}
       id: rust
       shell: bash
       run: |
-        echo version=$(cargo -Vv | fgrep release: | cut -d' ' -f2) | tee -a $GITHUB_OUTPUT
+        echo "version=$(cargo -Vv | fgrep release: | cut -d' ' -f2)" >> $GITHUB_OUTPUT

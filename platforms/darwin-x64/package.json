@@ -1,5 +1,5 @@
 {
-  "name": "@rnode-server/darwin-x64",
+  "name": "rnode-server-darwin-x64",
   "description": "Prebuilt binary package for `rnode-server` on `darwin-x64`.",
   "version": "0.1.4",
   "os": [
@@ -12,14 +12,7 @@
   "files": [
     "index.node"
   ],
-  "neon": {
-    "type": "binary",
-    "rust": "x86_64-apple-darwin",
-    "node": "darwin-x64",
-    "os": "darwin",
-    "arch": "x64",
-    "abi": null
-  },
+
   "author": "",
   "license": "ISC"
 }
