@@ -99,6 +99,10 @@ flowchart TD
 
 RNode Server uses a **unique hybrid approach** where **all JavaScript code execution happens through Rust backend**. This architecture provides both advantages and challenges:
 
+#### **🔄 Promise Management System**
+
+The server implements a sophisticated promise management system that allows JavaScript handlers to return promises for asynchronous operations. Rust waits for promise completion using a polling mechanism with configurable timeouts, enabling seamless integration between synchronous Rust execution and asynchronous JavaScript operations.
+
 #### ✅ **Advantages of This Approach**
 
 - **🚀 Performance**: Rust handles HTTP parsing, routing, and response generation at native speed
@@ -147,6 +151,106 @@ This isn't just another Express.js clone - it's a **fundamentally different appr
 
 - **🚀 Build faster servers** with Rust's performance
 - **🔒 Implement custom security** at the protocol level
+
+### 🔄 **Promise System Architecture**
+
+RNode Server implements a sophisticated promise management system that bridges asynchronous JavaScript operations with Rust's synchronous execution model.
+
+#### **Promise Flow**
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Rust as Rust Handler
+    participant JS as JavaScript Handler
+    participant Promise as Promise Manager
+    participant EventQueue as Event Queue
+
+    Client->>Rust: HTTP Request
+    Rust->>JS: Execute Handler
+    JS->>Promise: Return Promise ID
+    Promise-->>Rust: Async Response Flag
+    
+    Note over Rust: Wait for Promise Completion
+    Rust->>EventQueue: Check Promise Status
+    EventQueue->>JS: getPromiseResult()
+    JS-->>EventQueue: Promise Status
+    
+    alt Promise Pending
+        EventQueue-->>Rust: Continue Waiting
+        Rust->>EventQueue: Check Again (100ms intervals)
+    else Promise Completed
+        EventQueue-->>Rust: Final Result
+        Rust-->>Client: HTTP Response
+    else Promise Timeout
+        EventQueue->>JS: clearPromiseById()
+        Rust-->>Client: Timeout Error
+    end
+```
+
+#### **Promise Management Features**
+
+- **🔄 Async Handler Support**: JavaScript handlers can return promises for long-running operations
+- **⏱️ Timeout Handling**: Configurable timeouts with automatic cleanup
+- **🧹 Memory Management**: Automatic promise cleanup to prevent memory leaks
+- **📊 Status Tracking**: Real-time promise status monitoring through event queue
+- **🔄 Polling System**: Efficient 100ms interval checking for promise completion
+
+#### **Key Components**
+
+- **`wait_for_promise_completion()`**: Rust function that waits for JavaScript promise resolution
+- **`getPromiseResult()`**: JavaScript function that returns current promise status
+- **`clearPromiseById()`**: JavaScript function that cleans up timed-out promises
+- **Event Queue**: Thread-safe communication channel between Rust and Node.js
+
+### 💻 **Code Examples**
+
+#### **🔄 Async Route Handlers**
+
+RNode Server supports async/await in route handlers, automatically managing promises through the promise system:
+
+```typescript
+// Simple async route
+app.get('/api/slow', async (req, res) => {
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  res.json({ message: 'Done after 1 second' });
+});
+
+// Async route with database
+app.post('/api/users', async (req, res) => {
+  const user = await createUser(req.body);
+  res.json({ userId: user.id });
+});
+```
+
+#### **🔧 Async Middleware**
+
+Middleware can also be async, enabling complex pre-processing operations:
+
+```typescript
+// Simple auth middleware
+app.use(async (req, res, next) => {
+  const user = await validateToken(req.headers.authorization);
+  req.user = user; next();
+});
+
+// Simple logging middleware
+app.use(async (req, res, next) => {
+  await logRequest(req.method, req.url);
+  next();
+});
+```
+
+#### **⚡ Promise System in Action**
+
+When you use async handlers, RNode Server automatically:
+
+1. **Detects async response** with `__async: true` flag
+2. **Generates promise ID** for tracking
+3. **Polls for completion** every 100ms
+4. **Handles timeouts** with automatic cleanup
+5. **Returns final result** to client
+
 - **⚡ Create custom optimizations** for your specific use case
 - **🧩 Extend HTTP protocol** with custom methods and behaviors
 - **📊 Monitor performance** at every layer of your application
@@ -191,6 +295,49 @@ pnpm add rnode-server
 ```bash
 yarn add rnode-server
 ```
+
+## 📊 **Metrics & Monitoring**
+
+RNode Server includes built-in Prometheus metrics for monitoring performance and system health.
+
+### 🔧 **Enable Metrics**
+
+```typescript
+import { createApp } from 'rnode-server';
+
+const app = createApp({ 
+  logLevel: "info", 
+  metrics: true  // Enable Prometheus metrics
+});
+```
+
+### 📍 **Access Metrics**
+
+- **Metrics Endpoint**: `GET /metrics` (Prometheus format)
+
+### 📈 **Available Metrics**
+
+| Metric | Type | Description | Labels |
+|--------|------|-------------|---------|
+| `http_requests_total` | Counter | Total HTTP requests | `method`, `path`, `status` |
+| `http_requests_duration_seconds` | Histogram | Request duration | `method`, `path`, `status` |
+| `rnode_server_process_cpu_usage_percent` | Gauge | Process CPU usage | - |
+| `rnode_server_process_memory_kb` | Gauge | Process memory usage | - |
+| `rnode_server_uptime_seconds` | Gauge | Server uptime | - |
+| `rnode_server_pending_requests` | Gauge | Pending requests count | - |
+| `rnode_server_slow_requests_total` | Counter | Slow requests (>1s) | `method`, `path`, `duration_range` |
+| `rnode_server_cache_hits_total` | Counter | Cache hits | - |
+| `rnode_server_cache_misses_total` | Counter | Cache misses | - |
+| `rnode_server_total_connections` | Counter | Total connections | - |
+
+### 🎯 **Grafana Dashboard**
+
+For a complete monitoring setup, see [Grafana Dashboard Configuration](docs/grafana-dashboard.md).
+
+### 📚 **Additional Resources**
+
+- [Metrics Examples](docs/metrics-examples.md) - Quick examples and PromQL queries
+- [Grafana Dashboard](docs/grafana-dashboard.md) - Complete dashboard configuration
 
 ## Quick Start
 

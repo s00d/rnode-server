@@ -11,7 +11,7 @@ if (parsed.success) {
     process.exit(1);
 }
 
-templatesRouter.get('/', async (req, res) => {
+templatesRouter.get('/', (req, res) => {
     try {
         const result = templatesRouter.renderTemplate('index.html', {
             title: 'RNode Template Server - Welcome',
@@ -46,7 +46,7 @@ templatesRouter.get('/', async (req, res) => {
 });
 
 // Route for rendering templates by name
-templatesRouter.get('{name}', async (req, res) => {
+templatesRouter.get('{name}', (req, res) => {
     const templateName = req.params.name;
 
     try {
@@ -76,7 +76,7 @@ templatesRouter.get('{name}', async (req, res) => {
 });
 
 // Route for template with dynamic data
-templatesRouter.get('/user/{id}', async (req, res) => {
+templatesRouter.get('/user/{id}', (req, res) => {
     const userId = req.params.id;
 
     // Simulate user data
@@ -109,7 +109,7 @@ templatesRouter.get('/user/{id}', async (req, res) => {
 });
 
 // Route for demonstrating template features
-templatesRouter.get('/demo', async (req, res) => {
+templatesRouter.get('/demo', (req, res) => {
     try {
         const result = templatesRouter.renderTemplate('index.html', {
             title: 'Template Features Demo',
@@ -172,7 +172,7 @@ templatesRouter.get('/api/templates', (req, res) => {
     });
 });
 
-templatesRouter.get('/demo', async (req, res) => {
+templatesRouter.get('/demo', (req, res) => {
     try {
         const result = templatesRouter.renderTemplate('index.html', {
             title: 'Template Features Demo',

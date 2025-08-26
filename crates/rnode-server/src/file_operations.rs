@@ -3,12 +3,12 @@ use crate::types::{
 };
 use base64::Engine;
 use infer;
+use log::{debug, info};
 use mime_guess::MimeGuess;
 use neon::prelude::*;
 use serde_json;
 use std::fs;
 use std::path::Path;
-use log::{info, debug};
 
 // Structure for file information
 #[derive(Debug, serde::Serialize)]
@@ -323,10 +323,7 @@ pub fn register_download_route(mut cx: FunctionContext) -> JsResult<JsUndefined>
 
         // Show current registered routes
         let routes = download_routes.read().unwrap();
-        info!(
-            "📋 Total download routes registered: {}",
-            routes.len()
-        );
+        info!("📋 Total download routes registered: {}", routes.len());
         for (route_path, _) in routes.iter() {
             debug!("   - {}", route_path);
         }
@@ -401,10 +398,7 @@ pub fn register_upload_route(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 
         // Show current registered routes
         let routes = upload_routes.read().unwrap();
-        info!(
-            "📋 Total upload routes registered: {}",
-            routes.len()
-        );
+        info!("📋 Total upload routes registered: {}", routes.len());
         for (route_path, _) in routes.iter() {
             debug!("   - {}", route_path);
         }

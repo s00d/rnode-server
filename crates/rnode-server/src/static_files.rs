@@ -1,9 +1,10 @@
+use crate::metrics::{record_cache_hit, record_cache_miss};
+use log::{debug, error, info, warn};
 use neon::prelude::*;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{OnceLock, RwLock};
 use std::time::{SystemTime, UNIX_EPOCH};
-use log::{info, debug, warn, error};
 
 // Structure for static file settings
 #[derive(Debug, Clone)]
@@ -305,7 +306,16 @@ pub fn get_mime_type(path: &std::path::Path) -> String {
 fn get_file_from_cache(path: &str) -> Option<StaticFile> {
     let cache = get_static_files_cache();
     let cache_read = cache.read().unwrap();
-    cache_read.get(path).cloned()
+    let result = cache_read.get(path).cloned();
+
+    // Record cache metrics
+    if result.is_some() {
+        record_cache_hit();
+    } else {
+        record_cache_miss();
+    }
+
+    result
 }
 
 // Function for preparing file for response (compression, headers, etc.)
@@ -625,6 +635,9 @@ async fn load_file_to_cache(
         cache_write.len()
     );
 
+    // Record cache miss since we had to load from disk
+    record_cache_miss();
+
     info!(
         "✅ File loaded to cache: {} ({} bytes, MIME: {})",
         file_path, file_size, mime_type
@@ -733,8 +746,11 @@ pub async fn handle_static_file(
             "✅ File found in cache: {} ({} bytes)",
             path, static_file.size
         );
+        record_cache_hit(); // Record cache hit
         return build_static_response(&static_file, accept_encoding, &path);
     }
+
+    record_cache_miss(); // Record cache miss
 
     debug!("💾 File not in cache, searching for folder configuration...");
 

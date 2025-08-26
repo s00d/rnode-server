@@ -1,6 +1,6 @@
 use crate::types::{RouteInfo, get_routes};
-use neon::prelude::*;
 use log::info;
+use neon::prelude::*;
 
 // Universal function for route registration
 fn register_route(method: &str) -> impl Fn(FunctionContext) -> JsResult<JsUndefined> + '_ {

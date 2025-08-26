@@ -234,7 +234,8 @@ declare module "./load.cjs" {
   function patch(path: string, handler: Function): void;
   function options(path: string, handler: Function): void;
   function use(path: string, handler: Function): void;
-  function listen(port: number, host?: string, certPath?: string, keyPath?: string): void;
+  // function listen(port: number, host: string, certPath?: string, keyPath?: string): void;
+  function listen(port: number, host: string, options: AppOptions): void;
   function loadStaticFiles(path: string, options?: StaticOptions): void;
   function clearStaticCache(): void;
   function getStaticStats(): string;
@@ -262,6 +263,7 @@ export interface Response {
   json(data: any): Response;
   send(data: string | Buffer): Response;
   end(data?: string | Buffer): Response;
+  async(): Response;
   setHeader(name: string, value: string): Response;
   getHeader(name: string): string | string[] | null;
   getCookie(name: string): string | null;
@@ -283,7 +285,7 @@ export interface Response {
 }
 
 // Middleware type
-type Middleware = (req: Request, res: Response, next: (error?: any) => void) => void;
+type Middleware = (req: Request, res: Response, next: (error?: any) => void) => void | Promise<any>;
 
 export interface Router {
   get(path: string, handler: (req: Request, res: Response) => void): Router;
@@ -299,9 +301,6 @@ export interface Router {
   useExpress(path: string, middleware: ExpressMiddleware): void;
   useExpressError(middleware: ExpressErrorMiddleware): void;
 
-  // SSL configuration
-  setSslConfig(config: SslConfig): void;
-
   // Static files
   static(path: string, options?: StaticOptions): void;
   static(paths: string[], options?: StaticOptions): void;
@@ -316,7 +315,7 @@ export interface Router {
   initTemplates(pattern: string, options: TemplateOptions): string;
   renderTemplate(templateName: string, context: object): string;
 
-  getHandlers(): Map<string, { method: string; handler: (req: Request, res: Response) => void }>;
+  getHandlers(): Map<string, { method: string; handler: (req: Request, res: Response) => void | Promise<any> }>;
   getMiddlewares(): Map<string, Middleware[]>;
 }
 
@@ -414,11 +413,27 @@ export interface SslConfig {
 export interface AppOptions {
   ssl?: SslConfig;
   logLevel?: string; // Log level: 'trace', 'debug', 'info', 'warn', 'error'
+  metrics?: boolean
+  timeout?: number
 }
 
 // Global storage for handlers and middleware in JavaScript
-let handlers = new Map<string, (req: Request, res: Response) => void>();
+let handlers = new Map<string, (req: Request, res: Response) => void | Promise<any>>();
 let middlewares = new Map<string, Middleware[]>();
+
+// Global promise counter for logging
+let nextPromiseId = 1;
+
+// Global promise queue for handling async handlers
+interface PendingPromise {
+  id: string;
+  promise: Promise<any>;
+  timestamp: number;
+  result?: any;
+  resolved: boolean;
+}
+
+let pendingPromises: PendingPromise[] = [];
 
 
 
@@ -600,6 +615,12 @@ function getHandler(requestJson: string): string {
           }
           return res;
         },
+        // Async support - allows handlers to work asynchronously
+        async: () => {
+          // Mark response as async - this will be handled specially
+          responseData = { __async: true, __timestamp: Date.now() };
+          return res;
+        },
         setHeader: (name: string, value: string) => {
           responseHeaders[name] = value;
           return res;
@@ -721,7 +742,66 @@ function getHandler(requestJson: string): string {
 
       // Execute handler
       try {
-        handler(req, res);
+        const result = handler(req, res);
+        
+        // Check if handler returned a promise
+        if (result !== undefined && result !== null && typeof result === 'object' && typeof result.then === 'function') {
+          // Handler returned a promise - we can't wait for it synchronously
+          // Instead, we'll return immediately and let the promise resolve in background
+          const promiseId = `promise_${nextPromiseId++}_${Date.now()}`;
+          const promise = result as Promise<any>;
+          
+          logger.debug(`🔄 Handler returned promise ${promiseId}, returning immediately`, 'rnode_server::handler');
+          
+          // Store the promise for later retrieval
+          const pendingPromise: PendingPromise = {
+            id: promiseId,
+            promise: promise,
+            timestamp: Date.now(),
+            resolved: false
+          };
+          
+          pendingPromises.push(pendingPromise);
+          
+          // Store result when promise resolves
+          promise.then(
+            (value) => {
+              const index = pendingPromises.findIndex(p => p.id === promiseId);
+              if (index > -1) {
+                const pending = pendingPromises[index];
+                pending.result = {
+                  content: responseData,
+                  contentType: contentType,
+                  headers: responseHeaders,
+                  customParams: customParams
+                };
+                pending.resolved = true;
+                logger.debug(`✅ Promise ${promiseId} resolved with result`, 'rnode_server::handler');
+              }
+            },
+            (error) => {
+              const index = pendingPromises.findIndex(p => p.id === promiseId);
+              if (index > -1) {
+                const pending = pendingPromises[index];
+                pending.result = { error: error.message || String(error) };
+                pending.resolved = true;
+                logger.error(`❌ Promise ${promiseId} rejected: ${error}`, 'rnode_server::handler');
+              }
+            }
+          );
+          
+          // Return a response indicating the operation is in progress
+          return JSON.stringify({
+            content: `Async operation started. Promise ID: ${promiseId}`,
+            contentType: 'text/plain',
+            headers: responseHeaders,
+            customParams: customParams,
+            __async: true,
+            __promiseId: promiseId,
+            __status: 'started'
+          });
+        }
+        
         return JSON.stringify({
           content: responseData,
           contentType: contentType,
@@ -746,6 +826,76 @@ function getHandler(requestJson: string): string {
       contentType: 'text/plain'
     });
   }
+}
+
+// Function to get information about promise handling
+function getPromiseInfo(): string {
+  const promises = pendingPromises.map(p => ({
+    id: p.id,
+    timestamp: p.timestamp,
+    age: Date.now() - p.timestamp,
+    status: 'pending'
+  }));
+  
+  return JSON.stringify({
+    count: pendingPromises.length,
+    status: 'pending',
+    promises: promises
+  });
+}
+
+// Function to get result of a specific promise by ID
+function getPromiseResult(promiseId: string): string {
+  const index = pendingPromises.findIndex(p => p.id === promiseId);
+  if (index === -1) {
+    return JSON.stringify({
+      error: 'Promise not found',
+      promiseId: promiseId
+    });
+  }
+  
+  const pending = pendingPromises[index];
+  
+  if (!pending.resolved) {
+    // Promise is still pending
+    return JSON.stringify({
+      status: 'pending',
+      promiseId: promiseId,
+      timestamp: pending.timestamp,
+      age: Date.now() - pending.timestamp
+    });
+  }
+  
+  // Promise is resolved, get the result and remove it
+  const result = pending.result;
+  pendingPromises.splice(index, 1);
+  
+  return JSON.stringify({
+    status: 'completed',
+    promiseId: promiseId,
+    result: result,
+    timestamp: pending.timestamp,
+    age: Date.now() - pending.timestamp
+  });
+}
+
+// Function to clear a specific promise by ID
+function clearPromiseById(promiseId: string): string {
+  const index = pendingPromises.findIndex(p => p.id === promiseId);
+  if (index === -1) {
+    return JSON.stringify({
+      error: 'Promise not found',
+      promiseId: promiseId
+    });
+  }
+  
+  pendingPromises.splice(index, 1);
+  
+  return JSON.stringify({
+    success: true,
+    promiseId: promiseId,
+    status: 'cleared'
+  });
 }
 
 // Function for executing middleware from Rust
@@ -779,11 +929,11 @@ function executeMiddleware(middlewareJson: string): string {
         logger.debug(`🔧 Middleware hasParam: ${name} = ${has}`);
         return has;
       },
-              getParams: () => {
-          if (!req.customParams) return {};
-          logger.debug(`🔧 Middleware getParams: ${JSON.stringify(req.customParams)}`, 'rnode_server::middleware');
-          return { ...req.customParams };
-        },
+      getParams: () => {
+        if (!req.customParams) return {};
+        logger.debug(`🔧 Middleware getParams: ${JSON.stringify(req.customParams)}`, 'rnode_server::middleware');
+        return { ...req.customParams };
+      },
       // Allow middleware to modify headers
       setHeader: (name: string, value: string) => {
         if (!req.headers) req.headers = {};
@@ -847,6 +997,11 @@ function executeMiddleware(middlewareJson: string): string {
         if (data) {
           res.send(data);
         }
+        return res;
+      },
+      async: () => {
+        // Mark response as async - this will be handled specially
+        res.content = JSON.stringify({ __async: true, __timestamp: Date.now() });
         return res;
       },
       setHeader: (name: string, value: string) => {
@@ -986,7 +1141,7 @@ function executeMiddleware(middlewareJson: string): string {
             logger.debug(`🔍 Executing middleware for pattern: ${middlewarePath}`);
             logger.debug(`🔍 Request origin: ${req.headers.origin}`);
 
-            middleware(req, res, (error?: any) => {
+            const result = middleware(req, res, (error?: any) => {
               // Next function - continue to next middleware
               if (error) {
                 // If middleware throws an error, stop execution and return error
@@ -996,6 +1151,66 @@ function executeMiddleware(middlewareJson: string): string {
                 logger.debug('✅ Middleware completed without error');
               }
             });
+
+            // Check if middleware returned a promise
+            if (result !== undefined && result !== null && typeof result === 'object' && typeof (result as any).then === 'function') {
+              // Middleware returned a promise - we need to wait for it
+              const promiseId = `middleware_promise_${nextPromiseId++}_${Date.now()}`;
+              const promise = result as Promise<any>;
+              
+              logger.debug(`🔄 Middleware returned promise ${promiseId}, waiting for completion`, 'rnode_server::middleware');
+              
+              // Store the promise for later retrieval
+              const pendingPromise: PendingPromise = {
+                id: promiseId,
+                promise: promise,
+                timestamp: Date.now(),
+                resolved: false
+              };
+              
+              pendingPromises.push(pendingPromise);
+              
+              // Store result when promise resolves
+              promise.then(
+                (value) => {
+                  const index = pendingPromises.findIndex(p => p.id === promiseId);
+                  if (index > -1) {
+                    const pending = pendingPromises[index];
+                    pending.result = {
+                      shouldContinue: true,
+                      req: {...req},
+                      res: {...res}
+                    };
+                    pending.resolved = true;
+                    logger.debug(`✅ Middleware promise ${promiseId} resolved with result`, 'rnode_server::middleware');
+                  }
+                },
+                (error) => {
+                  const index = pendingPromises.findIndex(p => p.id === promiseId);
+                  if (index > -1) {
+                    const pending = pendingPromises[index];
+                    pending.result = { 
+                      shouldContinue: false, 
+                      error: error.message || String(error),
+                      req: {...req},
+                      res: {...res}
+                    };
+                    pending.resolved = true;
+                    logger.error(`❌ Middleware promise ${promiseId} rejected: ${error}`, 'rnode_server::middleware');
+                  }
+                }
+              );
+              
+              // Return a response indicating the operation is in progress
+              return JSON.stringify({
+                shouldContinue: false,
+                content: `Async middleware operation started. Promise ID: ${promiseId}`,
+                contentType: 'text/plain',
+                __async: true,
+                __promiseId: promiseId,
+                __status: 'started'
+              });
+            }
 
             // Check if middleware returned an error
             if (middlewareError) {
@@ -1009,8 +1224,8 @@ function executeMiddleware(middlewareJson: string): string {
               });
             }
 
-                          // Update accumulated params for next middleware
-              logger.debug(`🔧 Updated params: ${JSON.stringify(req.customParams)}`, 'rnode_server::middleware');
+            // Update accumulated params for next middleware
+            logger.debug(`🔧 Updated params: ${JSON.stringify(req.customParams)}`, 'rnode_server::middleware');
           } catch (error) {
             logger.error(`❌ Middleware execution error: ${error instanceof Error ? error.message : String(error)}`, 'rnode_server::middleware');
             return JSON.stringify({
@@ -1024,7 +1239,9 @@ function executeMiddleware(middlewareJson: string): string {
       }
     }
 
-    logger.debug('✅ All middleware executed, continuing');
+    // This code will only execute if no middleware returned a Promise
+    // For Promise-based middleware, the result is returned above
+    logger.debug('✅ All middleware executed synchronously, continuing');
     // Always return accumulated parameters, even when continuing
     // Create req and res objects with accumulated data
     const finalReq = {
@@ -1078,44 +1295,47 @@ function executeMiddleware(middlewareJson: string): string {
 
 // Export functions for Rust
 (global as any).getHandler = getHandler;
+(global as any).getPromiseInfo = getPromiseInfo;
+(global as any).getPromiseResult = getPromiseResult;
+(global as any).clearPromiseById = clearPromiseById;
 (global as any).executeMiddleware = executeMiddleware;
 
 // Router class for creating route groups
 class RouterImpl implements Router {
-  public handlers = new Map<string, { method: string; handler: (req: Request, res: Response) => void }>();
+  public handlers = new Map<string, { method: string; handler: (req: Request, res: Response) => void | Promise<any> }>();
   public middlewares = new Map<string, Middleware[]>();
 
-  get(path: string, handler: (req: Request, res: Response) => void): Router {
+  get(path: string, handler: (req: Request, res: Response) => void | Promise<any>): Router {
     this.handlers.set(`GET:${path}`, { method: 'GET', handler });
     return this;
   }
 
-  post(path: string, handler: (req: Request, res: Response) => void): Router {
+  post(path: string, handler: (req: Request, res: Response) => void | Promise<any>): Router {
     this.handlers.set(`POST:${path}`, { method: 'POST', handler });
     return this;
   }
 
-  put(path: string, handler: (req: Request, res: Response) => void): Router {
+  put(path: string, handler: (req: Request, res: Response) => void | Promise<any>): Router {
     this.handlers.set(`PUT:${path}`, { method: 'PUT', handler });
     return this;
   }
 
-  delete(path: string, handler: (req: Request, res: Response) => void): Router {
+  delete(path: string, handler: (req: Request, res: Response) => void | Promise<any>): Router {
     this.handlers.set(`DELETE:${path}`, { method: 'DELETE', handler });
     return this;
   }
 
-  patch(path: string, handler: (req: Request, res: Response) => void): Router {
+  patch(path: string, handler: (req: Request, res: Response) => void | Promise<any>): Router {
     this.handlers.set(`PATCH:${path}`, { method: 'PATCH', handler });
     return this;
   }
 
-  options(path: string, handler: (req: Request, res: Response) => void): Router {
+  options(path: string, handler: (req: Request, res: Response) => void | Promise<any>): Router {
     this.handlers.set(`OPTIONS:${path}`, { method: 'OPTIONS', handler });
     return this;
   }
 
-  use(pathOrMiddleware: string | ((req: Request, res: Response, next: () => void) => void), middleware?: (req: Request, res: Response, next: () => void) => void): void {
+  use(pathOrMiddleware: string | ((req: Request, res: Response, next: () => void) => void | Promise<any>), middleware?: (req: Request, res: Response, next: () => void) => void | Promise<any>): void {
     if (typeof pathOrMiddleware === 'function') {
       // Global middleware: router.use(middleware)
       const existing = this.middlewares.get('*') || [];
@@ -1235,16 +1455,6 @@ class RouterImpl implements Router {
     }
   }
 
-  private sslConfig?: SslConfig;
-
-  setSslConfig(config: SslConfig): void {
-    this.sslConfig = config;
-  }
-
-  getSslConfig(): SslConfig | undefined {
-    return this.sslConfig;
-  }
-
   useExpressError(middleware: ExpressErrorMiddleware): void {
     // Error middleware - will be called when errors occur
     this.use((req: Request, res: Response, next: (error?: any) => void) => {
@@ -1361,7 +1571,7 @@ class RouterImpl implements Router {
     return expressRes;
   }
 
-  getHandlers(): Map<string, { method: string; handler: (req: Request, res: Response) => void }> {
+  getHandlers(): Map<string, { method: string; handler: (req: Request, res: Response) => void | Promise<any> }> {
     return this.handlers; // Return original Map with method:path keys
   }
 
@@ -1520,7 +1730,10 @@ export function Router(): Router {
 class RNodeApp extends RouterImpl {
   // Properties
   private logLevel: string = 'info';
-  
+  private metrics: boolean = false;
+  private timeout: number = 30000;
+  private sslConfig?: SslConfig;
+
   // Additional methods for RNodeApp
   static(pathOrPaths: string | string[], options?: StaticOptions): void {
     // Default settings
@@ -1562,9 +1775,12 @@ class RNodeApp extends RouterImpl {
     return addon.getStaticStats();
   }
 
-  // Set SSL configuration
   setSslConfig(config: SslConfig): void {
-    super.setSslConfig(config);
+    this.sslConfig = config;
+  }
+
+  getSslConfig(): SslConfig | undefined {
+    return this.sslConfig;
   }
 
   // Get all registered routes including router routes
@@ -1681,19 +1897,14 @@ class RNodeApp extends RouterImpl {
       host = '0.0.0.0';
     }
 
-    // Check if SSL is configured
-    const sslConfig = this.getSslConfig();
-    if (sslConfig && sslConfig.certPath && sslConfig.keyPath) {
-      logger.info(`🔒 Starting HTTPS server on ${host || '127.0.0.1'}:${port}`, 'rnode_server::server');
-      logger.info(`   Certificate: ${sslConfig.certPath}`, 'rnode_server::server');
-      logger.info(`   Private Key: ${sslConfig.keyPath}`, 'rnode_server::server');
-      // Start HTTPS server with SSL certificates
-      addon.listen(port, host, sslConfig.certPath, sslConfig.keyPath);
-    } else {
-      logger.info(`🌐 Starting HTTP server on ${host || '127.0.0.1'}:${port}`, 'rnode_server::server');
-      // Start HTTP server
-      addon.listen(port, host);
+    const options: AppOptions = {
+      metrics: this.getMetrics(),
+      ssl: this.getSslConfig(),
+      logLevel: this.getLogLevel(),
+      timeout: this.getTimeout(),
     }
+
+    addon.listen(port, host, options);
 
     if (actualCallback) {
       actualCallback();
@@ -1765,6 +1976,13 @@ class RNodeApp extends RouterImpl {
   }
 
   // Logging configuration
+  setMetrics(metrics: boolean): void {
+    this.metrics = metrics;
+  }
+  getMetrics() {
+    return this.metrics;
+  }
+
   setLogLevel(level: string): void {
     const newLevel = level.toLowerCase();
     
@@ -1783,6 +2001,14 @@ class RNodeApp extends RouterImpl {
   getLogLevel(): string {
     return this.logLevel;
   }
+
+  setTimeout(timeout: number): void {
+    this.timeout = timeout;
+  }
+
+  getTimeout() {
+    return this.timeout;
+  }
 }
 
 // Function for creating application
@@ -1790,14 +2016,6 @@ export function createApp(options?: AppOptions): RNodeAppInterface {
   // Get log level from options or use default
   const logLevel = options?.logLevel || 'info';
   const level = logLevel.toLowerCase();
-  
-  // Set log level in the logger (this will filter messages based on level)
-  logger.setLevel(level);
-  
-  logger.info(`🔧 Setting log level to: ${level}`, 'rnode_server::app');
-  
-  // Set environment variable for Rust logging
-  process.env.RUST_LOG = level;
   
   // Create app with log level
   const appInfo = addon.createApp(level);
@@ -1808,6 +2026,9 @@ export function createApp(options?: AppOptions): RNodeAppInterface {
   
   // Set log level using the method
   app.setLogLevel(level);
+  app.setMetrics(options?.metrics ?? false);
+
+  console.log(1111, app)
 
   // Store SSL configuration if provided
   if (options?.ssl) {
@@ -1816,8 +2037,7 @@ export function createApp(options?: AppOptions): RNodeAppInterface {
       logger.info(`🔒 SSL configuration loaded:`, 'rnode_server::app');
       logger.info(`   Certificate: ${certPath}`, 'rnode_server::app');
       logger.info(`   Private Key: ${keyPath}`, 'rnode_server::app');
-      // Store SSL config in the app for later use
-      (app as any).sslConfig = { certPath, keyPath };
+      app.setSslConfig(options.ssl)
     } else {
       logger.warn('⚠️ SSL certificate paths are not provided in options.', 'rnode_server::app');
     }

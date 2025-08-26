@@ -1,28 +1,29 @@
 use crate::middleware::execute_middleware;
+use crate::promise_utils::wait_for_promise_completion;
 use crate::types::get_event_queue;
+use axum::http::HeaderMap;
 use base64::Engine;
 use futures::stream::{self};
+use log::debug;
 use multer::Multipart;
 use neon::prelude::*;
 use serde_json;
 use std::convert::Infallible;
-use axum::http::HeaderMap;
-use log::{debug};
 
 // Helper function to extract client IP address from various headers
 fn extract_client_ip(headers: &HeaderMap) -> (String, Vec<String>) {
     // Priority order for IP extraction (most trusted first)
     let ip_headers = [
-        "cf-connecting-ip",        // Cloudflare (most trusted)
-        "x-real-ip",              // Nginx proxy
-        "x-forwarded-for",        // Standard proxy header
-        "x-client-ip",            // Custom proxy header
-        "x-forwarded",            // Alternative proxy header
-        "forwarded-for",          // RFC 7239
-        "forwarded",              // RFC 7239
-        "x-cluster-client-ip",    // Load balancer
-        "x-remote-ip",            // Custom remote IP
-        "x-remote-addr",          // Alternative remote addr
+        "cf-connecting-ip",    // Cloudflare (most trusted)
+        "x-real-ip",           // Nginx proxy
+        "x-forwarded-for",     // Standard proxy header
+        "x-client-ip",         // Custom proxy header
+        "x-forwarded",         // Alternative proxy header
+        "forwarded-for",       // RFC 7239
+        "forwarded",           // RFC 7239
+        "x-cluster-client-ip", // Load balancer
+        "x-remote-ip",         // Custom remote IP
+        "x-remote-addr",       // Alternative remote addr
     ];
 
     let mut all_ips = Vec::new();
@@ -33,15 +34,18 @@ fn extract_client_ip(headers: &HeaderMap) -> (String, Vec<String>) {
         if let Some(header_value) = headers.get(*header_name) {
             if let Ok(value_str) = header_value.to_str() {
                 let ips: Vec<&str> = value_str.split(',').collect();
-                
+
                 // Add all valid IPs to the list
                 for ip in &ips {
                     let clean_ip = ip.trim();
-                    if !clean_ip.is_empty() && is_valid_ip(clean_ip) && !all_ips.contains(&clean_ip.to_string()) {
+                    if !clean_ip.is_empty()
+                        && is_valid_ip(clean_ip)
+                        && !all_ips.contains(&clean_ip.to_string())
+                    {
                         all_ips.push(clean_ip.to_string());
                     }
                 }
-                
+
                 // Set primary IP from first valid header found
                 if primary_ip.is_empty() && !ips.is_empty() {
                     let first_ip = ips[0].trim();
@@ -49,7 +53,7 @@ fn extract_client_ip(headers: &HeaderMap) -> (String, Vec<String>) {
                         primary_ip = first_ip.to_string();
                     }
                 }
-                
+
                 // If we found valid IPs, break (don't check lower priority headers)
                 if !primary_ip.is_empty() {
                     break;
@@ -75,21 +79,41 @@ fn is_valid_ip(ip: &str) -> bool {
     if ip.is_empty() {
         return false;
     }
-    
+
     // Check for private/local IPs that might be invalid
     let invalid_prefixes = [
-        "0.", "127.", "10.", "172.16.", "172.17.", "172.18.", "172.19.",
-        "172.20.", "172.21.", "172.22.", "172.23.", "172.24.", "172.25.",
-        "172.26.", "172.27.", "172.28.", "172.29.", "172.30.", "172.31.",
-        "192.168.", "169.254.", "224.", "240.", "255.255.255.255"
+        "0.",
+        "127.",
+        "10.",
+        "172.16.",
+        "172.17.",
+        "172.18.",
+        "172.19.",
+        "172.20.",
+        "172.21.",
+        "172.22.",
+        "172.23.",
+        "172.24.",
+        "172.25.",
+        "172.26.",
+        "172.27.",
+        "172.28.",
+        "172.29.",
+        "172.30.",
+        "172.31.",
+        "192.168.",
+        "169.254.",
+        "224.",
+        "240.",
+        "255.255.255.255",
     ];
-    
+
     for prefix in &invalid_prefixes {
         if ip.starts_with(prefix) && ip != "127.0.0.1" {
             return false;
         }
     }
-    
+
     // Basic format check (simplified)
     let parts: Vec<&str> = ip.split('.').collect();
     if parts.len() == 4 {
@@ -103,12 +127,12 @@ fn is_valid_ip(ip: &str) -> bool {
         }
         return true;
     }
-    
+
     // IPv6 basic check (simplified)
     if ip.contains(':') {
         return ip.len() <= 39 && ip.chars().all(|c| c.is_ascii_hexdigit() || c == ':');
     }
-    
+
     false
 }
 
@@ -207,6 +231,7 @@ pub async fn dynamic_handler(
     registered_path: String,
     method: String,
     _handler_id: String,
+    timeout: u64, // Timeout from app options
 ) -> axum::response::Response<axum::body::Body> {
     debug!("🔍 Dynamic handler called:");
     debug!("  Method: {}", method);
@@ -256,7 +281,9 @@ pub async fn dynamic_handler(
         .to_string();
 
     // First get bytes from body
-    let body_bytes = axum::body::to_bytes(body, usize::MAX).await.unwrap_or_else(|_| axum::body::Bytes::new());
+    let body_bytes = axum::body::to_bytes(body, usize::MAX)
+        .await
+        .unwrap_or_else(|_| axum::body::Bytes::new());
 
     // Parse body based on Content-Type
     let (body_data, files_data) = if content_type.contains("multipart/form-data") {
@@ -341,8 +368,11 @@ pub async fn dynamic_handler(
         serde_json::Value::Object(headers_json),
     ); // All headers
     request_data.insert("ip".to_string(), serde_json::Value::String(ip)); // IP address
-    request_data.insert("ips".to_string(), serde_json::Value::Array(ips.into_iter().map(serde_json::Value::String).collect())); // All IPs
-    
+    request_data.insert(
+        "ips".to_string(),
+        serde_json::Value::Array(ips.into_iter().map(serde_json::Value::String).collect()),
+    ); // All IPs
+
     // Add IP source information for debugging
     let ip_source = if headers_for_ip_source.contains_key("cf-connecting-ip") {
         "cf-connecting-ip"
@@ -367,8 +397,11 @@ pub async fn dynamic_handler(
     } else {
         "default"
     };
-    
-    request_data.insert("ipSource".to_string(), serde_json::Value::String(ip_source.to_string())); // Source header for IP
+
+    request_data.insert(
+        "ipSource".to_string(),
+        serde_json::Value::String(ip_source.to_string()),
+    ); // Source header for IP
 
     // Extract path parameters (e.g., :id -> 123 or {*filepath} -> documents/2024/january/record.png)
     let mut path_params_json = serde_json::Map::new();
@@ -392,18 +425,16 @@ pub async fn dynamic_handler(
     // Process named parameters like {postId} or {commentId}
     if actual_segments.len() == registered_segments.len() {
         for (i, registered_seg) in registered_segments.iter().enumerate() {
-            if registered_seg.starts_with('{') && registered_seg.ends_with('}') && !registered_seg.contains("{*") {
+            if registered_seg.starts_with('{')
+                && registered_seg.ends_with('}')
+                && !registered_seg.contains("{*")
+            {
                 // Extract parameter name from {param} (excluding wildcard {*param})
-                let param_name = registered_seg
-                    .trim_start_matches('{')
-                    .trim_end_matches('}');
+                let param_name = registered_seg.trim_start_matches('{').trim_end_matches('}');
 
                 if i < actual_segments.len() {
                     let param_value = actual_segments[i];
-                    debug!(
-                        "📝 Named parameter {{{}}}: '{}'",
-                        param_name, param_value
-                    );
+                    debug!("📝 Named parameter {{{}}}: '{}'", param_name, param_value);
                     path_params_json.insert(
                         param_name.to_string(),
                         serde_json::Value::String(param_value.to_string()),
@@ -461,7 +492,7 @@ pub async fn dynamic_handler(
     );
 
     // Execute middleware after extracting all parameters
-    match execute_middleware(&mut request_data).await {
+    match execute_middleware(&mut request_data, timeout).await {
         Ok(()) => (), // Middleware successfully executed, request_data modified
         Err(middleware_response) => return middleware_response,
     };
@@ -486,19 +517,23 @@ pub async fn dynamic_handler(
             let global: Handle<JsObject> = cx.global("global")?;
             let get_handler_fn: Handle<JsFunction> = global.get(&mut cx, "getHandler")?;
 
-            // Call getHandler(requestJson)
-            let result: Handle<JsString> = get_handler_fn
+            // Call getHandler(requestJson) - it returns a Promise
+            let result: Handle<JsValue> = get_handler_fn
                 .call_with(&mut cx)
                 .arg(cx.string(&request_json_clone))
                 .apply(&mut cx)?;
 
-            // Send result back to HTTP stream
-            let _ = tx.send(result.value(&mut cx));
+            // Convert result to string and send it
+            let result_string = result
+                .to_string(&mut cx)
+                .unwrap_or_else(|_| cx.string("Failed to convert result"));
+            let _ = tx.send(result_string.value(&mut cx));
+
             Ok(())
         });
 
-        // Wait for result from JavaScript
-        let result = match rx.recv_timeout(std::time::Duration::from_millis(1000)) {
+        // Wait for result from JavaScript (using timeout from app options)
+        let result = match rx.recv_timeout(std::time::Duration::from_millis(timeout)) {
             Ok(result) => result,
             Err(_) => format!(
                 "Timeout waiting for JavaScript handler: {} {}",
@@ -507,16 +542,50 @@ pub async fn dynamic_handler(
         };
 
         // Parse JSON response from JavaScript
-        let response_json_value: serde_json::Value = serde_json::from_str(&result).unwrap_or_else(|_| {
+        let mut response_json_value: serde_json::Value = serde_json::from_str(&result).unwrap_or_else(|_| {
             serde_json::json!({"content": format!("Failed to parse JS response: {}", result), "contentType": "text/plain"})
         });
+
+        // Check if this is an async response
+        if let Some(async_flag) = response_json_value.get("__async") {
+            if async_flag.as_bool().unwrap_or(false) {
+                // This is an async response, we need to wait for the result
+                debug!("🔄 Async response detected, waiting for result...");
+
+                // Get promise ID for tracking
+                let promise_id = response_json_value
+                    .get("__promiseId")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("unknown");
+
+                debug!("🔄 Waiting for promise {} to complete...", promise_id);
+
+                // Wait for the promise to complete using the helper function
+                match wait_for_promise_completion(promise_id, event_queue, timeout).await {
+                    Ok(promise_result) => {
+                        debug!("✅ Promise {} completed, using result", promise_id);
+                        // Replace response_json_value with the final result
+                        response_json_value = promise_result;
+                    }
+                    Err(error_msg) => {
+                        debug!("❌ Promise {} failed: {}", promise_id, error_msg);
+                        let response_text = format!("Promise failed: {}", error_msg);
+                        return Response::builder()
+                            .status(StatusCode::REQUEST_TIMEOUT)
+                            .header("content-type", "text/plain")
+                            .body(Body::from(response_text))
+                            .unwrap();
+                    }
+                }
+            }
+        }
 
         // Use response content from handler (middleware only sets headers, not content)
         let response_text = response_json_value["content"]
             .as_str()
             .unwrap_or("")
             .to_string();
-        
+
         // Use response content type from handler (middleware only sets headers, not content)
         let content_type = response_json_value["contentType"]
             .as_str()
@@ -538,8 +607,14 @@ pub async fn dynamic_handler(
         response_builder = response_builder.status(status_code);
 
         // Add headers from middleware first
-        if let Some(middleware_headers) = request_data.get("responseHeaders").and_then(|h| h.as_object()) {
-            debug!("🔧 Adding middleware headers to response: {:?}", middleware_headers);
+        if let Some(middleware_headers) = request_data
+            .get("responseHeaders")
+            .and_then(|h| h.as_object())
+        {
+            debug!(
+                "🔧 Adding middleware headers to response: {:?}",
+                middleware_headers
+            );
             for (key, value) in middleware_headers {
                 if let Some(value_str) = value.as_str() {
                     response_builder = response_builder.header(key, value_str);

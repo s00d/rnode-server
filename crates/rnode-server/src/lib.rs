@@ -3,7 +3,10 @@ use neon::prelude::*;
 // Import modules
 mod file_operations;
 mod handlers;
+mod metrics;
 mod middleware;
+mod promise_utils;
+
 mod routes;
 mod server;
 mod static_files;

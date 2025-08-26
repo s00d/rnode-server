@@ -1,6 +1,6 @@
-use neon::prelude::*;
-use log::LevelFilter;
 use env_logger;
+use log::LevelFilter;
+use neon::prelude::*;
 use std::sync::Once;
 
 // Static flag to ensure logger is initialized only once
@@ -29,7 +29,7 @@ pub fn create_app(mut cx: FunctionContext) -> JsResult<JsObject> {
         if let Ok(log_level_str) = cx.argument::<JsString>(0) {
             let level_str = log_level_str.value(&mut cx).to_lowercase();
             let level_str_clone = level_str.clone();
-            
+
             // Parse log level and set it
             let level_filter = match level_str.as_str() {
                 "trace" => LevelFilter::Trace,
@@ -39,20 +39,21 @@ pub fn create_app(mut cx: FunctionContext) -> JsResult<JsObject> {
                 "error" => LevelFilter::Error,
                 _ => LevelFilter::Info, // default
             };
-            
+
             // Initialize logger only once, then just set the level
             INIT.call_once(|| {
-                env_logger::Builder::new()
-                    .filter_level(level_filter)
-                    .init();
+                env_logger::Builder::new().filter_level(level_filter).init();
             });
-            
+
             // Add log level info to the app object
             let log_level = cx.string(level_str);
             obj.set(&mut cx, "logLevel", log_level)?;
-            
+
             // Log the initialization
-            log::info!("🔧 RNode Server initialized with log level: {}", level_str_clone);
+            log::info!(
+                "🔧 RNode Server initialized with log level: {}",
+                level_str_clone
+            );
         }
     } else {
         // Default log level
@@ -61,10 +62,10 @@ pub fn create_app(mut cx: FunctionContext) -> JsResult<JsObject> {
                 .filter_level(LevelFilter::Info)
                 .init();
         });
-        
+
         let log_level = cx.string("info");
         obj.set(&mut cx, "logLevel", log_level)?;
-        
+
         log::info!("🔧 RNode Server initialized with default log level: info");
     }
 
