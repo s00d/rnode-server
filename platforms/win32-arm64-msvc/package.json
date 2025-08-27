@@ -1,7 +1,7 @@
 {
   "name": "@rnode-server/win32-arm64-msvc",
   "description": "Prebuilt binary package for `rnode-server` on `win32-arm64-msvc`.",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "os": [
     "win32"
   ],
