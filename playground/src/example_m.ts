@@ -1,7 +1,7 @@
 import { createApp } from 'rnode-server';
 import path from "path";
 
-const app = createApp({ logLevel: "info", metrics: true });
+const app = createApp({ logLevel: "debug", metrics: true, timeout: 3000, devMode: false });
 const port = 4546;
 
 // Load static files into memory

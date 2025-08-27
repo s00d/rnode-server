@@ -250,6 +250,10 @@ declare module "./load.cjs" {
   function fileExists(filename: string, uploadsDir: string): boolean;
   function registerDownloadRoute(path: string, options: string): void;
   function registerUploadRoute(path: string, options: string): void;
+  
+  // Promise utility functions
+  function setPromiseResult(promiseId: string, result: string): boolean;
+  function setPromiseError(promiseId: string, error: string): boolean;
 }
 
 export interface Response {
@@ -415,6 +419,7 @@ export interface AppOptions {
   logLevel?: string; // Log level: 'trace', 'debug', 'info', 'warn', 'error'
   metrics?: boolean
   timeout?: number
+  devMode?: boolean
 }
 
 // Global storage for handlers and middleware in JavaScript
@@ -424,21 +429,9 @@ let middlewares = new Map<string, Middleware[]>();
 // Global promise counter for logging
 let nextPromiseId = 1;
 
-// Global promise queue for handling async handlers
-interface PendingPromise {
-  id: string;
-  promise: Promise<any>;
-  timestamp: number;
-  result?: any;
-  resolved: boolean;
-}
-
-let pendingPromises: PendingPromise[] = [];
-
-
 
 // Global function for handling requests from Rust
-function getHandler(requestJson: string): string {
+function getHandler(requestJson: string, timeout: number): string {
   try {
     const request = JSON.parse(requestJson);
     const { method, path, registeredPath, pathParams, queryParams, body, cookies, headers, ip, ips, ipSource } = request;
@@ -753,39 +746,56 @@ function getHandler(requestJson: string): string {
           
           logger.debug(`🔄 Handler returned promise ${promiseId}, returning immediately`, 'rnode_server::handler');
           
-          // Store the promise for later retrieval
-          const pendingPromise: PendingPromise = {
-            id: promiseId,
-            promise: promise,
-            timestamp: Date.now(),
-            resolved: false
-          };
+          // Create AbortController for this promise
+          const abortController = new AbortController();
           
-          pendingPromises.push(pendingPromise);
+          // Set up timeout to cancel the promise if it takes too long
+          const timeoutId = setTimeout(() => {
+            abortController.abort();
+            logger.debug(`🛑 Promise ${promiseId} cancelled due to timeout (${timeout}ms)`, 'rnode_server::handler');
+          }, timeout + 1000); // Use timeout from Rust
+          
+          // Wrap the original promise with abort signal
+          const abortablePromise = Promise.race([
+            promise,
+            new Promise((_, reject) => {
+              abortController.signal.addEventListener('abort', () => {
+                reject(new Error('Promise cancelled due to timeout'));
+              });
+            })
+          ]);
           
           // Store result when promise resolves
-          promise.then(
+          abortablePromise.then(
             (value) => {
-              const index = pendingPromises.findIndex(p => p.id === promiseId);
-              if (index > -1) {
-                const pending = pendingPromises[index];
-                pending.result = {
-                  content: responseData,
-                  contentType: contentType,
-                  headers: responseHeaders,
-                  customParams: customParams
-                };
-                pending.resolved = true;
+              // Clear timeout since promise completed
+              clearTimeout(timeoutId);
+              
+              // Вызываем Rust функцию для установки результата
+              const result = {
+                content: responseData,
+                contentType: contentType,
+                headers: responseHeaders,
+                customParams: customParams
+              };
+              
+              try {
+                addon.setPromiseResult(promiseId, JSON.stringify(result));
                 logger.debug(`✅ Promise ${promiseId} resolved with result`, 'rnode_server::handler');
+              } catch (error) {
+                logger.error(`❌ Failed to set promise result: ${error}`, 'rnode_server::handler');
               }
             },
             (error) => {
-              const index = pendingPromises.findIndex(p => p.id === promiseId);
-              if (index > -1) {
-                const pending = pendingPromises[index];
-                pending.result = { error: error.message || String(error) };
-                pending.resolved = true;
+              // Clear timeout since promise completed
+              clearTimeout(timeoutId);
+              
+              // Вызываем Rust функцию для установки ошибки
+              try {
+                addon.setPromiseError(promiseId, error.message || String(error));
                 logger.error(`❌ Promise ${promiseId} rejected: ${error}`, 'rnode_server::handler');
+              } catch (error) {
+                logger.error(`❌ Failed to set promise error: ${error}`, 'rnode_server::handler');
               }
             }
           );
@@ -828,78 +838,8 @@ function getHandler(requestJson: string): string {
   }
 }
 
-// Function to get information about promise handling
-function getPromiseInfo(): string {
-  const promises = pendingPromises.map(p => ({
-    id: p.id,
-    timestamp: p.timestamp,
-    age: Date.now() - p.timestamp,
-    status: 'pending'
-  }));
-  
-  return JSON.stringify({
-    count: pendingPromises.length,
-    status: 'pending',
-    promises: promises
-  });
-}
-
-// Function to get result of a specific promise by ID
-function getPromiseResult(promiseId: string): string {
-  const index = pendingPromises.findIndex(p => p.id === promiseId);
-  if (index === -1) {
-    return JSON.stringify({
-      error: 'Promise not found',
-      promiseId: promiseId
-    });
-  }
-  
-  const pending = pendingPromises[index];
-  
-  if (!pending.resolved) {
-    // Promise is still pending
-    return JSON.stringify({
-      status: 'pending',
-      promiseId: promiseId,
-      timestamp: pending.timestamp,
-      age: Date.now() - pending.timestamp
-    });
-  }
-  
-  // Promise is resolved, get the result and remove it
-  const result = pending.result;
-  pendingPromises.splice(index, 1);
-  
-  return JSON.stringify({
-    status: 'completed',
-    promiseId: promiseId,
-    result: result,
-    timestamp: pending.timestamp,
-    age: Date.now() - pending.timestamp
-  });
-}
-
-// Function to clear a specific promise by ID
-function clearPromiseById(promiseId: string): string {
-  const index = pendingPromises.findIndex(p => p.id === promiseId);
-  if (index === -1) {
-    return JSON.stringify({
-      error: 'Promise not found',
-      promiseId: promiseId
-    });
-  }
-  
-  pendingPromises.splice(index, 1);
-  
-  return JSON.stringify({
-    success: true,
-    promiseId: promiseId,
-    status: 'cleared'
-  });
-}
-
 // Function for executing middleware from Rust
-function executeMiddleware(middlewareJson: string): string {
+function executeMiddleware(middlewareJson: string, timeout: number): string {
   try {
     const request = JSON.parse(middlewareJson);
     logger.debug(`🔍 executeMiddleware called with path: ${request.path}`, 'rnode_server::middleware');
@@ -1160,43 +1100,55 @@ function executeMiddleware(middlewareJson: string): string {
               
               logger.debug(`🔄 Middleware returned promise ${promiseId}, waiting for completion`, 'rnode_server::middleware');
               
-              // Store the promise for later retrieval
-              const pendingPromise: PendingPromise = {
-                id: promiseId,
-                promise: promise,
-                timestamp: Date.now(),
-                resolved: false
-              };
+              // Create AbortController for this promise
+              const abortController = new AbortController();
               
-              pendingPromises.push(pendingPromise);
+              // Set up timeout to cancel the promise if it takes too long
+              const timeoutId = setTimeout(() => {
+                abortController.abort();
+                logger.debug(`🛑 Middleware promise ${promiseId} cancelled due to timeout (${timeout}ms)`, 'rnode_server::middleware');
+              }, timeout + 1000); // Use timeout from Rust
+              
+              // Wrap the original promise with abort signal
+              const abortablePromise = Promise.race([
+                promise,
+                new Promise((_, reject) => {
+                  abortController.signal.addEventListener('abort', () => {
+                    reject(new Error('Promise cancelled due to timeout'));
+                  });
+                })
+              ]);
               
               // Store result when promise resolves
-              promise.then(
+              abortablePromise.then(
                 (value) => {
-                  const index = pendingPromises.findIndex(p => p.id === promiseId);
-                  if (index > -1) {
-                    const pending = pendingPromises[index];
-                    pending.result = {
-                      shouldContinue: true,
-                      req: {...req},
-                      res: {...res}
-                    };
-                    pending.resolved = true;
+                  // Clear timeout since promise completed
+                  clearTimeout(timeoutId);
+                  
+                  // Вызываем Rust функцию для установки результата
+                  const result = {
+                    shouldContinue: true,
+                    req: {...req},
+                    res: {...res}
+                  };
+                  
+                  try {
+                    addon.setPromiseResult(promiseId, JSON.stringify(result));
                     logger.debug(`✅ Middleware promise ${promiseId} resolved with result`, 'rnode_server::middleware');
+                  } catch (error) {
+                    logger.error(`❌ Failed to set middleware promise result: ${error}`, 'rnode_server::middleware');
                   }
                 },
                 (error) => {
-                  const index = pendingPromises.findIndex(p => p.id === promiseId);
-                  if (index > -1) {
-                    const pending = pendingPromises[index];
-                    pending.result = { 
-                      shouldContinue: false, 
-                      error: error.message || String(error),
-                      req: {...req},
-                      res: {...res}
-                    };
-                    pending.resolved = true;
+                  // Clear timeout since promise completed
+                  clearTimeout(timeoutId);
+                  
+                  // Вызываем Rust функцию для установки ошибки
+                  try {
+                    addon.setPromiseError(promiseId, error.message || String(error));
                     logger.error(`❌ Middleware promise ${promiseId} rejected: ${error}`, 'rnode_server::middleware');
+                  } catch (error) {
+                    logger.error(`❌ Failed to set middleware promise error: ${error}`, 'rnode_server::middleware');
                   }
                 }
               );
@@ -1295,9 +1247,6 @@ function executeMiddleware(middlewareJson: string): string {
 
 // Export functions for Rust
 (global as any).getHandler = getHandler;
-(global as any).getPromiseInfo = getPromiseInfo;
-(global as any).getPromiseResult = getPromiseResult;
-(global as any).clearPromiseById = clearPromiseById;
 (global as any).executeMiddleware = executeMiddleware;
 
 // Router class for creating route groups
@@ -1732,6 +1681,7 @@ class RNodeApp extends RouterImpl {
   private logLevel: string = 'info';
   private metrics: boolean = false;
   private timeout: number = 30000;
+  private devMode: boolean = false;
   private sslConfig?: SslConfig;
 
   // Additional methods for RNodeApp
@@ -1902,6 +1852,7 @@ class RNodeApp extends RouterImpl {
       ssl: this.getSslConfig(),
       logLevel: this.getLogLevel(),
       timeout: this.getTimeout(),
+      devMode: this.getDevMode(),
     }
 
     addon.listen(port, host, options);
@@ -2009,6 +1960,14 @@ class RNodeApp extends RouterImpl {
   getTimeout() {
     return this.timeout;
   }
+
+  setDevMode(devMode: boolean): void {
+    this.devMode = devMode;
+  }
+
+  getDevMode() {
+    return this.devMode;
+  }
 }
 
 // Function for creating application
@@ -2027,9 +1986,8 @@ export function createApp(options?: AppOptions): RNodeAppInterface {
   // Set log level using the method
   app.setLogLevel(level);
   app.setMetrics(options?.metrics ?? false);
-
-  console.log(1111, app)
-
+  app.setTimeout(options?.timeout ?? 30000)
+  app.setDevMode(options?.devMode ?? process.env.MODE === 'development')
   // Store SSL configuration if provided
   if (options?.ssl) {
     const { certPath, keyPath } = options.ssl;

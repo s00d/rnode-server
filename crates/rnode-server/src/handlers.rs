@@ -1,10 +1,10 @@
 use crate::middleware::execute_middleware;
 use crate::promise_utils::wait_for_promise_completion;
-use crate::types::get_event_queue;
+
 use axum::http::HeaderMap;
 use base64::Engine;
 use futures::stream::{self};
-use log::debug;
+use log::{debug};
 use multer::Multipart;
 use neon::prelude::*;
 use serde_json;
@@ -232,6 +232,7 @@ pub async fn dynamic_handler(
     method: String,
     _handler_id: String,
     timeout: u64, // Timeout from app options
+    dev_mode: bool, // Dev mode from app options
 ) -> axum::response::Response<axum::body::Body> {
     debug!("🔍 Dynamic handler called:");
     debug!("  Method: {}", method);
@@ -374,29 +375,23 @@ pub async fn dynamic_handler(
     ); // All IPs
 
     // Add IP source information for debugging
-    let ip_source = if headers_for_ip_source.contains_key("cf-connecting-ip") {
-        "cf-connecting-ip"
-    } else if headers_for_ip_source.contains_key("x-real-ip") {
-        "x-real-ip"
-    } else if headers_for_ip_source.contains_key("x-forwarded-for") {
-        "x-forwarded-for"
-    } else if headers_for_ip_source.contains_key("x-client-ip") {
-        "x-client-ip"
-    } else if headers_for_ip_source.contains_key("x-forwarded") {
-        "x-forwarded"
-    } else if headers_for_ip_source.contains_key("forwarded-for") {
-        "forwarded-for"
-    } else if headers_for_ip_source.contains_key("forwarded") {
-        "forwarded"
-    } else if headers_for_ip_source.contains_key("x-cluster-client-ip") {
-        "x-cluster-client-ip"
-    } else if headers_for_ip_source.contains_key("x-remote-ip") {
-        "x-remote-ip"
-    } else if headers_for_ip_source.contains_key("x-remote-addr") {
-        "x-remote-addr"
-    } else {
-        "default"
-    };
+    let ip_headers = [
+        "cf-connecting-ip",    // Cloudflare (most trusted)
+        "x-real-ip",           // Nginx proxy
+        "x-forwarded-for",     // Standard proxy header
+        "x-client-ip",         // Custom proxy header
+        "x-forwarded",         // Alternative proxy header
+        "forwarded-for",       // RFC 7239
+        "forwarded",           // RFC 7239
+        "x-cluster-client-ip", // Load balancer
+        "x-remote-ip",         // Custom remote IP
+        "x-remote-addr",       // Alternative remote addr
+    ];
+    
+    let ip_source = ip_headers
+        .iter()
+        .find(|&&header| headers_for_ip_source.contains_key(header))
+        .unwrap_or(&"default");
 
     request_data.insert(
         "ipSource".to_string(),
@@ -492,7 +487,7 @@ pub async fn dynamic_handler(
     );
 
     // Execute middleware after extracting all parameters
-    match execute_middleware(&mut request_data, timeout).await {
+            match execute_middleware(&mut request_data, timeout, dev_mode).await {
         Ok(()) => (), // Middleware successfully executed, request_data modified
         Err(middleware_response) => return middleware_response,
     };
@@ -505,7 +500,8 @@ pub async fn dynamic_handler(
     // Create channel for receiving result
     let (tx, rx) = std::sync::mpsc::channel();
 
-    let event_queue = get_event_queue();
+    // Get event queue for JavaScript communication
+    let event_queue = crate::types::get_event_queue();
     let channel = {
         let event_queue_map = event_queue.read().unwrap();
         event_queue_map.clone()
@@ -517,10 +513,11 @@ pub async fn dynamic_handler(
             let global: Handle<JsObject> = cx.global("global")?;
             let get_handler_fn: Handle<JsFunction> = global.get(&mut cx, "getHandler")?;
 
-            // Call getHandler(requestJson) - it returns a Promise
+            // Call getHandler(requestJson, timeout) - it returns a Promise
             let result: Handle<JsValue> = get_handler_fn
                 .call_with(&mut cx)
                 .arg(cx.string(&request_json_clone))
+                .arg(cx.number(timeout as f64))
                 .apply(&mut cx)?;
 
             // Convert result to string and send it
@@ -560,8 +557,8 @@ pub async fn dynamic_handler(
 
                 debug!("🔄 Waiting for promise {} to complete...", promise_id);
 
-                // Wait for the promise to complete using the helper function
-                match wait_for_promise_completion(promise_id, event_queue, timeout).await {
+                // Wait for the promise to complete using the new logic
+                match wait_for_promise_completion(promise_id, timeout).await {
                     Ok(promise_result) => {
                         debug!("✅ Promise {} completed, using result", promise_id);
                         // Replace response_json_value with the final result
@@ -569,12 +566,13 @@ pub async fn dynamic_handler(
                     }
                     Err(error_msg) => {
                         debug!("❌ Promise {} failed: {}", promise_id, error_msg);
-                        let response_text = format!("Promise failed: {}", error_msg);
-                        return Response::builder()
-                            .status(StatusCode::REQUEST_TIMEOUT)
-                            .header("content-type", "text/plain")
-                            .body(Body::from(response_text))
-                            .unwrap();
+                        // Don't try to clean up the promise to avoid channel errors
+                        // The promise will be cleaned up automatically by the PromiseStore
+                        
+                        return crate::html_templates::generate_timeout_error_page(
+                            timeout,
+                            Some(&error_msg)
+                        );
                     }
                 }
             }
@@ -644,12 +642,9 @@ pub async fn dynamic_handler(
         response_builder.body(Body::from(response_text)).unwrap()
     } else {
         // Channel unavailable, return error
-        let response_text = format!("No channel available for {} {}", method, registered_path);
-
-        Response::builder()
-            .status(StatusCode::INTERNAL_SERVER_ERROR)
-            .header("content-type", "text/plain")
-            .body(Body::from(response_text))
-            .unwrap()
+        return crate::html_templates::generate_generic_error_page(
+            "Server configuration error",
+            Some(&format!("No channel available for {} {}", method, registered_path))
+        );
     }
 }

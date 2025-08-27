@@ -1,4 +1,5 @@
 use crate::handlers::dynamic_handler;
+use crate::html_templates;
 use crate::metrics::{init_metrics, render_metrics, track_metrics, update_system_metrics};
 use crate::static_files::handle_static_file;
 use crate::types::{get_download_routes, get_event_queue, get_routes, get_upload_routes};
@@ -104,18 +105,25 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                     .map(|timeout_num| timeout_num.value(&mut cx) as u64)
                     .unwrap_or(30000); // Default 30 seconds
 
-                (ssl_config, metrics_enabled, timeout)
+                let dev_mode = options_obj
+                    .get::<JsValue, _, _>(&mut cx, "devMode")
+                    .ok()
+                    .and_then(|dev_mode_arg| dev_mode_arg.downcast::<JsBoolean, _>(&mut cx).ok())
+                    .map(|dev_mode_bool| dev_mode_bool.value(&mut cx))
+                    .unwrap_or(false); // Default false
+
+                (ssl_config, metrics_enabled, timeout, dev_mode)
             } else {
-                (None, false, 30000)
+                (None, false, 30000, false)
             }
         } else {
-            (None, false, 30000)
+            (None, false, 30000, false)
         }
     } else {
-        (None, false, 30000)
+        (None, false, 30000, false)
     };
 
-    let (ssl_config, metrics_enabled, timeout) = app_options;
+    let (ssl_config, metrics_enabled, timeout, dev_mode) = app_options;
     info!(
         "🚀 Starting server on {}:{} {}",
         host.iter()
@@ -165,17 +173,18 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                 let path_clone = path.clone();
                 let method_clone = method.clone();
                 let handler_id_clone = handler_id.clone();
-                let handler_fn = move |req: axum::extract::Request| {
-                    let registered_path = path_clone.clone();
-                    let method = method_clone.clone();
-                    let handler_id = handler_id_clone.clone();
-                    let timeout_clone = timeout;
-                    async move {
-                        // Get actual path from request
-                        let actual_path = req.uri().path().to_string();
-                        dynamic_handler(req, actual_path, registered_path, method, handler_id, timeout_clone).await
-                    }
-                };
+                                    let handler_fn = move |req: axum::extract::Request| {
+                        let registered_path = path_clone.clone();
+                        let method = method_clone.clone();
+                        let handler_id = handler_id_clone.clone();
+                        let timeout_clone = timeout;
+                        let dev_mode_clone = dev_mode;
+                        async move {
+                            // Get actual path from request
+                            let actual_path = req.uri().path().to_string();
+                            dynamic_handler(req, actual_path, registered_path, method, handler_id, timeout_clone, dev_mode_clone).await
+                        }
+                    };
 
                 match method.as_str() {
                     "GET" => app = app.route(&path, get(handler_fn)),
@@ -598,10 +607,10 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                         debug!("📁 Creating folder: '{}'", upload_folder);
                                         if let Err(e) = std::fs::create_dir_all(&upload_folder) {
                                             error!("❌ Error creating folder '{}': {}", upload_folder, e);
-                                            return axum::response::Response::builder()
-                                                .status(http::StatusCode::INTERNAL_SERVER_ERROR)
-                                                .body(axum::body::Body::from(format!("Failed to create upload directory: {}", e)))
-                                                .unwrap();
+                                            return html_templates::generate_generic_error_page(
+                                                "Failed to create upload directory",
+                                                Some(&format!("Error: {}", e))
+                                            );
                                         }
                                         debug!("✅ Folder created successfully: '{}'", upload_folder);
 
@@ -609,10 +618,10 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                         debug!("💾 Saving file to: '{}'", file_path);
                                         if let Err(e) = std::fs::write(&file_path, &data) {
                                             error!("❌ Error saving file '{}': {}", file_path, e);
-                                            return axum::response::Response::builder()
-                                                .status(http::StatusCode::INTERNAL_SERVER_ERROR)
-                                                .body(axum::body::Body::from(format!("Failed to save file: {}", e)))
-                                                .unwrap();
+                                            return html_templates::generate_generic_error_page(
+                                                "Failed to save file",
+                                                Some(&format!("Error: {}", e))
+                                            );
                                         }
                                         debug!("✅ File saved successfully: '{}'", file_path);
 
@@ -622,20 +631,23 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                                             if let Some(max_files) = config.max_files {
                                                 if uploaded_files.len() >= max_files as usize {
                                                     warn!("❌ Maximum number of files ({}) exceeded", max_files);
-                                                    return axum::response::Response::builder()
-                                                        .status(http::StatusCode::PAYLOAD_TOO_LARGE)
-                                                        .body(axum::body::Body::from(format!("Maximum number of files ({}) exceeded", max_files)))
-                                                        .unwrap();
+                                                    return html_templates::generate_error_page(
+                                                        http::StatusCode::PAYLOAD_TOO_LARGE,
+                                                        "Too Many Files",
+                                                        &format!("Maximum number of files ({}) exceeded", max_files),
+                                                        None,
+                                                        dev_mode
+                                                    );
                                                 }
                                             }
                                         } else {
                                             // For single upload allow only 1 file
                                             if uploaded_files.len() >= 1 {
                                                 warn!("❌ Single file upload route received multiple files");
-                                                return axum::response::Response::builder()
-                                                    .status(http::StatusCode::BAD_REQUEST)
-                                                    .body(axum::body::Body::from("Single file upload route received multiple files"))
-                                                    .unwrap();
+                                                return html_templates::generate_bad_request_page(
+                                                    "Single file upload route received multiple files",
+                                                    None
+                                                );
                                             }
                                         }
 

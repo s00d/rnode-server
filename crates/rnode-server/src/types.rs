@@ -55,6 +55,10 @@ pub struct UploadRouteConfig {
 // Global channel for communication between HTTP thread and JavaScript thread
 pub static EVENT_QUEUE: OnceLock<RwLock<Option<Channel>>> = OnceLock::new();
 
+pub fn get_event_queue() -> &'static RwLock<Option<Channel>> {
+    EVENT_QUEUE.get_or_init(|| RwLock::new(None))
+}
+
 // Global storage for download settings
 pub static DOWNLOAD_ROUTES: OnceLock<RwLock<HashMap<String, DownloadRouteConfig>>> =
     OnceLock::new();
@@ -70,9 +74,7 @@ pub fn get_middleware() -> &'static RwLock<Vec<MiddlewareInfo>> {
     MIDDLEWARE.get_or_init(|| RwLock::new(Vec::new()))
 }
 
-pub fn get_event_queue() -> &'static RwLock<Option<Channel>> {
-    EVENT_QUEUE.get_or_init(|| RwLock::new(None))
-}
+
 
 pub fn get_download_routes() -> &'static RwLock<HashMap<String, DownloadRouteConfig>> {
     DOWNLOAD_ROUTES.get_or_init(|| RwLock::new(HashMap::new()))

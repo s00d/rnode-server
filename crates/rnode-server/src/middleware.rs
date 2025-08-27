@@ -55,6 +55,7 @@ pub fn register_middleware(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 pub async fn execute_middleware(
     request_data: &mut serde_json::Map<String, serde_json::Value>,
     timeout: u64, // Timeout from app options
+    dev_mode: bool, // Dev mode from app options
 ) -> Result<(), axum::response::Response<axum::body::Body>> {
     use axum::body::Body;
     use axum::http::StatusCode;
@@ -167,6 +168,7 @@ pub async fn execute_middleware(
                     let result: Handle<JsValue> = execute_middleware_fn
                         .call_with(&mut cx)
                         .arg(cx.string(&request_json_clone))
+                        .arg(cx.number(timeout as f64))
                         .apply(&mut cx)?;
 
                     // Convert result to string and send it
@@ -213,8 +215,8 @@ pub async fn execute_middleware(
                             promise_id
                         );
 
-                        // Wait for the promise to complete using the helper function
-                        match wait_for_promise_completion(promise_id, event_queue, timeout).await {
+                        // Wait for the promise to complete using the new logic
+                        match wait_for_promise_completion(promise_id, timeout).await {
                             Ok(promise_result) => {
                                 debug!(
                                     "✅ Middleware promise {} completed, using result",
@@ -228,15 +230,13 @@ pub async fn execute_middleware(
                                     "❌ Middleware promise {} failed: {}",
                                     promise_id, error_msg
                                 );
-                                let error_response = Response::builder()
-                                    .status(StatusCode::INTERNAL_SERVER_ERROR)
-                                    .header("content-type", "text/plain")
-                                    .body(Body::from(format!(
-                                        "Middleware promise failed: {}",
-                                        error_msg
-                                    )))
-                                    .unwrap();
-                                return Err(error_response);
+                                // Don't try to clean up the promise to avoid channel errors
+                                // The promise will be cleaned up automatically by the PromiseStore
+                                
+                                return Err(crate::html_templates::generate_generic_error_page(
+                                    "Middleware execution failed",
+                                    Some(&format!("Promise failed: {}", error_msg))
+                                ));
                             }
                         }
                     }
@@ -260,15 +260,13 @@ pub async fn execute_middleware(
 
                     // Return error response
                     let error_message = error.as_str().unwrap_or("Middleware error");
-                    let error_response = Response::builder()
-                        .status(StatusCode::FORBIDDEN)
-                        .header("content-type", "application/json")
-                        .body(Body::from(format!(
-                            r#"{{"success":false,"error":"{}","message":"{}"}}"#,
-                            "Middleware error", error_message
-                        )))
-                        .unwrap();
-                    return Err(error_response);
+                    return Err(crate::html_templates::generate_error_page(
+                        StatusCode::FORBIDDEN,
+                        "Access Denied",
+                        "Middleware has blocked this request",
+                        Some(&format!("Error: {}", error_message)),
+                        dev_mode
+                    ));
                 }
 
                 // Middleware interrupts execution without error

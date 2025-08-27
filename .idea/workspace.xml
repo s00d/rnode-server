@@ -12,23 +12,20 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="4d8c55b6-5a63-439f-adcf-d024569129f5" name="Changes" comment="fix">
-      <change afterPath="$PROJECT_DIR$/crates/rnode-server/src/metrics.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/crates/rnode-server/src/promise_utils.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/assets/header.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/assets/logo_black.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/assets/logo_white.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/crates/rnode-server/src/html_templates.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Cargo.lock" beforeDir="false" afterPath="$PROJECT_DIR$/Cargo.lock" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/crates/rnode-server/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/Cargo.toml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/file_operations.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/file_operations.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/handlers.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/handlers.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/lib.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/lib.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/middleware.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/middleware.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/routes.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/routes.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/promise_utils.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/promise_utils.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/server.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/server.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/static_files.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/static_files.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/templates.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/templates.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/utils.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/utils.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/types.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/types.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/playground/src/example_m.ts" beforeDir="false" afterPath="$PROJECT_DIR$/playground/src/example_m.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/playground/src/routers/templates.ts" beforeDir="false" afterPath="$PROJECT_DIR$/playground/src/routers/templates.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/index.cts" beforeDir="false" afterPath="$PROJECT_DIR$/src/index.cts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -76,7 +73,7 @@
     "RunOnceActivity.git.unshallow": "true",
     "RunOnceActivity.rust.reset.selective.auto.import": "true",
     "junie.onboarding.icon.badge.shown": "true",
-    "last_opened_file_path": "/Users/s00d/Downloads/rnode-server/text",
+    "last_opened_file_path": "/Users/s00d/Downloads/rnode-server/assets",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
@@ -93,6 +90,7 @@
 }]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/assets" />
       <recent name="$PROJECT_DIR$/text" />
       <recent name="$PROJECT_DIR$" />
       <recent name="$PROJECT_DIR$/playground/src/routers" />
