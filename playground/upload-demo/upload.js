@@ -340,12 +340,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const demoLinksHtml = `
       <div class="demo-links">
         <h3>🔍 RNode Server Demo Functions</h3>
-        <a href="/demo/html" target="_blank">HTML Response</a>
-        <a href="/demo/text" target="_blank">Text Response</a>
-        <a href="/demo/xml" target="_blank">XML Response</a>
-        <a href="/demo/redirect" target="_blank">Redirect Test</a>
-        <a href="/demo/download" target="_blank">Download File</a>
-        <a href="/api/info" target="_blank">API Info</a>
+        <a href="/multipart/demo/html" target="_blank">HTML Response</a>
+        <a href="/multipart/demo/text" target="_blank">Text Response</a>
+        <a href="/multipart/demo/xml" target="_blank">XML Response</a>
+        <a href="/multipart/demo/redirect" target="_blank">Redirect Test</a>
+        <a href="/multipart/demo/download" target="_blank">Download File</a>
+        <a href="/multipart/api/info" target="_blank">API Info</a>
       </div>
     `;
     

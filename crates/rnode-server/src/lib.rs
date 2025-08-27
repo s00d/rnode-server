@@ -40,6 +40,8 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("del", register_delete)?;
     cx.export_function("patch", register_patch)?;
     cx.export_function("options", register_options)?;
+    cx.export_function("any", register_any)?;
+    cx.export_function("trace", register_trace)?;
     cx.export_function("use", register_middleware)?;
     cx.export_function("listen", start_listen)?;
     cx.export_function("processHttpRequest", process_http_request)?;

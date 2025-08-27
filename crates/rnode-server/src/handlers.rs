@@ -9,6 +9,7 @@ use multer::Multipart;
 use neon::prelude::*;
 use serde_json;
 use std::convert::Infallible;
+use std::borrow::Cow;
 
 // Helper function to extract client IP address from various headers
 fn extract_client_ip(headers: &HeaderMap) -> (String, Vec<String>) {
@@ -334,8 +335,61 @@ pub async fn dynamic_handler(
                 )
             }
         }
+    } else if content_type.contains("application/json") {
+        // Parse JSON content
+        match serde_json::from_slice::<serde_json::Value>(&body_bytes) {
+            Ok(json_value) => {
+                // JSON successfully parsed
+                (json_value, serde_json::Value::Null)
+            }
+            Err(_) => {
+                // JSON parsing failed, fallback to string
+                let body_string = String::from_utf8_lossy(&body_bytes).to_string();
+                (
+                    serde_json::Value::String(body_string),
+                    serde_json::Value::Null,
+                )
+            }
+        }
+    } else if content_type.contains("application/x-www-form-urlencoded") {
+        // Parse form-urlencoded content
+        let body_string = String::from_utf8_lossy(&body_bytes).to_string();
+        let mut form_data = serde_json::Map::new();
+        
+        for pair in body_string.split('&') {
+            if let Some((key, value)) = pair.split_once('=') {
+                let decoded_key = urlencoding::decode(key).unwrap_or_else(|_| Cow::Borrowed(key)).into_owned();
+                let decoded_value = urlencoding::decode(value).unwrap_or_else(|_| Cow::Borrowed(value)).into_owned();
+                form_data.insert(decoded_key, serde_json::Value::String(decoded_value));
+            }
+        }
+        
+        (
+            serde_json::Value::Object(form_data),
+            serde_json::Value::Null,
+        )
+    } else if content_type.contains("text/") || content_type.contains("application/xml") || content_type.contains("application/javascript") {
+        // Handle text-based content types
+        let body_string = String::from_utf8_lossy(&body_bytes).to_string();
+        (
+            serde_json::Value::String(body_string),
+            serde_json::Value::Null,
+        )
+    } else if content_type.contains("application/octet-stream") || content_type.contains("image/") || content_type.contains("video/") || content_type.contains("audio/") {
+        // Handle binary content types
+        let data_base64 = base64::engine::general_purpose::STANDARD.encode(&body_bytes);
+        let mut binary_data = serde_json::Map::new();
+        binary_data.insert("type".to_string(), serde_json::Value::String("binary".to_string()));
+        binary_data.insert("data".to_string(), serde_json::Value::String(data_base64));
+        binary_data.insert("contentType".to_string(), serde_json::Value::String(content_type.clone()));
+        binary_data.insert("size".to_string(), serde_json::Value::Number(serde_json::Number::from(body_bytes.len())));
+        
+        (
+            serde_json::Value::Object(binary_data),
+            serde_json::Value::Null,
+        )
     } else {
-        // Regular body (JSON, form-urlencoded, plain text)
+        // Default case: treat as string
         let body_string = String::from_utf8_lossy(&body_bytes).to_string();
         (
             serde_json::Value::String(body_string),
@@ -560,7 +614,7 @@ pub async fn dynamic_handler(
                 // Wait for the promise to complete using the new logic
                 match wait_for_promise_completion(promise_id, timeout).await {
                     Ok(promise_result) => {
-                        debug!("✅ Promise {} completed, using result", promise_id);
+                        debug!("✅ Promise {} completed, using result: {}", promise_id, promise_result);
                         // Replace response_json_value with the final result
                         response_json_value = promise_result;
                     }

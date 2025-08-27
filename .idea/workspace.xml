@@ -11,14 +11,43 @@
     </cargoProject>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4d8c55b6-5a63-439f-adcf-d024569129f5" name="Changes" comment="fix">
+    <list default="true" id="4d8c55b6-5a63-439f-adcf-d024569129f5" name="Changes" comment="improve Promise and add fnc">
+      <change afterPath="$PROJECT_DIR$/src/index_old.cts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/types/app-router.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/types/request-response.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/utils/app-factory.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/utils/app.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/utils/cookie-utils.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/utils/express-middleware-utils.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/utils/express-utils.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/utils/file-utils.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/utils/global-utils.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/utils/handler-utils.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/utils/http-methods-utils.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/utils/http-methods.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/utils/logger.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/utils/middleware-utils.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/utils/middleware.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/utils/promise-utils.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/utils/request-response-factory.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/utils/request.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/utils/response.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/utils/router.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/utils/shutdown-utils.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/utils/template-utils.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/html_templates.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/html_templates.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/handlers.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/handlers.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/lib.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/lib.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/routes.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/routes.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/server.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/server.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/utils.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/utils.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/auth.db" beforeDir="false" afterPath="$PROJECT_DIR$/playground/auth.db" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/playground/src/example_m.ts" beforeDir="false" afterPath="$PROJECT_DIR$/playground/src/example_m.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/src/routers/auth_api.ts" beforeDir="false" afterPath="$PROJECT_DIR$/playground/src/routers/auth_api.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/src/routers/multipart.ts" beforeDir="false" afterPath="$PROJECT_DIR$/playground/src/routers/multipart.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/src/routers/users.ts" beforeDir="false" afterPath="$PROJECT_DIR$/playground/src/routers/users.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/upload-demo/upload.js" beforeDir="false" afterPath="$PROJECT_DIR$/playground/upload-demo/upload.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/users.db" beforeDir="false" afterPath="$PROJECT_DIR$/playground/users.db" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/index.cts" beforeDir="false" afterPath="$PROJECT_DIR$/src/index.cts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -62,35 +91,35 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.rust.reset.selective.auto.import&quot;: &quot;true&quot;,
-    &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/Users/s00d/Downloads/rnode-server/assets&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;pnpm&quot;,
-    &quot;org.rust.cargo.project.model.PROJECT_DISCOVERY&quot;: &quot;true&quot;,
-    &quot;org.rust.cargo.project.model.impl.CargoExternalSystemProjectAware.subscribe.first.balloon&quot;: &quot;&quot;,
-    &quot;org.rust.first.attach.projects&quot;: &quot;true&quot;,
-    &quot;run.code.analysis.last.selected.profile&quot;: &quot;pProject Default&quot;,
-    &quot;to.speed.mode.migration.done&quot;: &quot;true&quot;,
-    &quot;ts.external.directory.path&quot;: &quot;/Users/s00d/Downloads/rnode-server/node_modules/typescript/lib&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.rust.reset.selective.auto.import": "true",
+    "junie.onboarding.icon.badge.shown": "true",
+    "last_opened_file_path": "/Users/s00d/Downloads/rnode-server/src",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "pnpm",
+    "org.rust.cargo.project.model.PROJECT_DISCOVERY": "true",
+    "org.rust.cargo.project.model.impl.CargoExternalSystemProjectAware.subscribe.first.balloon": "",
+    "org.rust.first.attach.projects": "true",
+    "run.code.analysis.last.selected.profile": "pProject Default",
+    "to.speed.mode.migration.done": "true",
+    "ts.external.directory.path": "/Users/s00d/Downloads/rnode-server/node_modules/typescript/lib",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/src" />
       <recent name="$PROJECT_DIR$/assets" />
       <recent name="$PROJECT_DIR$/text" />
       <recent name="$PROJECT_DIR$" />
       <recent name="$PROJECT_DIR$/playground/src/routers" />
-      <recent name="$PROJECT_DIR$/playground/src" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/playground/src/routers" />
@@ -131,14 +160,6 @@
       <workItem from="1755847652223" duration="50023000" />
       <workItem from="1755983601443" duration="12392000" />
       <workItem from="1756069919594" duration="25963000" />
-    </task>
-    <task id="LOCAL-00003" summary="init">
-      <option name="closed" value="true" />
-      <created>1755848933690</created>
-      <option name="number" value="00003" />
-      <option name="presentableId" value="LOCAL-00003" />
-      <option name="project" value="LOCAL" />
-      <updated>1755848933690</updated>
     </task>
     <task id="LOCAL-00004" summary="init">
       <option name="closed" value="true" />
@@ -524,7 +545,15 @@
       <option name="project" value="LOCAL" />
       <updated>1756131844173</updated>
     </task>
-    <option name="localTasksCounter" value="52" />
+    <task id="LOCAL-00052" summary="improve Promise and add fnc">
+      <option name="closed" value="true" />
+      <created>1756303380074</created>
+      <option name="number" value="00052" />
+      <option name="presentableId" value="LOCAL-00052" />
+      <option name="project" value="LOCAL" />
+      <updated>1756303380074</updated>
+    </task>
+    <option name="localTasksCounter" value="53" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -576,7 +605,8 @@
     <option name="CHECK_NEW_TODO" value="false" />
     <MESSAGE value="init" />
     <MESSAGE value="fix" />
-    <option name="LAST_COMMIT_MESSAGE" value="fix" />
+    <MESSAGE value="improve Promise and add fnc" />
+    <option name="LAST_COMMIT_MESSAGE" value="improve Promise and add fnc" />
     <option name="NON_MODAL_COMMIT_POSTPONE_SLOW_CHECKS" value="false" />
   </component>
 </project>

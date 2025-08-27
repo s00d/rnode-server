@@ -6,7 +6,7 @@ use crate::types::{get_download_routes, get_event_queue, get_routes, get_upload_
 use crate::utils::config_extractor;
 use axum::{
     Router,
-    routing::{delete, get, options, patch, post, put},
+    routing::{delete, get, options, patch, post, put, trace, any},
 };
 use futures::stream::{self};
 use mime_guess::MimeGuess;
@@ -34,6 +34,8 @@ impl SslConfig {
         })
     }
 }
+
+
 
 // Function for starting the server
 pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
@@ -108,6 +110,8 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                     "DELETE" => app = app.route(&path, delete(handler_fn)),
                     "PATCH" => app = app.route(&path, patch(handler_fn)),
                     "OPTIONS" => app = app.route(&path, options(handler_fn)),
+                    "TRACE" => app = app.route(&path, trace(handler_fn)),
+                    "ANY" => app = app.route(&path, any(handler_fn)),
                     _ => {}
                 }
             }
@@ -613,7 +617,31 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
             // Release lock
             drop(upload_routes_map);
 
-            // Add fallback route for static files and non-existent routes
+            // Add middleware to convert 405 to 404 for unsupported methods
+            app = app.layer(axum::middleware::from_fn(|req: axum::extract::Request, next: axum::middleware::Next| async move {
+                let path = req.uri().path().to_string();
+                let resp = next.run(req).await;
+                let status = resp.status();
+                
+                match status {
+                    http::StatusCode::METHOD_NOT_ALLOWED => {
+                        // Convert 405 to 404
+                        println!("🔧 Converting 405 to 404 for path: {}", path);
+                        
+                        // Use html_templates for 405 response
+                        crate::html_templates::generate_error_page(
+                            http::StatusCode::METHOD_NOT_ALLOWED,
+                            "Method Not Allowed",
+                            "The HTTP method used is not allowed for this resource.",
+                            Some(&format!("Path: {}", path)),
+                            false // dev_mode
+                        )
+                    }
+                    _ => resp
+                }
+            }));
+
+            // Add fallback route for static files
             let mut app = app.fallback(|req: http::Request<axum::body::Body>| async move {
                 let path = req.uri().path().to_string();
 

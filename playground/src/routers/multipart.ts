@@ -196,10 +196,11 @@ multipartRouter.delete('/delete/{*filepath}', (req, res) => {
         filepath = decodeURIComponent(filepath);
     } catch (error) {
         console.error('❌ URL decoding error:', error);
-        return res.status(400).json({
+        res.status(400).json({
             success: false,
             error: 'Invalid URL encoding'
         });
+        return;
     }
 
     console.log(`🔍 Attempting to delete file: ${filepath}`);
@@ -299,8 +300,8 @@ multipartRouter.get('/api/info', (req, res) => {
             'GET /download/:filename': 'Download uploaded file',
             'DELETE /delete/:filename': 'Delete uploaded file',
             'GET /files': 'List uploaded files',
-            'GET /demo/*': 'Response type demonstrations',
-            'GET /api/info': 'This endpoint'
+            'GET /multipart/demo/*': 'Response type demonstrations',
+            'GET /multipart/api/info': 'This endpoint'
         }
     });
 });

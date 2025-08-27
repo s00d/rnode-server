@@ -562,6 +562,49 @@ For complete Tera documentation and advanced features, visit: [https://keats.git
 
 ## API Reference
 
+### Types & Interfaces
+
+#### RequestBody
+```typescript
+export type RequestBody = 
+  | Record<string, string>    // Form data
+  | Record<string, any>       // JSON data
+  | string                    // Text data
+  | BinaryData;               // Binary data
+```
+
+#### BinaryData
+```typescript
+export interface BinaryData {
+  type: 'binary';
+  data: string;               // Base64 encoded
+  contentType: string;
+  size: number;
+}
+```
+
+#### CookieOptions
+```typescript
+export interface CookieOptions {
+  httpOnly?: boolean;
+  secure?: boolean;
+  sameSite?: 'Strict' | 'Lax' | 'None';
+  maxAge?: number;
+  expires?: Date;
+  path?: string;
+  domain?: string;
+}
+```
+
+#### ParsedCookie
+```typescript
+export interface ParsedCookie {
+  name: string;
+  value: string;
+  options: CookieOptions;
+}
+```
+
 ### App Methods
 
 #### HTTP Methods
@@ -571,6 +614,8 @@ For complete Tera documentation and advanced features, visit: [https://keats.git
 - **`app.delete(path, handler)`** - Register DELETE route handler
 - **`app.patch(path, handler)`** - Register PATCH route handler
 - **`app.options(path, handler)`** - Register OPTIONS route handler
+- **`app.trace(path, handler)`** - Register TRACE route handler
+- **`app.any(path, handler)`** - Register ANY route handler
 
 #### Middleware & Routing
 - **`app.use(path, middleware)`** - Register route-specific middleware
@@ -617,6 +662,16 @@ For complete Tera documentation and advanced features, visit: [https://keats.git
 - **`req.hasParam(name)`** - Check if parameter exists
 - **`req.getParams()`** - Get all custom parameters
 
+#### Body Type Detection & Handling
+- **`req.getBodyAsForm()`** - Get body as form data (Record<string, string>)
+- **`req.getBodyAsJson()`** - Get body as JSON data (Record<string, any>)
+- **`req.getBodyAsText()`** - Get body as plain text (string)
+- **`req.getBodyAsBinary()`** - Get body as binary data (BinaryData)
+- **`req.isFormData()`** - Check if body contains form data
+- **`req.isJsonData()`** - Check if body contains JSON data
+- **`req.isTextData()`** - Check if body contains text data
+- **`req.isBinaryData()`** - Check if body contains binary data
+
 #### File Handling
 - **`req.getFile(fieldName)`** - Get uploaded file by field name
 - **`req.getFiles()`** - Get all uploaded files
@@ -650,6 +705,8 @@ For complete Tera documentation and advanced features, visit: [https://keats.git
 - **`res.getHeader(name)`** - Get response header
 - **`res.getHeaders()`** - Get all response headers
 
+
+
 #### Content Types
 - **`res.json(data)`** - Send JSON response
 - **`res.html(content)`** - Send HTML response
@@ -670,9 +727,11 @@ For complete Tera documentation and advanced features, visit: [https://keats.git
 - **`res.redirect(url, status?)`** - Redirect to URL
 
 #### Cookies
-- **`res.setCookie(name, value, options?)`** - Set response cookie
-- **`res.getCookie(name)`** - Get response cookie
-- **`res.getCookies()`** - Get all response cookies
+- **`res.setCookie(name, value, options?)`** - Set response cookie with advanced options
+- **`res.getCookie(name)`** - Get response cookie value
+- **`res.getCookies()`** - Get all response cookies as object
+- **`res.removeCookie(name, path?, domain?)`** - Remove cookie by setting expiration
+- **`res.clearCookies()`** - Remove all cookies from response
 
 ### Static File Options
 
@@ -889,6 +948,449 @@ app.static('./admin', {
   allowSystemFiles: false,
   allowedExtensions: ['html', 'css', 'js'],
   blockedPaths: ['.git', '.env', '.htaccess', 'thumbs.db']
+});
+```
+
+
+
+#### Advanced Cookie Usage in Routes
+```typescript
+// Set secure session cookie
+app.post('/login', (req, res) => {
+  const { username, password } = req.body;
+  
+  if (validateCredentials(username, password)) {
+    const sessionId = generateSessionId();
+    
+    res.setCookie('sessionId', sessionId, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'Strict',
+      maxAge: 24 * 60 * 60, // 24 hours
+      path: '/'
+    });
+    
+    res.json({ success: true, message: 'Logged in successfully' });
+  } else {
+    res.status(401).json({ success: false, message: 'Invalid credentials' });
+  }
+});
+
+// Remove session cookie on logout
+app.post('/logout', (req, res) => {
+  res.removeCookie('sessionId', '/');
+  res.json({ success: true, message: 'Logged out successfully' });
+});
+
+// Clear all cookies
+app.post('/clear-session', (req, res) => {
+  res.clearCookies();
+  res.json({ success: true, message: 'All cookies cleared' });
+});
+```
+
+### Advanced Body Type Handling
+
+#### Complete Request Data Processing Example
+```typescript
+app.post('/api/process-data', (req, res) => {
+  console.log('=== Request Information ===');
+  console.log('Method:', req.method);
+  console.log('URL:', req.url);
+  console.log('Content-Type:', req.contentType);
+  console.log('IP:', req.ip);
+  console.log('IP Source:', req.ipSource);
+  
+  // === PATH PARAMETERS ===
+  console.log('Path Parameters:', req.params);
+  if (req.params.userId) {
+    console.log('User ID from path:', req.params.userId);
+  }
+  
+  // === QUERY PARAMETERS ===
+  console.log('Query Parameters:', req.query);
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  console.log('Page:', page, 'Limit:', limit);
+  
+  // === HEADERS ===
+  console.log('Headers:', req.headers);
+  const userAgent = req.getHeader('user-agent');
+  const authorization = req.getHeader('authorization');
+  console.log('User-Agent:', userAgent);
+  console.log('Authorization:', authorization);
+  
+  // === COOKIES ===
+  console.log('Cookies:', req.cookies);
+  const sessionId = req.getCookie('sessionId');
+  const theme = req.getCookie('theme');
+  console.log('Session ID:', sessionId);
+  console.log('Theme:', theme);
+  
+  // === BODY PROCESSING ===
+  console.log('=== Body Processing ===');
+  
+  if (req.isFormData()) {
+    const formData = req.getBodyAsForm();
+    if (formData) {
+      console.log('✅ Form Data Detected');
+      const name = formData.name || '';
+      const email = formData.email || '';
+      const age = parseInt(formData.age) || 0;
+      
+      console.log('Form Fields:', { name, email, age });
+      
+      res.json({ 
+        type: 'form', 
+        data: { name, email, age },
+        message: 'Form data processed successfully'
+      });
+    } else {
+      res.status(400).json({ error: 'Form data parsing failed' });
+    }
+    
+  } else if (req.isJsonData()) {
+    const jsonData = req.getBodyAsJson();
+    if (jsonData) {
+      console.log('✅ JSON Data Detected');
+      const { title, content, tags = [], metadata = {} } = jsonData;
+      
+      console.log('JSON Fields:', { title, content, tags, metadata });
+      
+      res.json({ 
+        type: 'json', 
+        data: { title, content, tags, metadata },
+        message: 'JSON data processed successfully'
+      });
+    } else {
+      res.status(400).json({ error: 'JSON data parsing failed' });
+    }
+    
+  } else if (req.isTextData()) {
+    const textData = req.getBodyAsText();
+    if (textData) {
+      console.log('✅ Text Data Detected');
+      console.log('Text Content:', textData);
+      console.log('Text Length:', textData.length);
+      
+      // Process text content
+      const wordCount = textData.split(/\s+/).length;
+      const lineCount = textData.split('\n').length;
+      
+      res.json({ 
+        type: 'text', 
+        data: { 
+          content: textData, 
+          length: textData.length,
+          wordCount,
+          lineCount
+        },
+        message: 'Text data processed successfully'
+      });
+    } else {
+      res.status(400).json({ error: 'Text data parsing failed' });
+    }
+    
+  } else if (req.isBinaryData()) {
+    const binaryData = req.getBodyAsBinary();
+    if (binaryData) {
+      console.log('✅ Binary Data Detected');
+      console.log('Binary Info:', {
+        contentType: binaryData.contentType,
+        size: binaryData.size,
+        dataPreview: binaryData.data.substring(0, 100) + '...'
+      });
+      
+      // Process binary data
+      const isImage = binaryData.contentType.startsWith('image/');
+      const isDocument = binaryData.contentType.includes('document') || 
+                        binaryData.contentType.includes('pdf') ||
+                        binaryData.contentType.includes('text');
+      
+      res.json({ 
+        type: 'binary', 
+        data: {
+          contentType: binaryData.contentType,
+          size: binaryData.size,
+          isImage,
+          isDocument,
+          dataPreview: binaryData.data.substring(0, 100) + '...'
+        },
+        message: 'Binary data processed successfully'
+      });
+    } else {
+      res.status(400).json({ error: 'Binary data parsing failed' });
+    }
+    
+  } else {
+    console.log('❌ Unsupported or empty body type');
+    res.status(400).json({ 
+      error: 'Unsupported body type or empty body',
+      contentType: req.contentType,
+      bodyType: typeof req.body
+    });
+  }
+});
+```
+
+#### Form Data Processing Example
+```typescript
+app.post('/api/contact', (req, res) => {
+  if (!req.isFormData()) {
+    return res.status(400).json({ error: 'Form data expected' });
+  }
+  
+  const formData = req.getBodyAsForm();
+  if (!formData) {
+    return res.status(400).json({ error: 'Form data parsing failed' });
+  }
+  
+  // Extract and validate form fields
+  const { name, email, message, phone, subject } = formData;
+  
+  // Validation
+  const errors = [];
+  if (!name || name.trim().length < 2) {
+    errors.push('Name must be at least 2 characters long');
+  }
+  if (!email || !email.includes('@')) {
+    errors.push('Valid email is required');
+  }
+  if (!message || message.trim().length < 10) {
+    errors.push('Message must be at least 10 characters long');
+  }
+  
+  if (errors.length > 0) {
+    return res.status(400).json({ 
+      success: false, 
+      errors 
+    });
+  }
+  
+  // Process valid form data
+  console.log('Contact form submitted:', { name, email, message, phone, subject });
+  
+  res.json({
+    success: true,
+    message: 'Contact form submitted successfully',
+    data: { name, email, message, phone, subject }
+  });
+});
+```
+
+#### JSON Data Processing Example
+```typescript
+app.post('/api/articles', (req, res) => {
+  if (!req.isJsonData()) {
+    return res.status(400).json({ error: 'JSON data expected' });
+  }
+  
+  const jsonData = req.getBodyAsJson();
+  if (!jsonData) {
+    return res.status(400).json({ error: 'JSON data parsing failed' });
+  }
+  
+  // Extract article data
+  const { title, content, tags = [], author, publishDate, metadata = {} } = jsonData;
+  
+  // Validation
+  if (!title || title.trim().length < 5) {
+    return res.status(400).json({ error: 'Title must be at least 5 characters long' });
+  }
+  if (!content || content.trim().length < 50) {
+    return res.status(400).json({ error: 'Content must be at least 50 characters long' });
+  }
+  if (!author || author.trim().length < 2) {
+    return res.status(400).json({ error: 'Author name is required' });
+  }
+  
+  // Process article
+  const article = {
+    id: Date.now(),
+    title: title.trim(),
+    content: content.trim(),
+    tags: Array.isArray(tags) ? tags.filter(tag => typeof tag === 'string') : [],
+    author: author.trim(),
+    publishDate: publishDate || new Date().toISOString(),
+    metadata,
+    createdAt: new Date().toISOString()
+  };
+  
+  console.log('Article created:', article);
+  
+  res.json({
+    success: true,
+    message: 'Article created successfully',
+    article
+  });
+});
+```
+
+#### Text Data Processing Example
+```typescript
+app.post('/api/analyze-text', (req, res) => {
+  if (!req.isTextData()) {
+    return res.status(400).json({ error: 'Text data expected' });
+  }
+  
+  const textData = req.getBodyAsText();
+  if (!textData) {
+    return res.status(400).json({ error: 'Text data parsing failed' });
+  }
+  
+  // Text analysis
+  const analysis = {
+    length: textData.length,
+    wordCount: textData.split(/\s+/).filter(word => word.length > 0).length,
+    lineCount: textData.split('\n').length,
+    characterCount: textData.replace(/\s/g, '').length,
+    averageWordLength: 0,
+    mostCommonWords: {},
+    containsNumbers: /\d/.test(textData),
+    containsSpecialChars: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(textData)
+  };
+  
+  // Calculate average word length
+  const words = textData.split(/\s+/).filter(word => word.length > 0);
+  if (words.length > 0) {
+    const totalLength = words.reduce((sum, word) => sum + word.length, 0);
+    analysis.averageWordLength = Math.round((totalLength / words.length) * 100) / 100;
+  }
+  
+  // Find most common words
+  const wordFreq = {};
+  words.forEach(word => {
+    const cleanWord = word.toLowerCase().replace(/[^\w]/g, '');
+    if (cleanWord.length > 2) {
+      wordFreq[cleanWord] = (wordFreq[cleanWord] || 0) + 1;
+    }
+  });
+  
+  // Get top 5 most common words
+  analysis.mostCommonWords = Object.entries(wordFreq)
+    .sort(([,a], [,b]) => b - a)
+    .slice(0, 5)
+    .reduce((obj, [word, count]) => {
+      obj[word] = count;
+      return obj;
+    }, {});
+  
+  console.log('Text analysis completed:', analysis);
+  
+  res.json({
+    success: true,
+    message: 'Text analysis completed',
+    analysis
+  });
+});
+```
+
+#### Binary Data Processing Example
+```typescript
+app.post('/api/process-file', (req, res) => {
+  if (!req.isBinaryData()) {
+    return res.status(400).json({ error: 'Binary data expected' });
+  }
+  
+  const binaryData = req.getBodyAsBinary();
+  if (!binaryData) {
+    return res.status(400).json({ error: 'Binary data parsing failed' });
+  }
+  
+  // Analyze binary data
+  const analysis = {
+    contentType: binaryData.contentType,
+    size: binaryData.size,
+    sizeInKB: Math.round(binaryData.size / 1024 * 100) / 100,
+    sizeInMB: Math.round(binaryData.size / (1024 * 1024) * 100) / 100,
+    isImage: binaryData.contentType.startsWith('image/'),
+    isVideo: binaryData.contentType.startsWith('video/'),
+    isAudio: binaryData.contentType.startsWith('audio/'),
+    isDocument: binaryData.contentType.includes('document') || 
+                binaryData.contentType.includes('pdf') ||
+                binaryData.contentType.includes('text'),
+    isArchive: binaryData.contentType.includes('zip') || 
+               binaryData.contentType.includes('rar') ||
+               binaryData.contentType.includes('tar'),
+    dataPreview: binaryData.data.substring(0, 200) + '...',
+    base64Length: binaryData.data.length
+  };
+  
+  // Additional processing based on content type
+  if (analysis.isImage) {
+    analysis.imageInfo = {
+      format: binaryData.contentType.split('/')[1],
+      estimatedDimensions: estimateImageDimensions(binaryData.size, binaryData.contentType)
+    };
+  }
+  
+  if (analysis.isDocument) {
+    analysis.documentInfo = {
+      estimatedPages: estimateDocumentPages(binaryData.size, binaryData.contentType),
+      isReadable: binaryData.contentType.includes('text') || binaryData.contentType.includes('pdf')
+    };
+  }
+  
+  console.log('Binary data analysis completed:', analysis);
+  
+  res.json({
+    success: true,
+    message: 'Binary data analysis completed',
+    analysis
+  });
+});
+
+// Helper functions
+function estimateImageDimensions(size: number, contentType: string): string {
+  // Rough estimation based on file size and format
+  const format = contentType.split('/')[1];
+  if (format === 'jpeg' || format === 'jpg') {
+    if (size < 100000) return 'Small (e.g., 800x600)';
+    if (size < 500000) return 'Medium (e.g., 1920x1080)';
+    return 'Large (e.g., 4K+)';
+  }
+  return 'Unknown';
+}
+
+function estimateDocumentPages(size: number, contentType: string): number {
+  // Rough estimation based on file size
+  if (contentType.includes('pdf')) {
+    return Math.max(1, Math.round(size / 50000)); // ~50KB per page
+  }
+  if (contentType.includes('text')) {
+    return Math.max(1, Math.round(size / 2000)); // ~2KB per page
+  }
+  return 1;
+}
+```
+
+#### Multipart Form with Body Detection
+```typescript
+app.post('/upload', (req, res) => {
+  // Check if we have files
+  if (req.hasFile('document')) {
+    const file = req.getFile('document');
+    console.log('File uploaded:', file.filename, file.size, 'bytes');
+  }
+  
+  // Check body type for additional data
+  if (req.isFormData()) {
+    const formData = req.getBodyAsForm();
+    const title = formData.title || 'Untitled';
+    const description = formData.description || '';
+    
+    res.json({
+      success: true,
+      file: req.hasFile('document') ? req.getFile('document')?.filename : null,
+      metadata: { title, description }
+    });
+  } else {
+    res.json({
+      success: true,
+      file: req.hasFile('document') ? req.getFile('document')?.filename : null,
+      metadata: null
+    });
+  }
 });
 ```
 
@@ -1284,10 +1786,16 @@ function validateSession(sessionId) {
 ```
 
 ### Cookie Management
-- Secure cookie setting
-- HttpOnly and Secure flags
-- Expiration and path control
-- Cookie validation helpers
+- **Advanced Cookie Management** - Comprehensive cookie handling with security options
+- **Secure Cookie Setting** - HttpOnly, Secure, SameSite flags with validation
+- **Cookie Parsing** - Parse both request cookies and Set-Cookie headers
+- **Cookie Validation** - Built-in validation for cookie options and security
+- **Cookie Removal** - Secure cookie deletion with proper expiration
+- **Cookie Expiration** - Support for both maxAge and expires options
+- **Domain & Path Control** - Full control over cookie scope and accessibility
+- **Cookie Cloning** - Clone cookies with modified options
+- **Expiration Checking** - Check if cookies are expired
+- **Multiple Cookie Support** - Handle multiple Set-Cookie headers efficiently
 
 ### Parameter System
 - Global parameter sharing across middleware

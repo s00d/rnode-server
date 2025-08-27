@@ -66,3 +66,11 @@ pub fn register_patch(cx: FunctionContext) -> JsResult<JsUndefined> {
 pub fn register_options(cx: FunctionContext) -> JsResult<JsUndefined> {
     register_route("OPTIONS")(cx)
 }
+
+pub fn register_any(cx: FunctionContext) -> JsResult<JsUndefined> {
+    register_route("ANY")(cx)
+}
+
+pub fn register_trace(cx: FunctionContext) -> JsResult<JsUndefined> {
+    register_route("TRACE")(cx)
+}

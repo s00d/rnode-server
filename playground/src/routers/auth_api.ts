@@ -62,36 +62,40 @@ authApiRouter.post('/register', (req, res) => {
       try {
         userData = JSON.parse(req.body);
       } catch (e) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: 'Invalid data format'
         });
+        return;
       }
     }
 
     // Check required fields
     if (!userData.username || !userData.email || !userData.password) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'Username, email and password are required'
       });
+      return;
     }
 
     // Register user via SQLite
     const registrationResult = authDb.registerUser(userData);
 
     if (!registrationResult.success) {
-      return res.status(400).json(registrationResult);
+      res.status(400).json(registrationResult);
+      return;
     }
 
     // After successful registration, automatically authenticate user
     const loginResult = authDb.loginUser(userData.email, userData.password);
 
     if (!loginResult.success) {
-      return res.status(500).json({
+      res.status(500).json({
         success: false,
         message: 'User registered but failed to authenticate'
       });
+      return;
     }
 
     // Set cookies for session
@@ -130,26 +134,29 @@ authApiRouter.post('/login', (req, res) => {
       try {
         loginData = JSON.parse(req.body);
       } catch (e) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: 'Invalid data format'
         });
+        return;
       }
     }
 
     // Check required fields
     if (!loginData.email || !loginData.password) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'Email and password are required'
       });
+      return;
     }
 
     // Authenticate user via SQLite
     const loginResult = authDb.loginUser(loginData.email, loginData.password);
 
     if (!loginResult.success) {
-      return res.status(401).json(loginResult);
+      res.status(401).json(loginResult);
+      return;
     }
 
     // Set cookies for session
@@ -227,7 +234,8 @@ authApiRouter.get('/profile', (req, res) => {
   const profileResult = authDb.getUserProfile(userId);
 
   if (!profileResult.success) {
-    return res.status(404).json(profileResult);
+    res.status(404).json(profileResult);
+    return;
   }
 
   // This route is protected by middleware, so parameters are available

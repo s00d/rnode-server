@@ -29,10 +29,11 @@ usersRouter.post('', (req, res) => {
 
     // Check required fields
     if (!userData.name || !userData.email) {
-      return res.json({
+      res.json({
         success: false,
         message: 'Name and email are required'
       });
+      return;
     }
 
     // Create user in database
@@ -74,10 +75,11 @@ usersRouter.get('/{id}', (req, res) => {
 
   const userId = parseInt(req.params.id);
   if (isNaN(userId)) {
-    return res.json({
+    res.json({
       success: false,
       message: 'Invalid user ID'
     });
+    return;
   }
 
   const result = db.getUserById(userId);
@@ -92,10 +94,11 @@ usersRouter.put('/{id}', (req, res) => {
 
   const userId = parseInt(req.params.id);
   if (isNaN(userId)) {
-    return res.json({
+    res.json({
       success: false,
       message: 'Invalid user ID'
     });
+    return;
   }
 
   try {
@@ -109,10 +112,11 @@ usersRouter.put('/{id}', (req, res) => {
     }
 
     if (!userData.name || !userData.email) {
-      return res.json({
+      res.json({
         success: false,
         message: 'Name and email are required'
       });
+      return;
     }
 
     const result = db.updateUser(userId, userData);
@@ -132,10 +136,11 @@ usersRouter.delete('/{id}', (req, res) => {
 
   const userId = parseInt(req.params.id);
   if (isNaN(userId)) {
-    return res.json({
+    res.json({
       success: false,
       message: 'Invalid user ID'
     });
+    return;
   }
 
   const result = db.deleteUser(userId);
@@ -144,7 +149,7 @@ usersRouter.delete('/{id}', (req, res) => {
 
 // GET route for searching users
 usersRouter.get('/search/{query}', (req, res) => {
-  console.log('=== GET /api/users/search/:query ===');
+  console.log('=== GET /api/users/search/{query} ===');
   console.log('Query:', req.params.query);
 
   const result = db.searchUsers(req.params.query);
