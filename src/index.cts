@@ -199,6 +199,8 @@ export interface Request {
   ip?: string; // Client IP address
   ips?: string[]; // All IP addresses from proxy chain
   ipSource?: string; // Source header used for IP extraction
+  abortController?: AbortController; // Abort controller for cancelling operations
+  sleep(ms: number): Promise<void>; // Sleep function that can be cancelled
   getCookie(name: string): string | null;
   getHeader(name: string): string | null;
   hasCookie(name: string): boolean;
@@ -470,6 +472,8 @@ function getHandler(requestJson: string, timeout: number): string {
         ip: ip || '127.0.0.1',
         ips: ips || ['127.0.0.1'],
         ipSource: ipSource || 'default',
+        abortController: new AbortController(), // Create AbortController for this request
+
         // Helper for getting cookie by name
         getCookie: (name: string) => {
           const cookiesStr = cookies || '';
@@ -579,6 +583,16 @@ function getHandler(requestJson: string, timeout: number): string {
         acceptsLanguages: (language: string) => {
           const acceptLanguageHeader = request.headers['accept-language'] || '';
           return acceptLanguageHeader.includes('*') || acceptLanguageHeader.includes(language);
+        },
+        // Sleep function that can be cancelled
+        sleep: (ms: number) => {
+          return new Promise<void>((resolve, reject) => {
+            const id = setTimeout(resolve, ms);
+            req.abortController?.signal.addEventListener('abort', () => {
+              clearTimeout(id);
+              reject(new Error('Aborted'));
+            });
+          });
         }
       };
 
@@ -746,59 +760,58 @@ function getHandler(requestJson: string, timeout: number): string {
           
           logger.debug(`🔄 Handler returned promise ${promiseId}, returning immediately`, 'rnode_server::handler');
           
-          // Create AbortController for this promise
-          const abortController = new AbortController();
-          
-          // Set up timeout to cancel the promise if it takes too long
+          // Set up timeout to abort the request if it takes too long
           const timeoutId = setTimeout(() => {
-            abortController.abort();
-            logger.debug(`🛑 Promise ${promiseId} cancelled due to timeout (${timeout}ms)`, 'rnode_server::handler');
-          }, timeout + 1000); // Use timeout from Rust
+            req.abortController?.abort();
+            logger.debug(`🛑 Request ${promiseId} aborted due to timeout (${timeout}ms)`, 'rnode_server::handler');
+          }, timeout);
           
-          // Wrap the original promise with abort signal
-          const abortablePromise = Promise.race([
-            promise,
-            new Promise((_, reject) => {
-              abortController.signal.addEventListener('abort', () => {
-                reject(new Error('Promise cancelled due to timeout'));
-              });
-            })
-          ]);
-          
-          // Store result when promise resolves
-          abortablePromise.then(
-            (value) => {
-              // Clear timeout since promise completed
-              clearTimeout(timeoutId);
-              
-              // Вызываем Rust функцию для установки результата
-              const result = {
-                content: responseData,
-                contentType: contentType,
-                headers: responseHeaders,
-                customParams: customParams
-              };
-              
-              try {
-                addon.setPromiseResult(promiseId, JSON.stringify(result));
-                logger.debug(`✅ Promise ${promiseId} resolved with result`, 'rnode_server::handler');
-              } catch (error) {
-                logger.error(`❌ Failed to set promise result: ${error}`, 'rnode_server::handler');
+                      // Store result when promise resolves
+            promise.then(
+              (value: any) => {
+                // Clear timeout since promise completed
+                clearTimeout(timeoutId);
+                
+                // Check if request was aborted
+                if (req.abortController?.signal.aborted) {
+                  logger.debug(`🛑 Request ${promiseId} was aborted, stopping execution`, 'rnode_server::handler');
+                  return;
+                }
+                
+                // Вызываем Rust функцию для установки результата
+                const result = {
+                  content: responseData,
+                  contentType: contentType,
+                  headers: responseHeaders,
+                  customParams: customParams
+                };
+                
+                try {
+                  addon.setPromiseResult(promiseId, JSON.stringify(result));
+                  logger.debug(`✅ Promise ${promiseId} resolved with result`, 'rnode_server::handler');
+                } catch (error) {
+                  logger.error(`❌ Failed to set promise result: ${error}`, 'rnode_server::handler');
+                }
+              },
+              (error: any) => {
+                // Clear timeout since promise completed
+                clearTimeout(timeoutId);
+                
+                // Check if request was aborted
+                if (req.abortController?.signal.aborted) {
+                  logger.debug(`🛑 Request ${promiseId} was aborted, stopping execution`, 'rnode_server::handler');
+                  return;
+                }
+                
+                // Вызываем Rust функцию для установки ошибки
+                try {
+                  addon.setPromiseError(promiseId, error.message || String(error));
+                  logger.error(`❌ Promise ${promiseId} rejected: ${error}`, 'rnode_server::handler');
+                } catch (error) {
+                  logger.error(`❌ Failed to set promise error: ${error}`, 'rnode_server::handler');
+                }
               }
-            },
-            (error) => {
-              // Clear timeout since promise completed
-              clearTimeout(timeoutId);
-              
-              // Вызываем Rust функцию для установки ошибки
-              try {
-                addon.setPromiseError(promiseId, error.message || String(error));
-                logger.error(`❌ Promise ${promiseId} rejected: ${error}`, 'rnode_server::handler');
-              } catch (error) {
-                logger.error(`❌ Failed to set promise error: ${error}`, 'rnode_server::handler');
-              }
-            }
-          );
+            );
           
           // Return a response indicating the operation is in progress
           return JSON.stringify({
@@ -851,6 +864,7 @@ function executeMiddleware(middlewareJson: string, timeout: number): string {
       customParams: { ...request.customParams },
       headers: { ...request.headers },
       cookies: request.cookies || '',
+      abortController: new AbortController(), // Create AbortController for this middleware request
       // Allow middleware to modify any request properties
       setParam: (name: string, value: any) => {
         if (!req.customParams) req.customParams = {};
@@ -898,17 +912,27 @@ function executeMiddleware(middlewareJson: string, timeout: number): string {
         const cookieMatch = cookiesStr.match(new RegExp(`(^|;)\\s*${name}\\s*=\\s*([^;]+)`));
         return cookieMatch ? decodeURIComponent(cookieMatch[2]) : null;
       },
-      getHeader: (name: string): string | null => {
-        const headerName = name.toLowerCase();
-        const headersObj = req.headers || {};
-        for (const key of Object.keys(headersObj)) {
-          if (key.toLowerCase() === headerName) {
-            return headersObj[key];
+              getHeader: (name: string): string | null => {
+          const headerName = name.toLowerCase();
+          const headersObj = req.headers || {};
+          for (const key of Object.keys(headersObj)) {
+            if (key.toLowerCase() === headerName) {
+              return headersObj[key];
+            }
           }
+          return null;
+        },
+        // Sleep function that can be cancelled
+        sleep: (ms: number) => {
+          return new Promise<void>((resolve, reject) => {
+            const id = setTimeout(resolve, ms);
+            req.abortController?.signal.addEventListener('abort', () => {
+              clearTimeout(id);
+              reject(new Error('Aborted'));
+            });
+          });
         }
-        return null;
-      }
-    };
+      };
 
     const res: Response = {
       headers: {},
@@ -1100,30 +1124,23 @@ function executeMiddleware(middlewareJson: string, timeout: number): string {
               
               logger.debug(`🔄 Middleware returned promise ${promiseId}, waiting for completion`, 'rnode_server::middleware');
               
-              // Create AbortController for this promise
-              const abortController = new AbortController();
-              
-              // Set up timeout to cancel the promise if it takes too long
+              // Set up timeout to abort the request if it takes too long
               const timeoutId = setTimeout(() => {
-                abortController.abort();
-                logger.debug(`🛑 Middleware promise ${promiseId} cancelled due to timeout (${timeout}ms)`, 'rnode_server::middleware');
-              }, timeout + 1000); // Use timeout from Rust
-              
-              // Wrap the original promise with abort signal
-              const abortablePromise = Promise.race([
-                promise,
-                new Promise((_, reject) => {
-                  abortController.signal.addEventListener('abort', () => {
-                    reject(new Error('Promise cancelled due to timeout'));
-                  });
-                })
-              ]);
+                req.abortController?.abort();
+                logger.debug(`🛑 Middleware request ${promiseId} aborted due to timeout (${timeout}ms)`, 'rnode_server::middleware');
+              }, timeout);
               
               // Store result when promise resolves
-              abortablePromise.then(
-                (value) => {
+              promise.then(
+                (value: any) => {
                   // Clear timeout since promise completed
                   clearTimeout(timeoutId);
+                  
+                  // Check if request was aborted
+                  if (req.abortController?.signal.aborted) {
+                    logger.debug(`🛑 Middleware request ${promiseId} was aborted, stopping execution`, 'rnode_server::middleware');
+                    return;
+                  }
                   
                   // Вызываем Rust функцию для установки результата
                   const result = {
@@ -1139,9 +1156,15 @@ function executeMiddleware(middlewareJson: string, timeout: number): string {
                     logger.error(`❌ Failed to set middleware promise result: ${error}`, 'rnode_server::middleware');
                   }
                 },
-                (error) => {
+                (error: any) => {
                   // Clear timeout since promise completed
                   clearTimeout(timeoutId);
+                  
+                  // Check if request was aborted
+                  if (req.abortController?.signal.aborted) {
+                    logger.debug(`🛑 Middleware request ${promiseId} was aborted, stopping execution`, 'rnode_server::middleware');
+                    return;
+                  }
                   
                   // Вызываем Rust функцию для установки ошибки
                   try {

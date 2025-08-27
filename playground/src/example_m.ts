@@ -40,7 +40,8 @@ app.get('/api/slow', async (req, res) => {
   
   try {
     // Simulate slow processing
-    await new Promise(resolve => setTimeout(resolve, delay));
+    await req.sleep(delay)
+    // req.s
     
     console.log(`✅ Slow request completed after ${delay}ms`);
     res.json({
@@ -52,31 +53,6 @@ app.get('/api/slow', async (req, res) => {
     console.error(`❌ Slow request failed:`, error);
     res.status(500).json({
       error: 'Slow request failed',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    });
-  }
-});
-
-// Very slow request route for testing "very_slow" metrics
-app.get('/api/very-slow', async (req, res) => {
-  const delay = parseInt(req.query.delay as string) || 8000; // Default 8 seconds
-  
-  console.log(`🐌🐌 Starting very slow request with ${delay}ms delay...`);
-  
-  try {
-    // Simulate very slow processing
-    await new Promise(resolve => setTimeout(resolve, delay));
-    
-    console.log(`✅ Very slow request completed after ${delay}ms`);
-    res.json({ 
-      message: 'Very slow request completed', 
-      delay: delay,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error(`❌ Very slow request failed:`, error);
-    res.status(500).json({ 
-      error: 'Very slow request failed',
       message: error instanceof Error ? error.message : 'Unknown error'
     });
   }

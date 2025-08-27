@@ -3,6 +3,7 @@ use crate::html_templates;
 use crate::metrics::{init_metrics, render_metrics, track_metrics, update_system_metrics};
 use crate::static_files::handle_static_file;
 use crate::types::{get_download_routes, get_event_queue, get_routes, get_upload_routes};
+use crate::utils::config_extractor;
 use axum::{
     Router,
     routing::{delete, get, options, patch, post, put},
@@ -36,94 +37,8 @@ impl SslConfig {
 
 // Function for starting the server
 pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
-    let port = cx.argument::<JsNumber>(0)?.value(&mut cx) as u16;
-
-    // Get host argument (required)
-    let host = {
-        let host_arg = cx.argument::<JsString>(1)?;
-        let host_str = host_arg.value(&mut cx);
-        // Parse IP address
-        let ip_parts: Result<Vec<u8>, _> =
-            host_str.split('.').map(|part| part.parse::<u8>()).collect();
-
-        match ip_parts {
-            Ok(parts) if parts.len() == 4 => [parts[0], parts[1], parts[2], parts[3]],
-            _ => {
-                warn!("Invalid IP address: {}, using localhost", host_str);
-                [127, 0, 0, 1]
-            }
-        }
-    };
-
-    // Get options object (third argument)
-    let app_options = if cx.len() > 2 {
-        if let Ok(options_arg) = cx.argument::<JsValue>(2) {
-            if let Ok(options_obj) = options_arg.downcast::<JsObject, _>(&mut cx) {
-                let ssl_config = options_obj
-                    .get::<JsValue, _, _>(&mut cx, "ssl")
-                    .ok()
-                    .and_then(|ssl_obj| ssl_obj.downcast::<JsObject, _>(&mut cx).ok())
-                    .and_then(|ssl_obj| {
-                        let cert_path = ssl_obj.get::<JsValue, _, _>(&mut cx, "certPath").ok()?;
-                        let key_path = ssl_obj.get::<JsValue, _, _>(&mut cx, "keyPath").ok()?;
-
-                        let cert_str = cert_path
-                            .downcast::<JsString, _>(&mut cx)
-                            .ok()?
-                            .value(&mut cx);
-                        let key_str = key_path
-                            .downcast::<JsString, _>(&mut cx)
-                            .ok()?
-                            .value(&mut cx);
-
-                        match SslConfig::from_files(&cert_str, &key_str) {
-                            Ok(config) => {
-                                info!(
-                                    "🔒 SSL enabled with certificate: {} and key: {}",
-                                    cert_str, key_str
-                                );
-                                Some(config)
-                            }
-                            Err(e) => {
-                                error!("❌ Failed to load SSL certificate: {}, using HTTP only", e);
-                                None
-                            }
-                        }
-                    });
-
-                let metrics_enabled = options_obj
-                    .get::<JsValue, _, _>(&mut cx, "metrics")
-                    .ok()
-                    .and_then(|metrics_arg| metrics_arg.downcast::<JsBoolean, _>(&mut cx).ok())
-                    .map(|metrics_bool| metrics_bool.value(&mut cx))
-                    .unwrap_or(false);
-
-                let timeout = options_obj
-                    .get::<JsValue, _, _>(&mut cx, "timeout")
-                    .ok()
-                    .and_then(|timeout_arg| timeout_arg.downcast::<JsNumber, _>(&mut cx).ok())
-                    .map(|timeout_num| timeout_num.value(&mut cx) as u64)
-                    .unwrap_or(30000); // Default 30 seconds
-
-                let dev_mode = options_obj
-                    .get::<JsValue, _, _>(&mut cx, "devMode")
-                    .ok()
-                    .and_then(|dev_mode_arg| dev_mode_arg.downcast::<JsBoolean, _>(&mut cx).ok())
-                    .map(|dev_mode_bool| dev_mode_bool.value(&mut cx))
-                    .unwrap_or(false); // Default false
-
-                (ssl_config, metrics_enabled, timeout, dev_mode)
-            } else {
-                (None, false, 30000, false)
-            }
-        } else {
-            (None, false, 30000, false)
-        }
-    } else {
-        (None, false, 30000, false)
-    };
-
-    let (ssl_config, metrics_enabled, timeout, dev_mode) = app_options;
+    let (port, host, ssl_config, metrics_enabled, timeout, dev_mode) = 
+        config_extractor::extract_server_params(&mut cx)?;
     info!(
         "🚀 Starting server on {}:{} {}",
         host.iter()

@@ -283,7 +283,7 @@ pub fn generate_error_page(status_code: StatusCode, title: &str, message: &str, 
 pub fn generate_timeout_error_page(timeout_ms: u64, details: Option<&str>) -> Response<Body> {
     generate_error_page(
         StatusCode::REQUEST_TIMEOUT,
-        &format!("Request Timeout ({})", timeout_ms),
+        &format!("Request Timeout ({}ms)", timeout_ms),
         &format!("Your request took longer than {}ms to complete. Please try again or contact support if the problem persists.", timeout_ms),
         details,
         false // Don't show stack trace by default
