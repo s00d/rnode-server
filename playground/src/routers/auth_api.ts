@@ -19,6 +19,7 @@ authApiRouter.use((req, res, next) => {
 
   // Get sessionId from cookie
   const sessionId = req.getCookie('sessionId');
+  console.log('🍪 11111:', req.getCookies());
   if (sessionId) {
     console.log('🍪 Session found in cookie:', sessionId);
 
@@ -57,21 +58,8 @@ authApiRouter.post('/register', (req, res) => {
   console.log('Body:', req.body);
 
   try {
-    let userData = req.body;
-    if (typeof req.body === 'string') {
-      try {
-        userData = JSON.parse(req.body);
-      } catch (e) {
-        res.status(400).json({
-          success: false,
-          message: 'Invalid data format'
-        });
-        return;
-      }
-    }
-
-    // Check required fields
-    if (!userData.username || !userData.email || !userData.password) {
+    const userData = req.getBodyAsJson();
+    if (!userData || !userData.username || !userData.email || !userData.password) {
       res.status(400).json({
         success: false,
         message: 'Username, email and password are required'
@@ -79,8 +67,10 @@ authApiRouter.post('/register', (req, res) => {
       return;
     }
 
+    const { username, email, password } = userData
+
     // Register user via SQLite
-    const registrationResult = authDb.registerUser(userData);
+    const registrationResult = authDb.registerUser({ username, email, password });
 
     if (!registrationResult.success) {
       res.status(400).json(registrationResult);
@@ -88,7 +78,7 @@ authApiRouter.post('/register', (req, res) => {
     }
 
     // After successful registration, automatically authenticate user
-    const loginResult = authDb.loginUser(userData.email, userData.password);
+    const loginResult = authDb.loginUser(email, password);
 
     if (!loginResult.success) {
       res.status(500).json({
@@ -129,30 +119,19 @@ authApiRouter.post('/login', (req, res) => {
   console.log('Body:', req.body);
 
   try {
-    let loginData = req.body;
-    if (typeof req.body === 'string') {
-      try {
-        loginData = JSON.parse(req.body);
-      } catch (e) {
-        res.status(400).json({
-          success: false,
-          message: 'Invalid data format'
-        });
-        return;
-      }
-    }
-
-    // Check required fields
-    if (!loginData.email || !loginData.password) {
+    const userData = req.getBodyAsJson();
+    if (!userData || !userData.email || !userData.password) {
       res.status(400).json({
         success: false,
-        message: 'Email and password are required'
+        message: 'Username, email and password are required'
       });
       return;
     }
 
+    const { email, password } = userData
+
     // Authenticate user via SQLite
-    const loginResult = authDb.loginUser(loginData.email, loginData.password);
+    const loginResult = authDb.loginUser(email, password);
 
     if (!loginResult.success) {
       res.status(401).json(loginResult);

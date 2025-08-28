@@ -1,5 +1,4 @@
 import { UploadedFile } from '../types/request-response';
-import { CookieUtils } from './cookie-utils';
 
 // Union type for different body types
 export type RequestBody = 
@@ -25,7 +24,7 @@ export class Request {
   public files?: Record<string, UploadedFile>;
   public contentType?: string;
   public headers: Record<string, string>;
-  public cookies?: string;
+  public cookies?: Record<string, string>;
   public customParams?: Record<string, any>;
   public ip?: string;
   public ips?: string[];
@@ -51,11 +50,12 @@ export class Request {
     this.ip = ip || '127.0.0.1';
     this.ips = ips || ['127.0.0.1'];
     this.ipSource = ipSource || 'default';
+    this.contentType = 'text/plain'
   }
 
   // Helper for getting cookie by name
   getCookie(name: string): string | null {
-    return CookieUtils.getCookie(this.cookies || '', name);
+    return this.cookies?.[name] || null;
   }
 
   // Helper for getting header by name
@@ -71,7 +71,7 @@ export class Request {
 
   // Helper for checking cookie existence
   hasCookie(name: string): boolean {
-    return CookieUtils.hasCookie(this.cookies || '', name);
+    return !!this.cookies?.[name];
   }
 
   // Helper for checking header existence
@@ -87,7 +87,7 @@ export class Request {
 
   // Get all cookies as JSON object
   getCookies(): Record<string, string> {
-    return CookieUtils.parseCookies(this.cookies || '');
+    return this.cookies ?? {}
   }
 
   // Get all headers as JSON object

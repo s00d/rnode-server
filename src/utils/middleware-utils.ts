@@ -185,7 +185,6 @@ export async function executeMiddleware(middlewareJson: string, timeout: number)
     const finalRes = {
       headers: res.getHeaders(),  // Используем реальные заголовки
       content: res.content || '',
-      contentType: res.contentType || 'text/plain'
     };
 
     logger.debug(`🔧 Final response headers: ${JSON.stringify(finalRes.headers)}`, 'rnode_server::middleware');

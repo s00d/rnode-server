@@ -1,12 +1,16 @@
 use crate::handlers::dynamic_handler;
 use crate::html_templates;
 use crate::metrics::{init_metrics, render_metrics, track_metrics, update_system_metrics};
+use crate::request::Request;
 use crate::static_files::handle_static_file;
 use crate::types::{get_download_routes, get_event_queue, get_routes, get_upload_routes};
 use crate::utils::config_extractor;
 use axum::{
     Router,
-    routing::{delete, get, options, patch, post, put, trace, any},
+    body::Body,
+    extract::Request as AxumRequest,
+    middleware::Next,
+    routing::{any, delete, get, options, patch, post, put, trace},
 };
 use futures::stream::{self};
 use mime_guess::MimeGuess;
@@ -18,6 +22,39 @@ use globset::{Glob, GlobSetBuilder};
 use log::{debug, error, info, warn};
 use serde_json;
 use std::net::SocketAddr;
+
+// Слой для формирования Request и Response объектов
+async fn request_response_layer(
+    req: AxumRequest<Body>,
+    next: Next,
+) -> Result<axum::response::Response, axum::http::StatusCode> {
+    // Разделяем запрос на части
+    let (parts, body) = req.into_parts();
+
+    // Извлекаем тело запроса
+    let body_bytes = axum::body::to_bytes(body, usize::MAX).await.ok();
+
+    // Создаем новый запрос из частей
+    let mut req = AxumRequest::from_parts(parts, Body::empty());
+
+    // Создаем Request объект из axum Request
+    let mut request = Request::from_axum_request(&req);
+
+    // Парсим тело запроса если оно есть
+    if let Some(body_bytes) = body_bytes {
+        use crate::request_parser::RequestParser;
+        let (parsed_body, files) =
+            RequestParser::parse_request_body(&body_bytes, &request.content_type).await;
+        request.body = parsed_body;
+        request.files = files;
+    }
+
+    // Сохраняем в extensions для передачи дальше
+    req.extensions_mut().insert(request);
+
+    // Передаем запрос дальше
+    Ok(next.run(req).await)
+}
 
 // Structure for SSL/TLS configuration
 #[derive(Debug)]
@@ -35,11 +72,9 @@ impl SslConfig {
     }
 }
 
-
-
 // Function for starting the server
 pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
-    let (port, host, ssl_config, metrics_enabled, timeout, dev_mode) = 
+    let (port, host, ssl_config, metrics_enabled, timeout, dev_mode) =
         config_extractor::extract_server_params(&mut cx)?;
     info!(
         "🚀 Starting server on {}:{} {}",
@@ -90,7 +125,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                 let path_clone = path.clone();
                 let method_clone = method.clone();
                 let handler_id_clone = handler_id.clone();
-                                    let handler_fn = move |req: axum::extract::Request| {
+                let handler_fn = move |req: axum::extract::Request| {
                         let registered_path = path_clone.clone();
                         let method = method_clone.clone();
                         let handler_id = handler_id_clone.clone();
@@ -622,12 +657,12 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                 let path = req.uri().path().to_string();
                 let resp = next.run(req).await;
                 let status = resp.status();
-                
+
                 match status {
                     http::StatusCode::METHOD_NOT_ALLOWED => {
                         // Convert 405 to 404
                         println!("🔧 Converting 405 to 404 for path: {}", path);
-                        
+
                         // Use html_templates for 405 response
                         crate::html_templates::generate_error_page(
                             http::StatusCode::METHOD_NOT_ALLOWED,
@@ -641,13 +676,69 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                 }
             }));
 
+             // Добавляем layer'ы для Request/Response и middleware
+            // Слой 1: Формирование Request и Response объектов
+            app = app.layer(axum::middleware::from_fn(request_response_layer));
+
             // Add fallback route for static files
             let mut app = app.fallback(|req: http::Request<axum::body::Body>| async move {
                 let path = req.uri().path().to_string();
 
+                // Разделяем запрос на части
+                let (parts, body) = req.into_parts();
+
+                // Извлекаем тело запроса
+                let body_bytes = axum::body::to_bytes(body, usize::MAX).await.ok();
+
+                // Создаем новый запрос из частей
+                let req = http::Request::from_parts(parts, Body::empty());
+
+                // Получаем готовые Request и Response объекты из extensions
+                let mut request = Request::from_axum_request(&req);
+                if let Some(body_bytes) = body_bytes {
+                    use crate::request_parser::RequestParser;
+                    let (parsed_body, files) = RequestParser::parse_request_body(&body_bytes, &request.content_type).await;
+                    request.body = parsed_body;
+                    request.files = files;
+                }
+
+                // Обновляем path в Request объекте
+                request.path = path.clone();
+
                 // First try to find static file
                 let accept_encoding = req.headers().get("accept-encoding").and_then(|h| h.to_str().ok());
-                if let Some(static_response) = handle_static_file(path, accept_encoding).await {
+                if let Some(mut static_response) = handle_static_file(path, accept_encoding).await {
+                    // Применяем middleware к статическому файлу
+                    if let Err(_) = crate::middleware::execute_middleware(&mut request, 30000, false).await {
+                        // Если middleware вернул ошибку, возвращаем 500
+                        return axum::response::Response::builder()
+                            .status(http::StatusCode::INTERNAL_SERVER_ERROR)
+                            .body(axum::body::Body::from("Internal Server Error"))
+                            .unwrap();
+                    }
+
+                    // Получаем данные из Response объекта после middleware
+                    let headers = request.get_headers().clone();
+
+                    // Добавляем заголовки
+                    for (key, value) in headers {
+                        if let Ok(header_value) = value.parse() {
+                            // Создаём HeaderName из строки (он сам хранит owned-значение)
+                            if let Ok(header_name) = http::header::HeaderName::from_bytes(key.as_bytes()) {
+                                static_response.headers_mut().insert(header_name, header_value);
+                            }
+                        }
+                    }
+
+
+                    let cookies = request.get_cookies().clone();
+                    // Добавляем cookies
+                    for cookie in cookies {
+                        if let Ok(header_value) = cookie.parse() {
+                            static_response.headers_mut().insert("set-cookie", header_value);
+                        }
+                    }
+
                     return static_response;
                 }
 

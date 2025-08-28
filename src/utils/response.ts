@@ -4,6 +4,7 @@ import { CookieUtils, CookieOptions } from './cookie-utils';
 export class Response {
   private responseData: any = '';
   private responseContentType: string = 'text/plain';
+  private responseStatus: number = 200;
   private responseHeaders: Record<string, string | string[]> = {};
   private cookies: string = '';
 
@@ -26,7 +27,16 @@ export class Response {
 
   // Methods
   status(code: number): Response {
-    this.responseHeaders['status'] = code.toString();
+    this.responseStatus = code;
+    return this;
+  }
+
+  get currentStatus() {
+    return this.responseStatus;
+  }
+
+  setContentType(type: string): Response {
+    this.responseContentType = type;
     return this;
   }
 

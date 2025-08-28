@@ -8,11 +8,16 @@ static INIT: Once = Once::new();
 
 /// Helper functions for extracting configuration options from JavaScript objects
 pub mod config_extractor {
-    use neon::prelude::*;
     use log;
+    use neon::prelude::*;
 
     /// Extract a string value from an object with a default
-    pub fn get_string(cx: &mut FunctionContext, obj: &JsObject, key: &str, default: &str) -> String {
+    pub fn get_string(
+        cx: &mut FunctionContext,
+        obj: &JsObject,
+        key: &str,
+        default: &str,
+    ) -> String {
         obj.get::<JsValue, _, _>(cx, key)
             .ok()
             .and_then(|value| value.downcast::<JsString, _>(cx).ok())
@@ -44,7 +49,11 @@ pub mod config_extractor {
     }
 
     /// Extract a nested object from an object
-    pub fn get_object<'a>(cx: &mut FunctionContext<'a>, obj: &JsObject, key: &str) -> Option<Handle<'a, JsObject>> {
+    pub fn get_object<'a>(
+        cx: &mut FunctionContext<'a>,
+        obj: &JsObject,
+        key: &str,
+    ) -> Option<Handle<'a, JsObject>> {
         obj.get::<JsValue, _, _>(cx, key)
             .ok()
             .and_then(|value| value.downcast::<JsObject, _>(cx).ok())
@@ -78,20 +87,24 @@ pub mod config_extractor {
     }
 
     /// Extract SSL configuration from options object
-    pub fn extract_ssl_config(cx: &mut FunctionContext, options_obj: &JsObject) -> Option<crate::server::SslConfig> {
+    pub fn extract_ssl_config(
+        cx: &mut FunctionContext,
+        options_obj: &JsObject,
+    ) -> Option<crate::server::SslConfig> {
         let ssl_obj = get_object(cx, options_obj, "ssl")?;
         let cert_path = get_string(cx, &ssl_obj, "certPath", "");
         let key_path = get_string(cx, &ssl_obj, "keyPath", "");
-        
+
         if cert_path.is_empty() || key_path.is_empty() {
             return None;
         }
-        
+
         match crate::server::SslConfig::from_files(&cert_path, &key_path) {
             Ok(config) => {
                 log::info!(
                     "🔒 SSL enabled with certificate: {} and key: {}",
-                    cert_path, key_path
+                    cert_path,
+                    key_path
                 );
                 Some(config)
             }
@@ -103,12 +116,10 @@ pub mod config_extractor {
     }
 
     /// Extract all common server options from options object
-    pub fn extract_server_options(cx: &mut FunctionContext, options_obj: &JsObject) -> (
-        Option<crate::server::SslConfig>,
-        bool,
-        u64,
-        bool
-    ) {
+    pub fn extract_server_options(
+        cx: &mut FunctionContext,
+        options_obj: &JsObject,
+    ) -> (Option<crate::server::SslConfig>, bool, u64, bool) {
         let ssl_config = extract_ssl_config(cx, options_obj);
         let metrics_enabled = get_bool(cx, options_obj, "metrics", false);
         let timeout = get_u64(cx, options_obj, "timeout", 30000); // Default 30 seconds
@@ -118,19 +129,25 @@ pub mod config_extractor {
     }
 
     /// Extract all server startup parameters (port, host, options)
-    pub fn extract_server_params(cx: &mut FunctionContext) -> Result<(
-        u16,
-        [u8; 4],
-        Option<crate::server::SslConfig>,
-        bool,
-        u64,
-        bool
-    ), neon::result::Throw> {
+    pub fn extract_server_params(
+        cx: &mut FunctionContext,
+    ) -> Result<
+        (
+            u16,
+            [u8; 4],
+            Option<crate::server::SslConfig>,
+            bool,
+            u64,
+            bool,
+        ),
+        neon::result::Throw,
+    > {
         let port = extract_port(cx)?;
         let host = extract_host(cx)?;
-        
+
         // Get options object (third argument)
-        let (ssl_config, metrics_enabled, timeout, dev_mode) = cx.argument::<JsValue>(2)
+        let (ssl_config, metrics_enabled, timeout, dev_mode) = cx
+            .argument::<JsValue>(2)
             .ok()
             .and_then(|options_arg| options_arg.downcast::<JsObject, _>(cx).ok())
             .map(|options_obj| extract_server_options(cx, &options_obj))

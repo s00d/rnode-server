@@ -17,18 +17,20 @@ usersRouter.post('', (req, res) => {
   console.log('Body:', req.body);
 
   try {
-    // Parse body if it's JSON
-    let userData = req.body;
-    if (typeof req.body === 'string') {
-      try {
-        userData = JSON.parse(req.body);
-      } catch (e) {
-        userData = {name: req.body, email: '', age: null};
-      }
+    const userData = req.getBodyAsJson();
+    console.log(11111, userData)
+    if (!userData || !userData.name || !userData.email) {
+      res.status(400).json({
+        success: false,
+        message: 'Username, email are required'
+      });
+      return;
     }
 
+    const { name, email, age } = userData
+
     // Check required fields
-    if (!userData.name || !userData.email) {
+    if (!name || !email) {
       res.json({
         success: false,
         message: 'Name and email are required'
@@ -37,7 +39,7 @@ usersRouter.post('', (req, res) => {
     }
 
     // Create user in database
-    const result = db.createUser(userData);
+    const result = db.createUser({ name, email, age });
 
     if (result.success) {
       res.json({
@@ -102,24 +104,18 @@ usersRouter.put('/{id}', (req, res) => {
   }
 
   try {
-    let userData = req.body;
-    if (typeof req.body === 'string') {
-      try {
-        userData = JSON.parse(req.body);
-      } catch (e) {
-        userData = {name: req.body, email: '', age: null};
-      }
-    }
-
-    if (!userData.name || !userData.email) {
-      res.json({
+    const userData = req.getBodyAsJson();
+    if (!userData || !userData.name || !userData.email) {
+      res.status(400).json({
         success: false,
-        message: 'Name and email are required'
+        message: 'name, email are required'
       });
       return;
     }
 
-    const result = db.updateUser(userId, userData);
+    const { name, email, age } = userData
+
+    const result = db.updateUser(userId, { name, email, age });
     res.json(result);
   } catch (error) {
     res.json({

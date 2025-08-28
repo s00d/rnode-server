@@ -74,8 +74,6 @@ pub fn get_middleware() -> &'static RwLock<Vec<MiddlewareInfo>> {
     MIDDLEWARE.get_or_init(|| RwLock::new(Vec::new()))
 }
 
-
-
 pub fn get_download_routes() -> &'static RwLock<HashMap<String, DownloadRouteConfig>> {
     DOWNLOAD_ROUTES.get_or_init(|| RwLock::new(HashMap::new()))
 }

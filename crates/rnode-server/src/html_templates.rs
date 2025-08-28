@@ -1,26 +1,36 @@
+use axum::body::Body;
 use axum::http::StatusCode;
 use axum::response::Response;
-use axum::body::Body;
 
 /// Generate HTML error page
-pub fn generate_error_page(status_code: StatusCode, title: &str, message: &str, details: Option<&str>, dev_mode: bool) -> Response<Body> {
+pub fn generate_error_page(
+    status_code: StatusCode,
+    title: &str,
+    message: &str,
+    details: Option<&str>,
+    dev_mode: bool,
+) -> Response<Body> {
     let status_text = status_code.as_str();
 
     let details_html = if let Some(details) = details {
-        format!(r#"
+        format!(
+            r#"
             <div class="error-details">
                 <details>
                     <summary>Technical Details</summary>
                     <pre>{}</pre>
                 </details>
             </div>
-        "#, details)
+        "#,
+            details
+        )
     } else {
         String::new()
     };
 
     let dev_info_html = if dev_mode {
-        format!(r#"
+        format!(
+            r#"
             <div class="dev-info">
                 <details>
                     <summary>🛠️ Stack Trace</summary>
@@ -29,14 +39,15 @@ pub fn generate_error_page(status_code: StatusCode, title: &str, message: &str, 
                     </div>
                 </details>
             </div>
-        "#, 
+        "#,
             std::backtrace::Backtrace::capture()
         )
     } else {
         String::new()
     };
 
-    let html_content = format!(r#"
+    let html_content = format!(
+        r#"
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -270,24 +281,21 @@ pub fn generate_error_page(status_code: StatusCode, title: &str, message: &str, 
     </div>
 </body>
 </html>
-    "#, status_code.as_str(), status_text, status_code.canonical_reason().unwrap_or("Unknown Error"), title, message, details_html, dev_info_html);
+    "#,
+        status_code.as_str(),
+        status_text,
+        status_code.canonical_reason().unwrap_or("Unknown Error"),
+        title,
+        message,
+        details_html,
+        dev_info_html
+    );
 
     Response::builder()
         .status(status_code)
         .header("content-type", "text/html; charset=utf-8")
         .body(Body::from(html_content))
         .unwrap()
-}
-
-/// Generate timeout error page
-pub fn generate_timeout_error_page(timeout_ms: u64, details: Option<&str>) -> Response<Body> {
-    generate_error_page(
-        StatusCode::REQUEST_TIMEOUT,
-        &format!("Request Timeout ({}ms)", timeout_ms),
-        &format!("Your request took longer than {}ms to complete. Please try again or contact support if the problem persists.", timeout_ms),
-        details,
-        false // Don't show stack trace by default
-    )
 }
 
 /// Generate generic error page
@@ -297,7 +305,7 @@ pub fn generate_generic_error_page(message: &str, details: Option<&str>) -> Resp
         "Server Error",
         message,
         details,
-        false // Don't show stack trace by default
+        false, // Don't show stack trace by default
     )
 }
 
@@ -308,6 +316,6 @@ pub fn generate_bad_request_page(message: &str, details: Option<&str>) -> Respon
         "Bad Request",
         message,
         details,
-        false // Don't show stack trace by default
+        false, // Don't show stack trace by default
     )
 }

@@ -87,11 +87,12 @@ export async function getHandler(requestJson: string, timeout: number): Promise<
               // For now, just log the resolved result
               logger.debug(`✅ Promise resolved with result: ${JSON.stringify(resolvedResult)}`, 'rnode_server::handler');
             }
-            
+
             return JSON.stringify({
               content: res.content,
               contentType: res.contentType,
               headers: res.headers,
+              status: res.currentStatus,
               customParams: customParams
             });
           } catch (error: any) {
@@ -115,15 +116,17 @@ export async function getHandler(requestJson: string, timeout: number): Promise<
             logger.warn('⚠️ Handler was aborted due to timeout', 'rnode_server::handler');
             return JSON.stringify({
               content: `Handler timeout after ${timeout}ms`,
-              contentType: 'text/plain'
+              contentType: 'text/plain',
+              status: 408,
             });
           }
-          
+
           // Synchronous result
           return JSON.stringify({
             content: res.content,
             contentType: res.contentType,
             headers: res.headers,
+            status: res.currentStatus,
             customParams: customParams
           });
         }
@@ -131,7 +134,8 @@ export async function getHandler(requestJson: string, timeout: number): Promise<
         logger.error(`❌ Handler execution error: ${error}`, 'rnode_server::handler');
         return JSON.stringify({
           content: 'Internal Server Error',
-          contentType: 'text/plain'
+          contentType: 'text/plain',
+          status: 500
         });
       }
     }
@@ -139,14 +143,16 @@ export async function getHandler(requestJson: string, timeout: number): Promise<
     // Only return "Not Found" if no handler was found
     return JSON.stringify({
       content: 'Not Found',
-      contentType: 'text/plain'
+      contentType: 'text/plain',
+      status: 404
     });
     
   } catch (error: any) {
     logger.error(`❌ getHandler error: ${error}`, 'rnode_server::handler');
     return JSON.stringify({
       content: 'Invalid request JSON',
-      contentType: 'text/plain'
+      contentType: 'text/plain',
+      status: 400
     });
   }
 }

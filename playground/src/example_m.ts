@@ -21,6 +21,10 @@ app.get('/hello', (req, res) => {
   res.send('Hello World!');
 });
 
+app.get('/hello1', (req, res) => {
+  res.status(500).send('Hello World!');
+});
+
 // POST route
 app.post('/api/users', (req, res) => {
   res.json({ message: 'User created successfully' });

@@ -11,24 +11,28 @@
     </cargoProject>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4d8c55b6-5a63-439f-adcf-d024569129f5" name="Changes" comment="cleanup">
+    <list default="true" id="4d8c55b6-5a63-439f-adcf-d024569129f5" name="Changes" comment="update">
+      <change afterPath="$PROJECT_DIR$/crates/rnode-server/src/request.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/crates/rnode-server/src/request_parser.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Cargo.lock" beforeDir="false" afterPath="$PROJECT_DIR$/Cargo.lock" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crates/rnode-server/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/Cargo.toml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/handlers.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/handlers.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/html_templates.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/html_templates.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/lib.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/lib.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/middleware.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/middleware.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/promise_utils.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/playground/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/playground/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/server.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/server.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/types.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/types.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/utils.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/utils.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/auth.db" beforeDir="false" afterPath="$PROJECT_DIR$/playground/auth.db" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/playground/src/example_m.ts" beforeDir="false" afterPath="$PROJECT_DIR$/playground/src/example_m.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/index.cts" beforeDir="false" afterPath="$PROJECT_DIR$/src/index.cts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/global-utils.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/global-utils.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/src/routers/auth_api.ts" beforeDir="false" afterPath="$PROJECT_DIR$/playground/src/routers/auth_api.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/src/routers/cors.ts" beforeDir="false" afterPath="$PROJECT_DIR$/playground/src/routers/cors.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/src/routers/templates.ts" beforeDir="false" afterPath="$PROJECT_DIR$/playground/src/routers/templates.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/src/routers/users.ts" beforeDir="false" afterPath="$PROJECT_DIR$/playground/src/routers/users.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/users.db" beforeDir="false" afterPath="$PROJECT_DIR$/playground/users.db" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/utils/handler-utils.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/handler-utils.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/utils/middleware-utils.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/middleware-utils.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/promise-utils.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/promise-utils.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/utils/request.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/request.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/response.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/response.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -140,22 +144,6 @@
       <workItem from="1755847652223" duration="50023000" />
       <workItem from="1755983601443" duration="12392000" />
       <workItem from="1756069919594" duration="25963000" />
-    </task>
-    <task id="LOCAL-00006" summary="init">
-      <option name="closed" value="true" />
-      <created>1755856496908</created>
-      <option name="number" value="00006" />
-      <option name="presentableId" value="LOCAL-00006" />
-      <option name="project" value="LOCAL" />
-      <updated>1755856496908</updated>
-    </task>
-    <task id="LOCAL-00007" summary="init">
-      <option name="closed" value="true" />
-      <created>1755889015435</created>
-      <option name="number" value="00007" />
-      <option name="presentableId" value="LOCAL-00007" />
-      <option name="project" value="LOCAL" />
-      <updated>1755889015435</updated>
     </task>
     <task id="LOCAL-00008" summary="init">
       <option name="closed" value="true" />
@@ -533,7 +521,23 @@
       <option name="project" value="LOCAL" />
       <updated>1756326378947</updated>
     </task>
-    <option name="localTasksCounter" value="55" />
+    <task id="LOCAL-00055" summary="update">
+      <option name="closed" value="true" />
+      <created>1756365475535</created>
+      <option name="number" value="00055" />
+      <option name="presentableId" value="LOCAL-00055" />
+      <option name="project" value="LOCAL" />
+      <updated>1756365475535</updated>
+    </task>
+    <task id="LOCAL-00056" summary="update">
+      <option name="closed" value="true" />
+      <created>1756365782544</created>
+      <option name="number" value="00056" />
+      <option name="presentableId" value="LOCAL-00056" />
+      <option name="project" value="LOCAL" />
+      <updated>1756365782544</updated>
+    </task>
+    <option name="localTasksCounter" value="57" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -588,7 +592,8 @@
     <MESSAGE value="improve Promise and add fnc" />
     <MESSAGE value="refactor and add new logic" />
     <MESSAGE value="cleanup" />
-    <option name="LAST_COMMIT_MESSAGE" value="cleanup" />
+    <MESSAGE value="update" />
+    <option name="LAST_COMMIT_MESSAGE" value="update" />
     <option name="NON_MODAL_COMMIT_POSTPONE_SLOW_CHECKS" value="false" />
   </component>
 </project>

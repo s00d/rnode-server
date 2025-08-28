@@ -1,6 +1,6 @@
 // Убираем старую систему промисов - теперь используем встроенные промисы Neon
+use crate::request::Request;
 use crate::types::{get_event_queue, get_middleware};
-
 use globset::{Glob, GlobSetBuilder};
 use log::{debug, error, info, warn};
 use neon::prelude::*;
@@ -52,39 +52,29 @@ pub fn register_middleware(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     Ok(cx.undefined())
 }
 
-// Function for middleware execution
+// Function for middleware execution with Request and Response objects
 pub async fn execute_middleware(
-    request_data: &mut serde_json::Map<String, serde_json::Value>,
-    timeout: u64, // Timeout from app options
+    request: &mut Request,
+    timeout: u64,   // Timeout from app options
     dev_mode: bool, // Dev mode from app options
 ) -> Result<(), axum::response::Response<axum::body::Body>> {
     use axum::body::Body;
     use axum::http::StatusCode;
     use axum::response::Response;
 
-    // Get path from request_data
-    let actual_path = request_data
-        .get("path")
-        .and_then(|v| v.as_str())
-        .unwrap_or("")
-        .to_string();
+    // Get path from request
+    let actual_path = request.path.clone();
 
     debug!("🔍 Executing middleware for path: '{}'", actual_path);
+    debug!("🔍 Available middleware: {:?}", request.custom_params);
     debug!(
-        "🔍 Available middleware: {:?}",
-        request_data.get("customParams")
-    );
-    debug!(
-        "🔧 Initial request_data customParams: {:?}",
-        request_data.get("customParams")
+        "🔧 Initial request customParams: {:?}",
+        request.custom_params
     );
 
     // Initialize customParams if they don't exist
-    if !request_data.contains_key("customParams") {
-        request_data.insert(
-            "customParams".to_string(),
-            serde_json::Value::Object(serde_json::Map::new()),
-        );
+    if request.custom_params.is_empty() {
+        request.custom_params = serde_json::Map::new();
         debug!("🔧 Initialized customParams object");
     }
 
@@ -157,7 +147,7 @@ pub async fn execute_middleware(
 
             if let Some(channel) = channel {
                 let (tx, rx) = std::sync::mpsc::channel();
-                let request_json = serde_json::to_string(&request_data).unwrap();
+                let request_json = serde_json::to_string(&request.to_json_map()).unwrap();
                 let request_json_clone = request_json.clone();
 
                 let _join_handle = channel.send(move |mut cx| {
@@ -175,34 +165,34 @@ pub async fn execute_middleware(
                     // Check if result is a Promise
                     if result.is_a::<JsPromise, _>(&mut cx) {
                         let promise: Handle<JsPromise> = result.downcast_or_throw(&mut cx)?;
-                        
+
                         // Convert JavaScript Promise to Rust Future
                         let promise_future = promise.to_future(&mut cx, |mut cx, result| {
                             // Get the promise's result value (or throw if it was rejected)
                             let value = result.or_throw(&mut cx)?;
-                            
+
                             // Convert the result to string
                             let result_string = value
                                 .to_string(&mut cx)
                                 .unwrap_or_else(|_| cx.string("Failed to convert promise result"));
-                            
+
                             Ok(result_string.value(&mut cx))
                         })?;
-                        
+
                         // Spawn a task to await the future
-                        let channel = cx.channel();
+                        let _channel = cx.channel();
                         let tx_clone = tx.clone();
-                        
+
                         // Spawn async task in separate thread
                         std::thread::spawn(move || {
                             let rt = tokio::runtime::Builder::new_current_thread()
                                 .enable_all()
                                 .build()
                                 .unwrap();
-                            
+
                             rt.block_on(async {
                                 let result = promise_future.await;
-                                
+
                                 match result {
                                     Ok(result_string) => {
                                         let _ = tx_clone.send(result_string);
@@ -229,7 +219,10 @@ pub async fn execute_middleware(
                 let result = match rx.recv() {
                     Ok(result) => result,
                     Err(_) => {
-                        warn!("❌ Failed to receive middleware result for: {}", actual_path);
+                        warn!(
+                            "❌ Failed to receive middleware result for: {}",
+                            actual_path
+                        );
                         return Err(Response::builder()
                             .status(StatusCode::INTERNAL_SERVER_ERROR)
                             .body(Body::from("Middleware failed"))
@@ -238,15 +231,19 @@ pub async fn execute_middleware(
                 };
 
                 debug!("🔍 Middleware result: {}", result);
-                debug!("🔍 Middleware result type: {}", std::any::type_name::<std::string::String>());
+                debug!(
+                    "🔍 Middleware result type: {}",
+                    std::any::type_name::<std::string::String>()
+                );
                 debug!("🔍 Middleware result length: {}", result.len());
-                debug!("🔍 Middleware result first 200 chars: {}", result.chars().take(200).collect::<String>());
+                debug!(
+                    "🔍 Middleware result first 200 chars: {}",
+                    result.chars().take(200).collect::<String>()
+                );
 
                 // Parse middleware result
-                let mut middleware_result: serde_json::Value = serde_json::from_str(&result)
+                let middleware_result: serde_json::Value = serde_json::from_str(&result)
                     .unwrap_or_else(|_| serde_json::json!({"shouldContinue": true}));
-
-
 
                 middleware_result
             } else {
@@ -271,7 +268,7 @@ pub async fn execute_middleware(
                         "Access Denied",
                         "Middleware has blocked this request",
                         Some(&format!("Error: {}", error_message)),
-                        dev_mode
+                        dev_mode,
                     ));
                 }
 
@@ -292,8 +289,29 @@ pub async fn execute_middleware(
                 // Add headers from middleware
                 if let Some(headers) = middleware_result["headers"].as_object() {
                     for (key, value) in headers {
-                        if let Some(value_str) = value.as_str() {
-                            response_builder = response_builder.header(key, value_str);
+                        let key_lower = key.to_lowercase();
+                        // Skip system headers that Axum sets automatically
+                        if ![
+                            "content-type",
+                            "content-length",
+                            "transfer-encoding",
+                            "connection",
+                            "keep-alive",
+                        ]
+                        .contains(&key_lower.as_str())
+                        {
+                            if let Some(value_str) = value.as_str() {
+                                response_builder = response_builder.header(key, value_str);
+                            }
+                        }
+                    }
+                }
+
+                // Add cookies from middleware
+                if let Some(cookies) = middleware_result["cookies"].as_array() {
+                    for cookie in cookies {
+                        if let Some(cookie_str) = cookie.as_str() {
+                            response_builder = response_builder.header("set-cookie", cookie_str);
                         }
                     }
                 }
@@ -303,114 +321,77 @@ pub async fn execute_middleware(
             }
         }
 
-        // Always update request_data from middleware, regardless of shouldContinue
-        // This ensures parameters are preserved even when middleware continues
-
-        // Update customParams if middleware returned them
-        if let Some(custom_params) = middleware_result["customParams"].as_object() {
-            for (key, value) in custom_params {
-                request_data.insert(key.clone(), value.clone());
-            }
-            debug!("🔧 Updated request_data customParams: {:?}", custom_params);
-        }
-
-        // Update other fields that middleware might have changed
-        if let Some(headers) = middleware_result["headers"].as_object() {
-            for (key, value) in headers {
-                if let Some(_value_str) = value.as_str() {
-                    // Update headers in request_data if they exist
-                    if let Some(existing_headers) =
-                        request_data.get("headers").and_then(|h| h.as_object())
-                    {
-                        let mut new_headers = existing_headers.clone();
-                        new_headers.insert(key.clone(), value.clone());
-                        request_data.insert(
-                            "headers".to_string(),
-                            serde_json::Value::Object(new_headers),
-                        );
-                    }
-                }
-            }
-            debug!("🔧 Updated request_data headers from middleware");
-        }
-
-        // Update any other fields that middleware might have modified
-        for (key, value) in middleware_result
-            .as_object()
-            .unwrap_or(&serde_json::Map::new())
-        {
-            // Skip internal fields that shouldn't overwrite request_data
-            if !["shouldContinue", "req", "res"].contains(&key.as_str()) {
-                request_data.insert(key.clone(), value.clone());
-                debug!("🔧 Updated request_data field '{}': {:?}", key, value);
-            }
-        }
-
-        // If middleware returns complete req and res objects, use them to update request_data
+        // If middleware returns complete req and res objects, use them to update request
         if let Some(complete_req) = middleware_result["req"].as_object() {
-            debug!("🔧 Middleware returned complete req object, updating request_data");
+            debug!("🔧 Middleware returned complete req object, updating request");
             for (key, value) in complete_req {
-                // Skip internal fields that shouldn't overwrite request_data
+                // Skip internal fields that shouldn't overwrite request
                 if !["isMiddleware"].contains(&key.as_str()) {
-                    request_data.insert(key.clone(), value.clone());
-                    debug!(
-                        "🔧 Updated request_data from complete req: {} = {:?}",
-                        key, value
-                    );
+                    // Universal field update - automatically handle all fields
+                    Request::update_request_field(request, key, value);
+                    debug!("🔧 Updated request field '{}': {:?}", key, value);
                 }
             }
         }
 
         if let Some(complete_res) = middleware_result["res"].as_object() {
-            debug!("🔧 Middleware returned complete res object, updating request_data");
+            debug!("🔧 Middleware returned complete res object, updating response");
             // Handle response data if needed
             if let Some(content) = complete_res.get("content") {
+                request.content = content.clone();
                 debug!("🔧 Response content: {:?}", content);
             }
             if let Some(content_type) = complete_res.get("contentType") {
+                request.content_type = content_type.as_str().unwrap_or("text/plain").to_string();
                 debug!("🔧 Response content type: {:?}", content_type);
             }
             if let Some(headers) = complete_res.get("headers") {
                 debug!("🔧 Response headers: {:?}", headers);
-                // Save response headers for final response
-                request_data.insert("responseHeaders".to_string(), headers.clone());
-                debug!("🔧 Saved response headers to request_data");
+                // Update response headers
+                if let Some(headers_obj) = headers.as_object() {
+                    for (key, value) in headers_obj {
+                        request.headers.insert(key.clone(), value.clone());
+                    }
+                }
+                debug!("🔧 Updated response headers");
+            }
+            if let Some(cookies) = complete_res.get("cookies") {
+                debug!("🔧 Response cookies: {:?}", cookies);
+                // Update response cookies
+                if let Some(cookies_array) = cookies.as_array() {
+                    for cookie in cookies_array {
+                        if let Some(cookie_str) = cookie.as_str() {
+                            // Parse cookie string like "name=value" and add to cookies map
+                            if let Some((name, value)) = cookie_str.split_once('=') {
+                                request.cookies.insert(
+                                    name.to_string(),
+                                    serde_json::Value::String(value.to_string()),
+                                );
+                            }
+                        }
+                    }
+                }
+                debug!("🔧 Updated response cookies");
             }
         }
 
         debug!(
-            "🔧 request_data after middleware update: {:?}",
-            request_data
+            "🔧 request after middleware update: {:?}",
+            request.custom_params
         );
         info!("✅ Middleware execution completed successfully");
     }
 
-    debug!(
-        "🔧 Final request_data customParams: {:?}",
-        request_data.get("customParams")
-    );
+    debug!("🔧 Final request customParams: {:?}", request.custom_params);
     info!(
         "✅ Middleware execution completed for path: {}",
         actual_path
     );
 
-    // Ensure customParams are properly set in request_data for the main handler
-    if let Some(custom_params) = request_data.get("customParams") {
-        if custom_params.is_null() {
-            // If customParams is null, create an empty object
-            request_data.insert(
-                "customParams".to_string(),
-                serde_json::Value::Object(serde_json::Map::new()),
-            );
-            debug!("🔧 Created empty customParams object for main handler");
-        }
-    } else {
-        // If customParams doesn't exist, create an empty object
-        request_data.insert(
-            "customParams".to_string(),
-            serde_json::Value::Object(serde_json::Map::new()),
-        );
-        debug!("🔧 Created missing customParams object for main handler");
+    // Ensure customParams are properly set in request for the main handler
+    if request.custom_params.is_empty() {
+        request.custom_params = serde_json::Map::new();
+        debug!("🔧 Created empty customParams object for main handler");
     }
 
     Ok(())

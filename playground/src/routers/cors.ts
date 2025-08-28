@@ -23,7 +23,7 @@ corsRouter.use('/api', (req, res, next) => {
   res.setHeader('Access-Control-Max-Age', '86400'); // 24 hours
 
   // Set Content-Type with encoding for all API responses
-  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setContentType('application/json; charset=utf-8');
 
   // Additional headers for better compatibility
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -70,7 +70,7 @@ corsRouter.get('/api/cors-test', (req, res) => {
     res.setHeader('X-Response-Time', Date.now().toString());
 
     // Explicitly set Content-Type
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setContentType('application/json; charset=utf-8');
 
     // Get set cookies and headers
     const setCookies = res.getCookies();
@@ -94,7 +94,7 @@ corsRouter.get('/api/cors-test', (req, res) => {
     });
   } catch (error) {
     console.error('Error in /api/cors-test:', error);
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setContentType('application/json; charset=utf-8');
     res.json({
       success: false,
       message: 'Error: ' + (error as any).message,
@@ -158,7 +158,6 @@ corsRouter.get('/api/cookies', (req, res) => {
     headerHelpers: {
       userAgent: req.getCookie('user-agent'),
       hasAccept: req.hasHeader('accept'),
-      hasContentType: req.hasHeader('content-type')
     },
     // New methods for getting all data
     allCookies: allCookies,
@@ -187,25 +186,11 @@ corsRouter.delete('/api/cookies/{name}', (req, res) => {
 // Route for getting cookie information
 corsRouter.get('/api/cookies/info', (req, res) => {
   console.log('=== GET /api/cookies/info ===');
-
-  // Parse cookies string
-  const cookiesStr = req.cookies || '';
   const cookies = {};
-
-  if (cookiesStr) {
-    cookiesStr.split(';').forEach(cookie => {
-      const [name, value] = cookie.trim().split('=');
-      if (name && value) {
-        // @ts-ignore
-        cookies[name] = value;
-      }
-    });
-  }
 
   res.json({
     success: true,
-    rawCookies: req.cookies,
-    parsedCookies: cookies,
+    cookies: req.cookies,
     cookieCount: Object.keys(cookies).length,
     headers: req.headers
   });

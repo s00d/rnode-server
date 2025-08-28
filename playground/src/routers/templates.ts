@@ -35,8 +35,7 @@ templatesRouter.get('/', (req, res) => {
         const parsed = JSON.parse(result);
 
         if (parsed.success && parsed.content) {
-            res.setHeader('Content-Type', 'text/html');
-            res.send(parsed.content);
+            res.html(parsed.content);
         } else {
             res.status(500).json({ error: parsed.error });
         }
@@ -65,8 +64,7 @@ templatesRouter.get('{name}', (req, res) => {
         const parsed = JSON.parse(result);
 
         if (parsed.success && parsed.content) {
-            res.setHeader('Content-Type', 'text/html');
-            res.send(parsed.content);
+            res.html(parsed.content);
         } else {
             res.status(500).json({ error: parsed.error });
         }
@@ -98,8 +96,7 @@ templatesRouter.get('/user/{id}', (req, res) => {
         const parsed = JSON.parse(result);
 
         if (parsed.success && parsed.content) {
-            res.setHeader('Content-Type', 'text/html');
-            res.send(parsed.content);
+            res.html(parsed.content);
         } else {
             res.status(500).json({ error: parsed.error });
         }
@@ -135,8 +132,7 @@ templatesRouter.get('/demo', (req, res) => {
         const parsed = JSON.parse(result);
 
         if (parsed.success && parsed.content) {
-            res.setHeader('Content-Type', 'text/html');
-            res.send(parsed.content);
+            res.html(parsed.content);
         } else {
             res.status(500).json({ error: parsed.error });
         }
@@ -198,8 +194,7 @@ templatesRouter.get('/demo', (req, res) => {
         const parsed = JSON.parse(result);
 
         if (parsed.success && parsed.content) {
-            res.setHeader('Content-Type', 'text/html');
-            res.send(parsed.content);
+            res.html(parsed.content);
         } else {
             res.status(500).json({ error: parsed.error });
         }
