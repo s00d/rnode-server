@@ -374,8 +374,7 @@ app.get('/welcome', (req, res) => {
   
   const parsed = JSON.parse(result);
   if (parsed.success) {
-    res.setHeader('Content-Type', 'text/html');
-    res.send(parsed.content);
+    res.html(parsed.content);
   } else {
     res.status(500).json({ error: parsed.error });
   }
@@ -579,6 +578,7 @@ export interface ParsedCookie {
 - **`res.xml(content)`** - Send XML response
 - **`res.send(data)`** - Send generic response
 - **`res.end(data?)`** - End response
+- **`res.setContentType(string)`** - Content type(for end and send)
 
 #### File Operations
 - **`res.sendFile(file)`** - Send uploaded file
@@ -1461,7 +1461,7 @@ app.use('/api', (req, res, next) => {
   res.setHeader('Access-Control-Max-Age', '86400'); // 24 hours
 
   // Set Content-Type with encoding for all API responses
-  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setContentType('application/json; charset=utf-8');
 
   // Additional headers for better compatibility
   res.setHeader('X-Content-Type-Options', 'nosniff');
