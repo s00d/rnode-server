@@ -1,7 +1,7 @@
 {
   "name": "@rnode-server/darwin-x64",
   "description": "Prebuilt binary package for `rnode-server` on `darwin-x64`.",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "os": [
     "darwin"
   ],
