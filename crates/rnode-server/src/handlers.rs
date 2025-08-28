@@ -283,8 +283,8 @@ pub async fn dynamic_handler(
             // Create response_builder for Axum compatibility
             let mut response_builder = axum::response::Response::builder().status(status);
 
-            println!("🔍 Setting status: {}", status);
-            println!("🔍 Setting content-type: {}", content_type);
+            debug!("🔍 Setting status: {}", status);
+            debug!("🔍 Setting content-type: {}", content_type);
 
             // Set content-type from header
             response_builder = response_builder.header("content-type", content_type);

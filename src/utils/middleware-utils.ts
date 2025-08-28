@@ -1,13 +1,12 @@
 import { logger } from './logger';
 import { createRequestObject, createResponseObject } from './request-response-factory';
 import { middlewares } from './global-utils';
-// Use micromatch for pattern matching (supports glob, regex, etc.)
 import micromatch from "micromatch";
 
 
 
 export async function executeMiddleware(middlewareJson: string, timeout: number): Promise<string> {
-  console.log('🔍 executeMiddleware function called with middlewareJson length:', middlewareJson.length);
+  logger.debug('🔍 executeMiddleware function called with middlewareJson length:' + middlewareJson.length);
   
   try {
     const request = JSON.parse(middlewareJson);

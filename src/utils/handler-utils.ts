@@ -1,11 +1,9 @@
 import { logger } from './logger';
-import { Request } from './request';
-import { Response } from './response';
 import { createRequestObject, createResponseObject } from './request-response-factory';
 import { handlers } from './global-utils';
 
 export async function getHandler(requestJson: string, timeout: number): Promise<string> {
-  console.log('🔍 getHandler function called with requestJson length:', requestJson.length);
+  logger.debug('🔍 getHandler function called with requestJson length:' + requestJson.length);
   
   try {
     const request = JSON.parse(requestJson);

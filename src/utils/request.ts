@@ -1,4 +1,5 @@
 import { UploadedFile } from '../types/request-response';
+import {logger} from "./logger";
 
 // Union type for different body types
 export type RequestBody = 
@@ -208,11 +209,11 @@ export class Request {
 
   // Sleep function that can be cancelled
   async sleep(ms: number): Promise<void> {
-    console.log(`⏰ Sleep called with ${ms}ms, abortController exists: ${!!this.abortController}`);
+    logger.debug(`⏰ Sleep called with ${ms}ms, abortController exists: ${!!this.abortController}`);
     
     // Check if already aborted
     if (this.abortController?.signal.aborted) {
-      console.log(`🛑 Sleep already aborted, rejecting immediately`);
+      logger.debug(`🛑 Sleep already aborted, rejecting immediately`);
       throw new Error('Already aborted');
     }
     
@@ -222,7 +223,7 @@ export class Request {
       // Check periodically if aborted
       const checkInterval = setInterval(() => {
         if (this.abortController?.signal.aborted) {
-          console.log(`🛑 Sleep aborted during execution after ${ms}ms`);
+          logger.debug(`🛑 Sleep aborted during execution after ${ms}ms`);
           clearTimeout(id);
           clearInterval(checkInterval);
           reject(new Error('Aborted'));
@@ -230,7 +231,7 @@ export class Request {
       }, 100);
       
       this.abortController?.signal.addEventListener('abort', () => {
-        console.log(`🛑 Sleep aborted via event listener after ${ms}ms`);
+        logger.debug(`🛑 Sleep aborted via event listener after ${ms}ms`);
         clearTimeout(id);
         clearInterval(checkInterval);
         reject(new Error('Aborted'));

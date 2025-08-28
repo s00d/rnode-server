@@ -661,7 +661,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                 match status {
                     http::StatusCode::METHOD_NOT_ALLOWED => {
                         // Convert 405 to 404
-                        println!("🔧 Converting 405 to 404 for path: {}", path);
+                        debug!("🔧 Converting 405 to 404 for path: {}", path);
 
                         // Use html_templates for 405 response
                         crate::html_templates::generate_error_page(
