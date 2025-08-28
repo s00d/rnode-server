@@ -21,61 +21,6 @@
 
 RNode Server is **not just another Express.js alternative** - it's a **full-featured server implementation** built from the ground up with Rust and Node.js bindings. The goal is to create a production-ready server with all the necessary configurations for fast deployment and optimal performance.
 
-### 🚀 **New Timeout and Error Handling System**
-
-RNode Server now features a **modern timeout and error handling system** that provides:
-
-- **⚡ Automatic Timeout Management**: AbortController automatically cancels operations when timeout is reached
-- **🔒 Status-based Error Handling**: All errors return proper HTTP status codes (4xx, 5xx)
-- **⏱️ Execution Time Measurement**: Built-in timing for performance monitoring
-- **🎨 Beautiful Error Pages**: Automatic generation of HTML error pages for all error statuses
-- **🧹 Memory Safety**: Automatic cleanup of timers and abort signals
-
-#### **Timeout Flow**
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant Rust as Rust Handler
-    participant JS as JavaScript Handler
-
-    Client->>Rust: HTTP Request
-    Rust->>JS: Execute Handler/Middleware
-    JS->>JS: Create AbortController with timeout
-    
-    alt Success
-        JS->>JS: Promise resolves before timeout
-        JS->>Rust: Return JSON with status: 200
-        Rust-->>Client: HTTP Response with result
-    else Timeout
-        JS->>JS: AbortController.abort() triggered
-        JS->>Rust: Return JSON with status: 408 + error details
-        Rust->>Rust: Generate HTML error page
-        Rust-->>Client: Beautiful timeout error page
-    else Error
-        JS->>JS: Promise rejects
-        JS->>Rust: Return JSON with status: 500 + error details
-        Rust->>Rust: Generate HTML error page
-        Rust-->>Client: Beautiful error page
-    end
-```
-
-#### **Error Status Codes**
-
-| Status | Description | When Used |
-|--------|-------------|-----------|
-| **200** | Success | Normal response |
-| **400** | Bad Request | Invalid input data |
-| **401** | Unauthorized | Authentication required |
-| **403** | Forbidden | Access denied |
-| **404** | Not Found | Route not found |
-| **408** | Request Timeout | Handler exceeded timeout |
-| **429** | Too Many Requests | Rate limit exceeded |
-| **500** | Internal Server Error | Handler execution failed |
-| **502** | Bad Gateway | Upstream service error |
-| **503** | Service Unavailable | Service temporarily unavailable |
-| **504** | Gateway Timeout | Upstream timeout |
-
 ### 🔬 **Why This Experiment?**
 
 - **Performance**: Leverage Rust's speed and memory safety for HTTP handling
@@ -211,141 +156,6 @@ This isn't just another Express.js clone - it's a **fundamentally different appr
 
 - **🚀 Build faster servers** with Rust's performance
 - **🔒 Implement custom security** at the protocol level
-
-### 🔄 **New Promise System Architecture**
-
-RNode Server now uses a **revolutionary promise management system** that eliminates polling and provides instant notification when promises complete. This new architecture uses Rust's conditional variables and efficient state management.
-
-#### **New Promise Flow**
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant Rust as Rust Handler
-    participant PromiseStore as Promise Store
-    participant JS as JavaScript Handler
-
-    Client->>Rust: HTTP Request
-    Rust->>JS: Execute Handler
-    JS->>Rust: Return Promise ID + __async flag
-    
-    Note over Rust: Create Promise in PromiseStore
-    Rust->>PromiseStore: create_promise(promiseId, timeout)
-    
-    Note over Rust: Wait for State Change
-    Rust->>PromiseStore: wait_for_promise(promiseId)
-    
-    Note over JS: Promise Executes in Background
-    JS->>JS: Promise resolves/rejects
-    
-    alt Promise Success
-        JS->>Rust: addon.setPromiseResult(promiseId, result)
-        Rust->>PromiseStore: set_promise_result(promiseId, result)
-        PromiseStore-->>Rust: Notify completion
-        Rust-->>Client: HTTP Response with result
-    else Promise Error
-        JS->>Rust: addon.setPromiseError(promiseId, error)
-        Rust->>PromiseStore: set_promise_error(promiseId, error)
-        PromiseStore-->>Rust: Notify completion
-        Rust-->>Client: HTTP Response with error
-    else Promise Timeout
-        PromiseStore-->>Rust: Timeout notification
-        Rust->>JS: clearPromiseById(promiseId)
-        Rust-->>Client: Timeout Error
-    end
-```
-
-#### **Revolutionary Promise Management Features**
-
-- **⚡ Instant Notification**: No more polling - Rust gets notified immediately when promises complete
-- **🔒 Efficient State Management**: Uses Rust's `Arc<Mutex<HashMap>>` with conditional variables
-- **⏱️ Smart Timeout Handling**: Timeouts managed entirely in Rust with automatic cleanup
-- **🧹 Zero Memory Leaks**: Automatic promise cleanup from both Rust and JavaScript sides
-- **🚀 Performance**: Eliminates 100ms polling intervals, reduces CPU usage
-- **🔄 Real-time Updates**: Conditional variables provide instant state change notifications
-
-#### **Key Components**
-
-- **`PromiseStore`**: Rust-based promise storage with thread-safe state management
-- **`wait_for_promise_completion()`**: Rust function that efficiently waits for state changes
-- **`addon.setPromiseResult()`**: JavaScript function that notifies Rust of promise completion
-- **`addon.setPromiseError()`**: JavaScript function that notifies Rust of promise errors
-- **Conditional Variables**: Rust's efficient notification system for state changes
-
-### 💻 **Code Examples**
-
-#### **🔄 Async Route Handlers**
-
-RNode Server supports async/await in route handlers, automatically managing promises through the promise system:
-
-```typescript
-// Simple async route
-app.get('/api/slow', async (req, res) => {
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  res.json({ message: 'Done after 1 second' });
-});
-
-// Async route with database
-app.post('/api/users', async (req, res) => {
-  const user = await createUser(req.body);
-  res.json({ userId: user.id });
-});
-```
-
-#### **🔧 Async Middleware**
-
-Middleware can also be async, enabling complex pre-processing operations:
-
-```typescript
-// Simple auth middleware
-app.use(async (req, res, next) => {
-  const user = await validateToken(req.headers.authorization);
-  req.user = user; next();
-});
-
-// Simple logging middleware
-app.use(async (req, res, next) => {
-  await logRequest(req.method, req.url);
-  next();
-});
-```
-
-#### **⚡ New Promise System in Action**
-
-When you use async handlers, RNode Server now:
-
-1. **Detects async response** with `__async: true` flag and `__promiseId`
-2. **Creates promise entry** in Rust's `PromiseStore` with timeout
-3. **Waits efficiently** using Rust's conditional variables (no polling!)
-4. **Gets instant notification** when JavaScript promise completes
-5. **Handles timeouts** with automatic cleanup from both sides
-6. **Returns final result** immediately upon completion
-
-#### **🔧 How It Works Under the Hood**
-
-```rust
-// Rust side - PromiseStore implementation
-pub struct PromiseStore {
-    promises: Arc<Mutex<HashMap<String, PromiseInfo>>>,
-    condition: Arc<Condvar>, // Efficient notification system
-}
-
-// JavaScript side - Promise completion
-promise.then(
-    (value) => {
-        // Notify Rust immediately when promise resolves
-        addon.setPromiseResult(promiseId, JSON.stringify(result));
-    },
-    (error) => {
-        // Notify Rust immediately when promise rejects
-        addon.setPromiseError(promiseId, error.message);
-    }
-);
-```
-
-- **⚡ Create custom optimizations** for your specific use case
-- **🧩 Extend HTTP protocol** with custom methods and behaviors
-- **📊 Monitor performance** at every layer of your application
 
 ## ✨ Features
 
@@ -1895,127 +1705,158 @@ function validateSession(sessionId) {
 - **Global State** - Thread-safe shared state management
 - **Event System** - Inter-thread communication via channels
 
-## 🔄 **New Promise Architecture - Technical Details**
+## 🔄 **New Promise System Architecture**
 
-### **Core Components**
+RNode Server now uses a **modern promise management system** that handles JavaScript promises directly through Neon FFI with built-in timeout support and error handling.
 
-#### **1. PromiseStore (Rust)**
-```rust
-pub struct PromiseStore {
-    promises: Arc<Mutex<HashMap<String, PromiseInfo>>>,
-    condition: Arc<Condvar>,
-}
+### 🚀 **How It Works**
 
-pub struct PromiseInfo {
-    pub status: PromiseStatus,
-    pub created_at: Instant,
-    pub timeout: Duration,
-}
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Rust as Rust Handler
+    participant JS as JavaScript Handler
 
-pub enum PromiseStatus {
-    Pending,
-    Completed(serde_json::Value),
-    Failed(String),
-}
-```
-
-#### **2. JavaScript Integration**
-```typescript
-// When promise resolves
-promise.then(
-    (value) => {
-        // Notify Rust immediately
-        addon.setPromiseResult(promiseId, JSON.stringify(result));
-    },
-    (error) => {
-        // Notify Rust immediately
-        addon.setPromiseError(promiseId, error.message);
-    }
-);
-```
-
-#### **3. Rust Waiting Logic**
-```rust
-pub fn wait_for_promise(&self, promise_id: &str) -> Result<serde_json::Value, String> {
-    let start_time = Instant::now();
+    Client->>Rust: HTTP Request
+    Rust->>JS: Execute Handler with timeout
+    JS->>JS: Create AbortController + setTimeout
     
-    loop {
-        let mut promises = self.promises.lock().unwrap();
-        
-        if let Some(promise_info) = promises.get(promise_id) {
-            match &promise_info.status {
-                PromiseStatus::Completed(result) => {
-                    // Promise completed - return immediately
-                    let result_clone = result.clone();
-                    promises.remove(promise_id);
-                    return Ok(result_clone);
-                }
-                PromiseStatus::Failed(error) => {
-                    // Promise failed - return error
-                    let error_clone = error.clone();
-                    promises.remove(promise_id);
-                    return Err(error_clone);
-                }
-                PromiseStatus::Pending => {
-                    // Check timeout
-                    if start_time.elapsed() >= promise_info.timeout {
-                        promises.remove(promise_id);
-                        return Err(format!("Timeout waiting for promise {}", promise_id));
-                    }
-                    
-                    // Wait for state change with timeout
-                    let remaining_timeout = promise_info.timeout - start_time.elapsed();
-                    let (mut promises, _) = self.condition
-                        .wait_timeout(promises, remaining_timeout)
-                        .unwrap();
-                    
-                    // Check status again after waiting
-                    continue;
-                }
-            }
-        } else {
-            return Err(format!("Promise {} not found", promise_id));
-        }
+    alt Success
+        JS->>JS: Promise resolves before timeout
+        JS->>Rust: Return JSON with status: 200
+        Rust-->>Client: HTTP Response with result
+    else Timeout
+        JS->>JS: setTimeout triggers abort()
+        JS->>Rust: Return JSON with status: 408
+        Rust->>Rust: Generate HTML error page
+        Rust-->>Client: Beautiful timeout error page
+    else Error
+        JS->>JS: Promise rejects
+        JS->>Rust: Return JSON with status: 500
+        Rust->>Rust: Generate HTML error page
+        Rust-->>Client: Beautiful error page
+    end
+```
+
+### ⚡ **Key Features**
+
+- **🚀 Direct Promise Handling**: JavaScript promises are awaited directly in Rust using Neon FFI
+- **⏱️ Built-in Timeout**: AbortController automatically cancels operations when timeout is reached
+- **🔒 Status-based Errors**: All errors return proper HTTP status codes (4xx, 5xx)
+- **🎨 Auto Error Pages**: Rust generates beautiful HTML error pages for error statuses
+- **🧹 Memory Safe**: Automatic cleanup of timers and abort signals
+
+### 🔧 **Technical Implementation**
+
+#### **Rust Side (handlers.rs)**
+```rust
+// Execute JavaScript handler and await promise
+let result = cx.execute_scoped(|mut cx| {
+    let handler_fn = cx.global().get(&mut cx, "getHandler")?;
+    let args = vec![cx.string(request_json), cx.number(timeout)];
+    handler_fn.call(&mut cx, args)
+})?;
+
+// Parse JSON response and check status
+if let Some(status) = response_json_value["status"].as_u64() {
+    if status >= 400 {
+        return crate::html_templates::generate_error_page(
+            status_code, "Error", error_message, None, dev_mode
+        );
     }
 }
 ```
 
-### **Performance Benefits**
+#### **JavaScript Side (handler-utils.ts)**
+```typescript
+// Set timeout with AbortController
+const timeoutId = setTimeout(() => {
+  req.abortController?.abort();
+}, timeout);
 
-- **🚀 No Polling**: Eliminates 100ms intervals, reduces CPU usage by ~90%
-- **⚡ Instant Notification**: Conditional variables provide immediate state change updates
-- **🔒 Efficient Locking**: Uses `Arc<Mutex<HashMap>>` for thread-safe access
-- **🧹 Automatic Cleanup**: Promises are removed immediately after completion
-- **⏱️ Smart Timeouts**: Timeouts managed entirely in Rust with precise control
-
-### **Memory Management**
-
-- **Zero Memory Leaks**: Promises are automatically cleaned up from both sides
-- **Efficient Storage**: Only stores active promises with minimal overhead
-- **Thread Safety**: All operations are protected by proper locking mechanisms
-- **Conditional Variables**: Efficient notification system without busy waiting
-
-### **Error Handling**
-
-- **Timeout Management**: Automatic cleanup of timed-out promises
-- **Error Propagation**: Clear error messages with proper cleanup
-- **Graceful Degradation**: System continues working even if individual promises fail
-- **Debugging Support**: Comprehensive logging for promise lifecycle events
-
-## Development
-
-### Building
-```bash
-# Build Rust backend
-npm run build
-
-# Watch mode
-npm run build:watch
+// Execute handler and await promise
+const result = handler.handler(req, res);
+if (result && typeof result.then === 'function') {
+  const resolvedResult = await result;
+  
+  // Check if aborted due to timeout
+  if (req.abortController?.signal.aborted) {
+    return JSON.stringify({
+      content: `Handler timeout after ${timeout}ms`,
+      status: 408,
+      error: 'timeout'
+    });
+  }
+}
 ```
 
-### Testing
-```bash
-# Test endpoints
-curl http://localhost:4546/hello
-curl http://localhost:4546/api/users
+### 📊 **Error Status Codes**
+
+| Status | Description | When Used |
+|--------|-------------|-----------|
+| **200** | Success | Normal response |
+| **400** | Bad Request | Invalid input data |
+| **401** | Unauthorized | Authentication required |
+| **403** | Forbidden | Access denied |
+| **404** | Not Found | Route not found |
+| **408** | Request Timeout | Handler exceeded timeout |
+| **429** | Too Many Requests | Rate limit exceeded |
+| **500** | Internal Server Error | Handler execution failed |
+| **502** | Bad Gateway | Upstream service error |
+| **503** | Service Unavailable | Service temporarily unavailable |
+| **504** | Gateway Timeout | Upstream timeout |
+
+### 💻 **Code Examples**
+
+#### **🔄 Async Route Handlers with Timeout**
+
+```typescript
+// Slow request with timeout handling
+app.get('/api/slow', async (req, res) => {
+  const delay = parseInt(req.query.delay as string) || 2000;
+  const startTime = Date.now();
+  
+  try {
+    // Simulate slow processing with abort support
+    await req.sleep(delay);
+    
+    const executionTime = Date.now() - startTime;
+    res.json({
+      message: 'Slow request completed',
+      delay: delay,
+      executionTime: executionTime
+    });
+  } catch (error) {
+    const executionTime = Date.now() - startTime;
+    res.status(500).json({
+      error: 'Slow request failed',
+      executionTime: executionTime
+    });
+  }
+});
 ```
+
+#### **🔧 Async Middleware with Timeout Support**
+
+```typescript
+// Auth middleware with timeout
+app.use(async (req, res, next) => {
+  try {
+    const user = await validateToken(req.headers.authorization);
+    req.user = user;
+    next();
+  } catch (error) {
+    res.status(401).json({ error: 'Authentication failed' });
+  }
+});
+```
+
+### 🎯 **How It Works Under the Hood**
+
+1. **Rust calls JavaScript**: `getHandler(requestJson, timeout)` with timeout value
+2. **JavaScript sets up timeout**: Creates AbortController and setTimeout
+3. **Handler executes**: Runs user's async handler function
+4. **Timeout check**: If timeout reached, AbortController.abort() is called
+5. **Response generation**: Returns JSON with appropriate status code
+6. **Rust processes**: Parses JSON, checks status, generates error pages if needed
+7. **Client receives**: Proper HTTP response with status and content
