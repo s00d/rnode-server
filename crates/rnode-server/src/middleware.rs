@@ -206,7 +206,7 @@ pub async fn execute_middleware(
                         let remaining_timeout_clone = remaining_timeout;
 
                         // Spawn async task in separate thread with timeout control
-                        let thread_handle = std::thread::spawn(move || {
+                        let _thread_handle = std::thread::spawn(move || {
                             let rt = tokio::runtime::Builder::new_current_thread()
                                 .enable_all()
                                 .build()

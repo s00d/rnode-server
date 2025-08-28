@@ -43,6 +43,8 @@ export class RNodeApp extends Router {
     this.useRouter = this.useRouter.bind(this);
     this.getAllRoutes = this.getAllRoutes.bind(this);
     this.listen = this.listen.bind(this);
+    this.httpRequest = this.httpRequest.bind(this);
+    this.httpBatch = this.httpBatch.bind(this);
   }
 
   // Logging configuration

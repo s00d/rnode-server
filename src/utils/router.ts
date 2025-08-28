@@ -5,6 +5,8 @@ import { createMiddlewareUtils, type MiddlewareUtils } from './middleware';
 import { listFiles, saveFile, deleteFile, getFileContent, fileExists, loadStaticFiles, initTemplates, renderTemplate } from './file-utils';
 import { TemplateOptions } from '../types/app-router';
 import { createExpressMiddlewareWrapper, createExpressErrorMiddlewareWrapper } from './express-middleware-utils';
+import {handlers} from "./global-utils";
+import * as addon from "../load.cjs";
 
 export type Middleware = (req: Request, res: Response, next: (error?: any) => void) => void | Promise<any>;
 
@@ -109,6 +111,20 @@ export class Router {
 
   getMiddlewares(): Map<string, Middleware[]> {
     return this.routerMiddlewares;
+  }
+
+
+  // HTTP utility methods
+  async httpRequest(method: string, url: string, headers: Record<string, string> = {}, body: string = '', timeout: number = 30000): Promise<any> {
+    const headersJson = JSON.stringify(headers);
+    const result = (addon as any).httpRequest(method, url, headersJson, body, timeout);
+    return JSON.parse(result);
+  }
+
+  async httpBatch(requests: Array<{method: string, url: string, headers?: Record<string, string>, body?: string}>, timeout: number = 30000): Promise<any> {
+    const requestsJson = JSON.stringify(requests);
+    const result = (addon as any).httpBatch(requestsJson, timeout);
+    return JSON.parse(result);
   }
 
   // Express middleware support

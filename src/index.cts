@@ -48,6 +48,10 @@ declare module "./load.cjs" {
   function registerDownloadRoute(path: string, options: string): void;
   function registerUploadRoute(path: string, options: string): void;
 
+  // HTTP utility functions
+  function httpRequest(method: string, url: string, headers: string, body: string, timeout: number): string;
+  function httpBatch(requests: string, timeout: number): string;
+
 
 }
 

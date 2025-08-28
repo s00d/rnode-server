@@ -90,6 +90,70 @@ app.get('/api/slow', async (req, res) => {
 });
 
 
+// HTTP Utilities Example Route
+app.get('/test-http', async (req, res) => {
+  try {
+    console.log('🌐 Testing HTTP utilities...');
+
+    // Test single HTTP request
+    const singleResponse = await app.httpRequest('GET', 'https://jsonplaceholder.typicode.com/posts/1', {
+      'User-Agent': 'RNode-Server/1.0'
+    }, '', 5000);
+
+    console.log('✅ Single HTTP request result:', singleResponse);
+
+        // Test batch HTTP requests
+    const batchRequests: Array<{method: string, url: string, headers?: Record<string, string>, body?: string}> = [
+      { method: 'GET', url: 'https://jsonplaceholder.typicode.com/posts/1', headers: { 'X-Test': '1' } },
+      { method: 'POST', url: 'https://jsonplaceholder.typicode.com/posts', body: '{"title": "Test Post", "body": "Test body", "userId": 1}', headers: { 'Content-Type': 'application/json' } },
+      { method: 'GET', url: 'https://jsonplaceholder.typicode.com/users/1', headers: {} }
+    ];
+    
+    const batchResponse = await app.httpBatch(batchRequests, 10000);
+    console.log('✅ Batch HTTP requests result:', batchResponse);
+    
+    // Process batch results to show request-response association
+    const processedResults = batchResponse.results.map((resultStr: string, index: number) => {
+      try {
+        const result = JSON.parse(resultStr);
+        return {
+          requestIndex: result.requestIndex,
+          originalRequest: batchRequests[index],
+          response: {
+            status: result.status,
+            body: result.body, // Now parsed JSON
+            bodyRaw: result.bodyRaw, // Original raw response
+            headers: result.headers,
+            url: result.url,
+            method: result.method
+          }
+        };
+      } catch (e) {
+        return { requestIndex: index, error: 'Failed to parse response', originalRequest: batchRequests[index] };
+      }
+    });
+    
+    res.json({
+      success: true,
+      message: 'HTTP utilities test completed',
+      singleRequest: singleResponse,
+      batchRequests: batchResponse,
+      processedResults: processedResults,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('❌ HTTP utilities test failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'HTTP utilities test failed',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+
+
 const apiRouter = Router();
 
 // GET route for retrieving data
@@ -116,6 +180,7 @@ app.listen(port, () => {
   console.log(`  GET /api/very-slow?delay=8000 (test very slow requests)`);
   console.log(`  GET / (static index.html)`);
   console.log(`  GET /style.css (static CSS)`);
+  console.log(`  GET /test-http (test HTTP utilities)`);
 });
 
 

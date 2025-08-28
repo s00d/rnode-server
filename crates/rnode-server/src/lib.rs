@@ -4,6 +4,7 @@ use neon::prelude::*;
 mod file_operations;
 mod handlers;
 mod html_templates;
+mod http_utils;
 mod metrics;
 mod middleware;
 mod request;
@@ -21,6 +22,7 @@ use file_operations::{
     register_upload_route, save_file,
 };
 use handlers::process_http_request;
+use http_utils::{http_request, http_batch};
 use middleware::register_middleware;
 use routes::*;
 use server::start_listen;
@@ -57,6 +59,10 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("downloadFile", download_file)?;
     cx.export_function("registerDownloadRoute", register_download_route)?;
     cx.export_function("registerUploadRoute", register_upload_route)?;
+
+    // Export HTTP utility functions
+    cx.export_function("httpRequest", http_request)?;
+    cx.export_function("httpBatch", http_batch)?;
 
     // Export template functions
     cx.export_function("initTemplates", init_templates_wrapper)?;

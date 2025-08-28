@@ -727,6 +727,82 @@ Visit `http://localhost:4599` to explore:
 - **Static files** at `/static/*`
 - **CORS examples** at `/cors/*`
 
+## 🌐 **HTTP Utilities**
+
+RNode Server provides built-in HTTP client utilities for making external HTTP requests directly from the backend:
+
+### **`app.httpRequest(method, url, headers, body, timeout)`**
+
+Makes a single HTTP request with automatic JSON parsing.
+
+**Parameters:**
+- `method` (string) - HTTP method (GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS)
+- `url` (string) - Target URL
+- `headers` (Record<string, string>) - Request headers
+- `body` (string) - Request body (empty string for GET requests)
+- `timeout` (number) - Timeout in milliseconds (default: 30000)
+
+**Returns:** Promise with response object containing:
+- `success` (boolean) - Request success status
+- `status` (number) - HTTP status code
+- `headers` (Record<string, string>) - Response headers
+- `body` (any) - Parsed response body (JSON if possible, string otherwise)
+- `bodyRaw` (string) - Raw response body as string
+- `url` (string) - Requested URL
+- `method` (string) - HTTP method used
+
+**Example:**
+```typescript
+const response = await app.httpRequest('GET', 'https://api.example.com/users', {
+  'Authorization': 'Bearer token123'
+}, '', 5000);
+
+if (response.success) {
+  console.log('User data:', response.body);
+  console.log('Status:', response.status);
+}
+```
+
+### **`app.httpBatch(requests, timeout)`**
+
+Executes multiple HTTP requests concurrently with automatic request-response association.
+
+**Parameters:**
+- `requests` (Array<{method, url, headers?, body?}>) - Array of request objects
+- `timeout` (number) - Timeout in milliseconds for all requests
+
+**Returns:** Promise with batch response object containing:
+- `success` (boolean) - Overall success status
+- `count` (number) - Number of requests processed
+- `results` (Array<string>) - Array of JSON response strings, each with `requestIndex` field
+
+**Example:**
+```typescript
+const batchRequests = [
+  { method: 'GET', url: 'https://api.example.com/users/1' },
+  { method: 'POST', url: 'https://api.example.com/users', 
+    body: '{"name": "John", "email": "john@example.com"}' },
+  { method: 'GET', url: 'https://api.example.com/posts/1' }
+];
+
+const batchResponse = await app.httpBatch(batchRequests, 10000);
+
+// Process results with request association
+batchResponse.results.forEach((resultStr, index) => {
+  const result = JSON.parse(resultStr);
+  console.log(`Request ${index}:`, result.body);
+  console.log(`Status:`, result.status);
+});
+```
+
+### **Features:**
+- **Automatic JSON parsing** - Response body automatically parsed if valid JSON
+- **Request association** - Batch requests include `requestIndex` for easy mapping
+- **Concurrent execution** - Multiple requests run simultaneously for better performance
+- **Timeout handling** - Configurable timeout with proper error responses
+- **Header support** - Full custom header support for authentication and content negotiation
+- **Error handling** - Structured error responses with status codes and messages
+
 ## Code Examples
 ```javascript
 import { createApp } from 'rnode-server';
