@@ -1,7 +1,7 @@
 use crate::request::Request;
 
 use crate::middleware::execute_middleware;
-use log::{debug, info};
+use log::{debug, info, warn};
 use neon::prelude::*;
 use serde_json;
 
@@ -27,15 +27,21 @@ pub async fn dynamic_handler(
     timeout: u64,   // Timeout from app options
     dev_mode: bool, // Dev mode from app options
 ) -> axum::response::Response<axum::body::Body> {
+    use std::time::Instant;
+    
     info!("🚀 Dynamic handler called - START");
     debug!("🔍 Dynamic handler called:");
     debug!("  Method: {}", method);
     debug!("  Actual path: {}", actual_path);
     debug!("  Registered path: {}", registered_path);
     debug!("  Handler ID: {}", _handler_id);
+    debug!("  Timeout: {}ms", timeout);
     use axum::body::Body;
     use axum::http::StatusCode;
 
+    // Start timing the request
+    let start_time = Instant::now();
+    
     // Получаем готовые Request и Response объекты из extensions
     let request = req.extensions().get::<Request>().cloned();
 
@@ -141,9 +147,32 @@ pub async fn dynamic_handler(
         debug!("  User-Agent: {:?}", request.get_user_agent());
         debug!("  Language: {:?}", request.get_language());
 
-        match execute_middleware(&mut request, timeout, dev_mode).await {
+        // Calculate remaining time for middleware execution
+        let elapsed = start_time.elapsed().as_millis() as u64;
+        let mut remaining_timeout = if elapsed >= timeout {
+            0 // No time left
+        } else {
+            timeout - elapsed
+        };
+
+        debug!("⏱️ Middleware execution - Elapsed: {}ms, Remaining: {}ms", elapsed, remaining_timeout);
+
+        // Check if we've already exceeded the timeout
+        if remaining_timeout == 0 {
+            warn!("⏰ Middleware execution timeout exceeded: {}ms elapsed, {}ms limit", elapsed, timeout);
+            return crate::html_templates::generate_error_page(
+                StatusCode::REQUEST_TIMEOUT,
+                "Request Timeout",
+                "Request timeout exceeded before middleware execution",
+                Some(&format!("Elapsed: {}ms, Limit: {}ms", elapsed, timeout)),
+                dev_mode,
+            );
+        }
+
+        match execute_middleware(&mut request, &mut remaining_timeout, dev_mode).await {
             Ok(()) => {
                 debug!("✅ Middleware executed successfully, continuing to handler");
+                debug!("⏱️ Remaining time after middleware: {}ms", remaining_timeout);
             } // Middleware successfully executed, request_data modified
             Err(middleware_response) => {
                 debug!("❌ Middleware failed, returning error response");
@@ -187,11 +216,21 @@ pub async fn dynamic_handler(
                 let global: Handle<JsObject> = cx.global("global")?;
                 let get_handler_fn: Handle<JsFunction> = global.get(&mut cx, "getHandler")?;
 
-                // Call getHandler(requestJson, timeout) - it returns a Promise
+                // Calculate remaining time for handler execution
+                let handler_elapsed = start_time.elapsed().as_millis() as u64;
+                let handler_remaining_timeout = if handler_elapsed >= timeout {
+                    0 // No time left
+                } else {
+                    timeout - handler_elapsed
+                };
+
+                debug!("⏱️ Handler execution - Elapsed: {}ms, Remaining: {}ms", handler_elapsed, handler_remaining_timeout);
+
+                // Call getHandler(requestJson, remainingTimeout) - it returns a Promise
                 let result: Handle<JsValue> = get_handler_fn
                     .call_with(&mut cx)
                     .arg(cx.string(&request_json_clone))
-                    .arg(cx.number(timeout as f64))
+                    .arg(cx.number(handler_remaining_timeout as f64))
                     .apply(&mut cx)?;
 
                 // Check if result is a Promise
@@ -215,27 +254,49 @@ pub async fn dynamic_handler(
                     let _channel = cx.channel();
                     let tx_clone = tx.clone();
 
-                    // Spawn async task in separate thread
-                    std::thread::spawn(move || {
-                        let rt = tokio::runtime::Builder::new_current_thread()
-                            .enable_all()
-                            .build()
-                            .unwrap();
+                                    // Spawn async task in separate thread with timeout control
+                let thread_handle = std::thread::spawn(move || {
+                    let rt = tokio::runtime::Builder::new_current_thread()
+                        .enable_all()
+                        .build()
+                        .unwrap();
 
-                        rt.block_on(async {
-                            let result = promise_future.await;
-
-                            match result {
-                                Ok(result_string) => {
-                                    let _ = tx_clone.send(result_string);
-                                }
-                                Err(err) => {
-                                    let error_msg = format!("Promise failed: {:?}", err);
-                                    let _ = tx_clone.send(error_msg);
+                    rt.block_on(async {
+                        // Use tokio::time::timeout for timeout control
+                        match tokio::time::timeout(
+                            tokio::time::Duration::from_millis(handler_remaining_timeout),
+                            promise_future
+                        ).await {
+                            Ok(result) => {
+                                match result {
+                                    Ok(result_string) => {
+                                        let _ = tx_clone.send(result_string);
+                                    }
+                                    Err(err) => {
+                                        // Promise failed - send proper JSON error response
+                                        let error_response = serde_json::json!({
+                                            "content": format!("Promise failed: {:?}", err),
+                                            "contentType": "text/plain",
+                                            "status": 500,
+                                            "error": "promise_failed"
+                                        });
+                                        let _ = tx_clone.send(error_response.to_string());
+                                    }
                                 }
                             }
-                        });
+                            Err(_) => {
+                                // Timeout occurred - send proper JSON error response
+                                let timeout_response = serde_json::json!({
+                                    "content": format!("Handler timeout after {}ms", handler_remaining_timeout),
+                                    "contentType": "text/plain",
+                                    "status": 408,
+                                    "error": "timeout"
+                                });
+                                let _ = tx_clone.send(timeout_response.to_string());
+                            }
+                        }
                     });
+                });
                 } else {
                     // Not a promise, convert directly
                     let result_string = result
@@ -250,16 +311,26 @@ pub async fn dynamic_handler(
             // Wait for result from JavaScript
             let result = match rx.recv() {
                 Ok(result) => result,
-                Err(_) => format!(
-                    "Failed to receive result from JavaScript handler: {} {}",
-                    method, registered_path
-                ),
+                Err(_) => {
+                    // Channel error - return proper JSON error response
+                    let error_response = serde_json::json!({
+                        "content": format!("Failed to receive result from JavaScript handler: {} {}", method, registered_path),
+                        "contentType": "text/plain",
+                        "status": 500,
+                        "error": "channel_error"
+                    });
+                    error_response.to_string()
+                }
             };
 
             // Parse JSON response from JavaScript
+            debug!("🔍 Raw result from JavaScript: '{}'", result);
             let response_json_value: serde_json::Value = serde_json::from_str(&result).unwrap_or_else(|_| {
-                serde_json::json!({"content": format!("Failed to parse JS response: {}", result), "contentType": "text/plain"})
+                warn!("❌ Failed to parse JS response as JSON: '{}'", result);
+                serde_json::json!({"content": format!("Failed to parse JS response: {}", result), "contentType": "text/plain", "status": 500})
             });
+            
+            debug!("🔍 Parsed response JSON: {:?}", response_json_value);
 
             // Use response content from handler
             let response_text = response_json_value["content"]
@@ -340,7 +411,9 @@ pub async fn dynamic_handler(
                 }
             }
 
+            debug!("🔍 Checking error condition - Status: {}, Content-Type: '{}'", status, content_type);
             if status >= 400 && content_type == "text/plain" {
+                debug!("⚠️ Error condition met - generating error page");
                 let error_message = response_json_value["content"]
                     .as_str()
                     .unwrap_or("An error occurred");
@@ -348,6 +421,7 @@ pub async fn dynamic_handler(
                 let status_code = StatusCode::from_u16(status as u16)
                     .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
 
+                debug!("🔍 Generating error page for status: {}, message: '{}'", status_code, error_message);
                 return crate::html_templates::generate_error_page(
                     status_code,
                     "Error",
@@ -355,6 +429,8 @@ pub async fn dynamic_handler(
                     None,
                     dev_mode,
                 );
+            } else {
+                debug!("✅ No error condition - continuing with normal response");
             }
 
             response_builder.body(Body::from(response_text)).unwrap()

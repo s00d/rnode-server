@@ -681,7 +681,8 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
             app = app.layer(axum::middleware::from_fn(request_response_layer));
 
             // Add fallback route for static files
-            let mut app = app.fallback(|req: http::Request<axum::body::Body>| async move {
+            let timeout_clone = timeout;
+            let mut app = app.fallback(move |req: http::Request<axum::body::Body>| async move {
                 let path = req.uri().path().to_string();
 
                 // Разделяем запрос на части
@@ -708,14 +709,18 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                 // First try to find static file
                 let accept_encoding = req.headers().get("accept-encoding").and_then(|h| h.to_str().ok());
                 if let Some(mut static_response) = handle_static_file(path, accept_encoding).await {
-                    // Применяем middleware к статическому файлу
-                    if let Err(_) = crate::middleware::execute_middleware(&mut request, 30000, false).await {
+                    // Применяем middleware к статическому файлу с оставшимся временем
+                    let mut remaining_timeout = timeout_clone;
+                    debug!("⏱️ Static file middleware - Initial timeout: {}ms", remaining_timeout);
+                    if let Err(_) = crate::middleware::execute_middleware(&mut request, &mut remaining_timeout, false).await {
                         // Если middleware вернул ошибку, возвращаем 500
                         return axum::response::Response::builder()
                             .status(http::StatusCode::INTERNAL_SERVER_ERROR)
                             .body(axum::body::Body::from("Internal Server Error"))
                             .unwrap();
                     }
+                    
+                    debug!("⏱️ Static file middleware - Remaining timeout after execution: {}ms", remaining_timeout);
 
                     // Получаем данные из Response объекта после middleware
                     let headers = request.get_headers().clone();

@@ -55,17 +55,19 @@ pub fn register_middleware(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 // Function for middleware execution with Request and Response objects
 pub async fn execute_middleware(
     request: &mut Request,
-    timeout: u64,   // Timeout from app options
+    timeout: &mut u64,   // Timeout from app options - mutable reference to update remaining time
     dev_mode: bool, // Dev mode from app options
 ) -> Result<(), axum::response::Response<axum::body::Body>> {
     use axum::body::Body;
     use axum::http::StatusCode;
     use axum::response::Response;
+    use std::time::Instant;
 
     // Get path from request
     let actual_path = request.path.clone();
+    let start_time = Instant::now();
 
-    debug!("🔍 Executing middleware for path: '{}'", actual_path);
+    debug!("🔍 Executing middleware for path: '{}' with timeout: {}ms", actual_path, timeout);
     debug!("🔍 Available middleware: {:?}", request.custom_params);
     debug!(
         "🔧 Initial request customParams: {:?}",
@@ -137,6 +139,25 @@ pub async fn execute_middleware(
         // Execute middleware for this pattern
         debug!("🔍 Executing middleware for path: {}", actual_path);
 
+        // Calculate remaining time for middleware execution
+        let elapsed = start_time.elapsed().as_millis() as u64;
+        let remaining_timeout = if elapsed >= *timeout {
+            0 // No time left
+        } else {
+            *timeout - elapsed
+        };
+
+        debug!("⏱️ Middleware execution - Elapsed: {}ms, Remaining: {}ms", elapsed, remaining_timeout);
+
+        // Check if we've already exceeded the timeout
+        if remaining_timeout == 0 {
+            warn!("⏰ Middleware execution timeout exceeded before start: {}ms elapsed, {}ms limit", elapsed, *timeout);
+            return Err(Response::builder()
+                .status(StatusCode::REQUEST_TIMEOUT)
+                .body(Body::from("Request timeout exceeded"))
+                .unwrap());
+        }
+
         // Call JavaScript executeMiddleware function through event queue
         let event_queue = get_event_queue();
         let middleware_result = {
@@ -155,11 +176,11 @@ pub async fn execute_middleware(
                     let execute_middleware_fn: Handle<JsFunction> =
                         global.get(&mut cx, "executeMiddleware")?;
 
-                    // Call executeMiddleware function - it returns a Promise
+                    // Call executeMiddleware function with remaining timeout - it returns a Promise
                     let result: Handle<JsValue> = execute_middleware_fn
                         .call_with(&mut cx)
                         .arg(cx.string(&request_json_clone))
-                        .arg(cx.number(timeout as f64))
+                        .arg(cx.number(remaining_timeout as f64)) // Pass remaining timeout instead of total
                         .apply(&mut cx)?;
 
                     // Check if result is a Promise
@@ -179,27 +200,38 @@ pub async fn execute_middleware(
                             Ok(result_string.value(&mut cx))
                         })?;
 
-                        // Spawn a task to await the future
+                        // Spawn a task to await the future with timeout control
                         let _channel = cx.channel();
                         let tx_clone = tx.clone();
+                        let remaining_timeout_clone = remaining_timeout;
 
-                        // Spawn async task in separate thread
-                        std::thread::spawn(move || {
+                        // Spawn async task in separate thread with timeout control
+                        let thread_handle = std::thread::spawn(move || {
                             let rt = tokio::runtime::Builder::new_current_thread()
                                 .enable_all()
                                 .build()
                                 .unwrap();
 
                             rt.block_on(async {
-                                let result = promise_future.await;
-
-                                match result {
-                                    Ok(result_string) => {
-                                        let _ = tx_clone.send(result_string);
+                                // Use tokio::time::timeout for timeout control
+                                match tokio::time::timeout(
+                                    tokio::time::Duration::from_millis(remaining_timeout_clone),
+                                    promise_future
+                                ).await {
+                                    Ok(result) => {
+                                        match result {
+                                            Ok(result_string) => {
+                                                let _ = tx_clone.send(result_string);
+                                            }
+                                            Err(err) => {
+                                                let error_msg = format!("Promise failed: {:?}", err);
+                                                let _ = tx_clone.send(error_msg);
+                                            }
+                                        }
                                     }
-                                    Err(err) => {
-                                        let error_msg = format!("Promise failed: {:?}", err);
-                                        let _ = tx_clone.send(error_msg);
+                                    Err(_) => {
+                                        // Timeout occurred
+                                        let _ = tx_clone.send(format!("Middleware timeout after {}ms", remaining_timeout_clone));
                                     }
                                 }
                             });
@@ -375,6 +407,16 @@ pub async fn execute_middleware(
             }
         }
 
+        // Update the timeout with remaining time after middleware execution
+        let total_elapsed = start_time.elapsed().as_millis() as u64;
+        if total_elapsed >= *timeout {
+            *timeout = 0; // No time left
+        } else {
+            *timeout = *timeout - total_elapsed;
+        }
+        
+        debug!("⏱️ After middleware - Total elapsed: {}ms, Remaining timeout: {}ms", total_elapsed, *timeout);
+        
         debug!(
             "🔧 request after middleware update: {:?}",
             request.custom_params
