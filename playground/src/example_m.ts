@@ -57,6 +57,7 @@ app.any('/api/users/{id}', (req, res) => {
 // Slow request route for testing metrics
 app.get('/api/slow', async (req, res) => {
   const delay = parseInt(req.query.delay as string) || 2000; // Default 2 seconds
+  const startTime = Date.now(); // Start timing
   
   console.log(`🐌 Starting slow request with ${delay}ms delay...`);
   console.log(`📝 Request object:`, { method: req.method, url: req.url, params: req.params });
@@ -65,17 +66,21 @@ app.get('/api/slow', async (req, res) => {
     // Simulate slow processing
     await req.sleep(delay)
     
-    console.log(`✅ Slow request completed after ${delay}ms`);
+    const executionTime = Date.now() - startTime; // Calculate execution time
+    console.log(`✅ Slow request completed after ${delay}ms (execution: ${executionTime}ms)`);
     res.json({
       message: 'Slow request completed', 
       delay: delay,
+      executionTime: executionTime,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error(`❌ Slow request failed:`, error);
+    const executionTime = Date.now() - startTime; // Calculate execution time even on error
+    console.error(`❌ Slow request failed after ${executionTime}ms:`, error);
     res.status(500).json({
       error: 'Slow request failed',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
+      executionTime: executionTime
     });
   }
 });

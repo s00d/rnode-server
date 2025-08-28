@@ -21,6 +21,61 @@
 
 RNode Server is **not just another Express.js alternative** - it's a **full-featured server implementation** built from the ground up with Rust and Node.js bindings. The goal is to create a production-ready server with all the necessary configurations for fast deployment and optimal performance.
 
+### 🚀 **New Timeout and Error Handling System**
+
+RNode Server now features a **modern timeout and error handling system** that provides:
+
+- **⚡ Automatic Timeout Management**: AbortController automatically cancels operations when timeout is reached
+- **🔒 Status-based Error Handling**: All errors return proper HTTP status codes (4xx, 5xx)
+- **⏱️ Execution Time Measurement**: Built-in timing for performance monitoring
+- **🎨 Beautiful Error Pages**: Automatic generation of HTML error pages for all error statuses
+- **🧹 Memory Safety**: Automatic cleanup of timers and abort signals
+
+#### **Timeout Flow**
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Rust as Rust Handler
+    participant JS as JavaScript Handler
+
+    Client->>Rust: HTTP Request
+    Rust->>JS: Execute Handler/Middleware
+    JS->>JS: Create AbortController with timeout
+    
+    alt Success
+        JS->>JS: Promise resolves before timeout
+        JS->>Rust: Return JSON with status: 200
+        Rust-->>Client: HTTP Response with result
+    else Timeout
+        JS->>JS: AbortController.abort() triggered
+        JS->>Rust: Return JSON with status: 408 + error details
+        Rust->>Rust: Generate HTML error page
+        Rust-->>Client: Beautiful timeout error page
+    else Error
+        JS->>JS: Promise rejects
+        JS->>Rust: Return JSON with status: 500 + error details
+        Rust->>Rust: Generate HTML error page
+        Rust-->>Client: Beautiful error page
+    end
+```
+
+#### **Error Status Codes**
+
+| Status | Description | When Used |
+|--------|-------------|-----------|
+| **200** | Success | Normal response |
+| **400** | Bad Request | Invalid input data |
+| **401** | Unauthorized | Authentication required |
+| **403** | Forbidden | Access denied |
+| **404** | Not Found | Route not found |
+| **408** | Request Timeout | Handler exceeded timeout |
+| **429** | Too Many Requests | Rate limit exceeded |
+| **500** | Internal Server Error | Handler execution failed |
+| **502** | Bad Gateway | Upstream service error |
+| **503** | Service Unavailable | Service temporarily unavailable |
+| **504** | Gateway Timeout | Upstream timeout |
+
 ### 🔬 **Why This Experiment?**
 
 - **Performance**: Leverage Rust's speed and memory safety for HTTP handling

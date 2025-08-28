@@ -1,10 +1,14 @@
 import { logger } from './logger';
 import { createRequestObject, createResponseObject } from './request-response-factory';
-import { getNextMiddlewarePromiseId, setupPromiseTimeout } from './promise-utils';
-import * as addon from '../load.cjs';
 import { middlewares } from './global-utils';
+// Use micromatch for pattern matching (supports glob, regex, etc.)
+import micromatch from "micromatch";
 
-export function executeMiddleware(middlewareJson: string, timeout: number): string {
+
+
+export async function executeMiddleware(middlewareJson: string, timeout: number): Promise<string> {
+  console.log('🔍 executeMiddleware function called with middlewareJson length:', middlewareJson.length);
+  
   try {
     const request = JSON.parse(middlewareJson);
     logger.debug(`🔍 executeMiddleware called with path: ${request.path}`, 'rnode_server::middleware');
@@ -37,8 +41,6 @@ export function executeMiddleware(middlewareJson: string, timeout: number): stri
         matches = true;
         logger.debug('✅ Global middleware (*) matches');
       } else {
-        // Use micromatch for pattern matching (supports glob, regex, etc.)
-        const micromatch = require('micromatch');
         matches = micromatch.isMatch(request.path, middlewarePath);
         logger.debug(`🔍 Micromatch check: ${request.path} matches ${middlewarePath} -> ${matches}`);
       }
@@ -55,6 +57,11 @@ export function executeMiddleware(middlewareJson: string, timeout: number): stri
           logger.debug(`🔄 Executing middleware ${i + 1} of ${middlewareArray.length}`);
 
           try {
+            // Set timeout to abort the operation using existing abortController
+            const timeoutId = setTimeout(() => {
+              req.abortController?.abort();
+            }, timeout);
+            
             // Call middleware function with req and res objects
             let middlewareError: any = null;
 
@@ -74,53 +81,66 @@ export function executeMiddleware(middlewareJson: string, timeout: number): stri
 
             // Check if middleware returned a promise
             if (result !== undefined && result !== null && typeof result === 'object' && typeof (result as any).then === 'function') {
-              // Middleware returned a promise - we need to wait for it
-              const promiseId = getNextMiddlewarePromiseId();
-              const promise = result as Promise<any>;
+              // Middleware returned a promise - wait for it to resolve
+              logger.debug('🔄 Middleware returned promise, waiting for resolution', 'rnode_server::middleware');
               
-              logger.debug(`🔄 Middleware returned promise ${promiseId}, waiting for completion`, 'rnode_server::middleware');
-              
-              // Set up timeout to abort the request if it takes too long
-              setupPromiseTimeout(
-                promise,
-                promiseId,
-                timeout,
-                req.abortController!,
-                (value: any) => {
-                  // Вызываем Rust функцию для установки результата
-                  const result = {
-                    shouldContinue: true,
+              try {
+                const resolvedResult = await result;
+                logger.debug('✅ Middleware promise resolved successfully', 'rnode_server::middleware');
+                
+                // Check if operation was aborted
+                if (req.abortController?.signal.aborted) {
+                  logger.warn('⚠️ Middleware was aborted due to timeout', 'rnode_server::middleware');
+                  clearTimeout(timeoutId);
+                  return JSON.stringify({
+                    shouldContinue: false,
+                    error: `Middleware timeout after ${timeout}ms`,
+                    status: 408, // Request Timeout
+                    errorType: 'timeout',
+                    timeout: timeout,
                     req: {...req},
                     res: {...res}
-                  };
-                  
-                  try {
-                    addon.setPromiseResult(promiseId, JSON.stringify(result));
-                    logger.debug(`✅ Middleware promise ${promiseId} resolved with result`, 'rnode_server::middleware');
-                  } catch (error) {
-                    logger.error(`❌ Failed to set middleware promise result: ${error}`, 'rnode_server::middleware');
+                  });
+                }
+                
+                // Clear timeout since operation completed successfully
+                clearTimeout(timeoutId);
+                
+                // If middleware returned a result object, update req and res
+                if (resolvedResult && typeof resolvedResult === 'object') {
+                  if (resolvedResult.req) {
+                    Object.assign(req, resolvedResult.req);
                   }
-                },
-                (error: any) => {
-                  // Вызываем Rust функцию для установки ошибки
-                  try {
-                    addon.setPromiseError(promiseId, error.message || String(error));
-                    logger.error(`❌ Middleware promise ${promiseId} rejected: ${error}`, 'rnode_server::middleware');
-                  } catch (error) {
-                    logger.error(`❌ Failed to set middleware promise error: ${error}`, 'rnode_server::middleware');
+                  if (resolvedResult.res) {
+                    Object.assign(res, resolvedResult.res);
                   }
                 }
-              );
+              } catch (error: any) {
+                // Clear timeout on error
+                clearTimeout(timeoutId);
+                
+                logger.error(`❌ Middleware promise rejected: ${error}`, 'rnode_server::middleware');
+                return JSON.stringify({
+                  shouldContinue: false,
+                  error: error.message || 'Middleware timeout',
+                  req: {...req},
+                  res: {...res}
+                });
+              }
+            } else {
+              // Synchronous result - clear timeout
+              clearTimeout(timeoutId);
               
-              // Return a response indicating the operation is in progress
-              return JSON.stringify({
-                shouldContinue: false,
-                content: `Async middleware operation started. Promise ID: ${promiseId}`,
-                contentType: 'text/plain',
-                __async: true,
-                __promiseId: promiseId,
-                __status: 'started'
-              });
+              // Check if operation was aborted
+              if (req.abortController?.signal.aborted) {
+                logger.warn('⚠️ Middleware was aborted due to timeout', 'rnode_server::middleware');
+                return JSON.stringify({
+                  shouldContinue: false,
+                  error: `Middleware timeout after ${timeout}ms`,
+                  req: {...req},
+                  res: {...res}
+                });
+              }
             }
 
             // Check if middleware returned an error
@@ -137,7 +157,7 @@ export function executeMiddleware(middlewareJson: string, timeout: number): stri
 
             // Update accumulated params for next middleware
             logger.debug(`🔧 Updated params: ${JSON.stringify(req.customParams)}`, 'rnode_server::middleware');
-          } catch (error) {
+          } catch (error: any) {
             logger.error(`❌ Middleware execution error: ${error instanceof Error ? error.message : String(error)}`, 'rnode_server::middleware');
             return JSON.stringify({
               shouldContinue: false,
@@ -150,9 +170,9 @@ export function executeMiddleware(middlewareJson: string, timeout: number): stri
       }
     }
 
-    // This code will only execute if no middleware returned a Promise
-    // For Promise-based middleware, the result is returned above
-    logger.debug('✅ All middleware executed synchronously, continuing');
+    // All middleware executed successfully
+    logger.debug('✅ All middleware executed successfully, continuing');
+    
     // Always return accumulated parameters, even when continuing
     // Create req and res objects with accumulated data
     const finalReq = {
@@ -170,36 +190,23 @@ export function executeMiddleware(middlewareJson: string, timeout: number): stri
 
     logger.debug(`🔧 Final response headers: ${JSON.stringify(finalRes.headers)}`, 'rnode_server::middleware');
 
-    return JSON.stringify({
+    const result = JSON.stringify({
       shouldContinue: true,
       req: finalReq,
       res: finalRes
     });
-  } catch (error) {
+    
+    logger.debug(`🔧 Returning middleware result: ${result.substring(0, 200)}...`, 'rnode_server::middleware');
+    return result;
+    
+  } catch (error: any) {
     logger.error(`❌ executeMiddleware error: ${error instanceof Error ? error.message : String(error)}`, 'rnode_server::middleware');
-
-    // Create default req and res objects for error case
-    const errorReq = {
-      customParams: {},
-      headers: {},
-      cookies: '',
-      path: '',
-      method: '',
-      body: '',
-      queryParams: {},
-      pathParams: {}
-    };
-
-    const errorRes = {
-      headers: {},
-      content: 'Middleware Error',
-      contentType: 'text/plain'
-    };
-
+    
     return JSON.stringify({
       shouldContinue: false,
-      req: errorReq,
-      res: errorRes
+      error: error instanceof Error ? error.message : String(error),
+      req: {},
+      res: { headers: {}, content: 'Middleware Error', contentType: 'text/plain' }
     });
   }
 }

@@ -6,7 +6,6 @@ mod handlers;
 mod html_templates;
 mod metrics;
 mod middleware;
-mod promise_utils;
 
 mod routes;
 mod server;
@@ -22,7 +21,6 @@ use file_operations::{
 };
 use handlers::process_http_request;
 use middleware::register_middleware;
-use promise_utils::{set_promise_result, set_promise_error};
 use routes::*;
 use server::start_listen;
 use static_files::{clear_static_cache, get_static_stats, load_static_files};
@@ -62,10 +60,6 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     // Export template functions
     cx.export_function("initTemplates", init_templates_wrapper)?;
     cx.export_function("renderTemplate", render_template_wrapper)?;
-
-    // Export promise utility functions
-    cx.export_function("setPromiseResult", set_promise_result)?;
-    cx.export_function("setPromiseError", set_promise_error)?;
 
     Ok(())
 }

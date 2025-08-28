@@ -48,9 +48,7 @@ declare module "./load.cjs" {
   function registerDownloadRoute(path: string, options: string): void;
   function registerUploadRoute(path: string, options: string): void;
 
-  // Promise utility functions
-  function setPromiseResult(promiseId: string, result: string): boolean;
-  function setPromiseError(promiseId: string, error: string): boolean;
+
 }
 
 // Import types from app-router

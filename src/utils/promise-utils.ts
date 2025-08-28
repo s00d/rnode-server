@@ -1,60 +1,70 @@
 import { logger } from './logger';
 
-// Global promise counter for logging
-let nextPromiseId = 1;
-
-export function getNextPromiseId(): string {
-  return `promise_${nextPromiseId++}_${Date.now()}`;
+// Простые утилиты для работы с промисами
+export function createPromise<T>(
+  executor: (resolve: (value: T) => void, reject: (reason?: any) => void) => void
+): Promise<T> {
+  return new Promise(executor);
 }
 
-export function getNextMiddlewarePromiseId(): string {
-  return `middleware_promise_${nextPromiseId++}_${Date.now()}`;
+export function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-export function setupPromiseTimeout(
-  promise: Promise<any>, 
-  promiseId: string, 
-  timeout: number, 
-  abortController: AbortController,
-  onSuccess: (value: any) => void,
-  onError: (error: any) => void
-): void {
-  logger.debug(`⏰ Setting up timeout for promise ${promiseId}: ${timeout}ms`, 'rnode_server::promise');
+export function timeoutPromise<T>(
+  promise: Promise<T>, 
+  timeoutMs: number, 
+  errorMessage?: string
+): Promise<T> {
+  const timeout = new Promise<never>((_, reject) => {
+    setTimeout(() => reject(new Error(errorMessage || `Operation timed out after ${timeoutMs}ms`)), timeoutMs);
+  });
   
-  // Set up timeout to abort the request if it takes too long
-  const timeoutId = setTimeout(() => {
-    logger.debug(`🛑 Timeout reached for promise ${promiseId}, aborting request`, 'rnode_server::promise');
-    abortController.abort();
-    logger.debug(`🛑 Request ${promiseId} aborted due to timeout (${timeout}ms)`, 'rnode_server::promise');
-  }, timeout);
+  return Promise.race([promise, timeout]);
+}
+
+export function retryPromise<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3,
+  delayMs: number = 1000
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    let attempts = 0;
+    
+    const attempt = () => {
+      attempts++;
+      fn()
+        .then(resolve)
+        .catch((error) => {
+          if (attempts >= maxRetries) {
+            reject(error);
+          } else {
+            setTimeout(attempt, delayMs);
+          }
+        });
+    };
+    
+    attempt();
+  });
+}
+
+// Утилита для логирования промисов
+export function logPromise<T>(
+  promise: Promise<T>, 
+  operationName: string
+): Promise<T> {
+  const startTime = Date.now();
+  logger.debug(`🚀 Starting operation: ${operationName}`, 'rnode_server::promise');
   
-  // Store result when promise resolves
-  promise.then(
-    (value: any) => {
-      // Clear timeout since promise completed
-      clearTimeout(timeoutId);
-      
-      // Check if request was aborted
-      if (abortController.signal.aborted) {
-        logger.debug(`🛑 Request ${promiseId} was aborted, stopping execution`, 'rnode_server::promise');
-        return;
-      }
-      
-      logger.debug(`✅ Promise ${promiseId} resolved successfully`, 'rnode_server::promise');
-      onSuccess(value);
-    },
-    (error: any) => {
-      // Clear timeout since promise completed
-      clearTimeout(timeoutId);
-      
-      // Check if request was aborted
-      if (abortController.signal.aborted) {
-        logger.debug(`🛑 Request ${promiseId} was aborted, stopping execution`, 'rnode_server::promise');
-        return;
-      }
-      
-      logger.debug(`❌ Promise ${promiseId} rejected with error: ${error}`, 'rnode_server::promise');
-      onError(error);
-    }
-  );
+  return promise
+    .then((result) => {
+      const duration = Date.now() - startTime;
+      logger.debug(`✅ Operation ${operationName} completed successfully in ${duration}ms`, 'rnode_server::promise');
+      return result;
+    })
+    .catch((error) => {
+      const duration = Date.now() - startTime;
+      logger.debug(`❌ Operation ${operationName} failed after ${duration}ms: ${error}`, 'rnode_server::promise');
+      throw error;
+    });
 }

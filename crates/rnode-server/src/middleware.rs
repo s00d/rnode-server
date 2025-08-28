@@ -1,5 +1,6 @@
-use crate::promise_utils::wait_for_promise_completion;
+// Убираем старую систему промисов - теперь используем встроенные промисы Neon
 use crate::types::{get_event_queue, get_middleware};
+
 use globset::{Glob, GlobSetBuilder};
 use log::{debug, error, info, warn};
 use neon::prelude::*;
@@ -171,76 +172,81 @@ pub async fn execute_middleware(
                         .arg(cx.number(timeout as f64))
                         .apply(&mut cx)?;
 
-                    // Convert result to string and send it
-                    let result_string = result
-                        .to_string(&mut cx)
-                        .unwrap_or_else(|_| cx.string("Failed to handle middleware result"));
-                    let _ = tx.send(result_string.value(&mut cx));
+                    // Check if result is a Promise
+                    if result.is_a::<JsPromise, _>(&mut cx) {
+                        let promise: Handle<JsPromise> = result.downcast_or_throw(&mut cx)?;
+                        
+                        // Convert JavaScript Promise to Rust Future
+                        let promise_future = promise.to_future(&mut cx, |mut cx, result| {
+                            // Get the promise's result value (or throw if it was rejected)
+                            let value = result.or_throw(&mut cx)?;
+                            
+                            // Convert the result to string
+                            let result_string = value
+                                .to_string(&mut cx)
+                                .unwrap_or_else(|_| cx.string("Failed to convert promise result"));
+                            
+                            Ok(result_string.value(&mut cx))
+                        })?;
+                        
+                        // Spawn a task to await the future
+                        let channel = cx.channel();
+                        let tx_clone = tx.clone();
+                        
+                        // Spawn async task in separate thread
+                        std::thread::spawn(move || {
+                            let rt = tokio::runtime::Builder::new_current_thread()
+                                .enable_all()
+                                .build()
+                                .unwrap();
+                            
+                            rt.block_on(async {
+                                let result = promise_future.await;
+                                
+                                match result {
+                                    Ok(result_string) => {
+                                        let _ = tx_clone.send(result_string);
+                                    }
+                                    Err(err) => {
+                                        let error_msg = format!("Promise failed: {:?}", err);
+                                        let _ = tx_clone.send(error_msg);
+                                    }
+                                }
+                            });
+                        });
+                    } else {
+                        // Not a promise, convert directly
+                        let result_string = result
+                            .to_string(&mut cx)
+                            .unwrap_or_else(|_| cx.string("Failed to handle middleware result"));
+                        let _ = tx.send(result_string.value(&mut cx));
+                    }
 
                     Ok(())
                 });
 
-                // Wait for middleware result (using timeout from app options)
-                let result = match rx.recv_timeout(std::time::Duration::from_millis(timeout)) {
+                // Wait for middleware result
+                let result = match rx.recv() {
                     Ok(result) => result,
                     Err(_) => {
-                        warn!("❌ Middleware timeout for: {}", actual_path);
+                        warn!("❌ Failed to receive middleware result for: {}", actual_path);
                         return Err(Response::builder()
                             .status(StatusCode::INTERNAL_SERVER_ERROR)
-                            .body(Body::from("Middleware timeout"))
+                            .body(Body::from("Middleware failed"))
                             .unwrap());
                     }
                 };
 
                 debug!("🔍 Middleware result: {}", result);
+                debug!("🔍 Middleware result type: {}", std::any::type_name::<std::string::String>());
+                debug!("🔍 Middleware result length: {}", result.len());
+                debug!("🔍 Middleware result first 200 chars: {}", result.chars().take(200).collect::<String>());
 
                 // Parse middleware result
                 let mut middleware_result: serde_json::Value = serde_json::from_str(&result)
                     .unwrap_or_else(|_| serde_json::json!({"shouldContinue": true}));
 
-                // Check if this is an async response
-                if let Some(async_flag) = middleware_result.get("__async") {
-                    if async_flag.as_bool().unwrap_or(false) {
-                        // This is an async response, we need to wait for the result
-                        debug!("🔄 Async middleware detected, waiting for result...");
 
-                        // Get promise ID for tracking
-                        let promise_id = middleware_result
-                            .get("__promiseId")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("unknown");
-
-                        debug!(
-                            "🔄 Waiting for middleware promise {} to complete...",
-                            promise_id
-                        );
-
-                        // Wait for the promise to complete using the new logic
-                        match wait_for_promise_completion(promise_id, timeout).await {
-                            Ok(promise_result) => {
-                                debug!(
-                                    "✅ Middleware promise {} completed, using result",
-                                    promise_id
-                                );
-                                // Replace middleware_result with the final result
-                                middleware_result = promise_result;
-                            }
-                            Err(error_msg) => {
-                                debug!(
-                                    "❌ Middleware promise {} failed: {}",
-                                    promise_id, error_msg
-                                );
-                                // Don't try to clean up the promise to avoid channel errors
-                                // The promise will be cleaned up automatically by the PromiseStore
-                                
-                                return Err(crate::html_templates::generate_generic_error_page(
-                                    "Middleware execution failed",
-                                    Some(&format!("Promise failed: {}", error_msg))
-                                ));
-                            }
-                        }
-                    }
-                }
 
                 middleware_result
             } else {

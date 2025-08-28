@@ -2,11 +2,11 @@ import { logger } from './logger';
 import { Request } from './request';
 import { Response } from './response';
 import { createRequestObject, createResponseObject } from './request-response-factory';
-import { getNextPromiseId, setupPromiseTimeout } from './promise-utils';
-import * as addon from '../load.cjs';
 import { handlers } from './global-utils';
 
-export function getHandler(requestJson: string, timeout: number): string {
+export async function getHandler(requestJson: string, timeout: number): Promise<string> {
+  console.log('🔍 getHandler function called with requestJson length:', requestJson.length);
+  
   try {
     const request = JSON.parse(requestJson);
     const { method, path, registeredPath, pathParams, queryParams, body, cookies, headers, ip, ips, ipSource } = request;
@@ -50,69 +50,85 @@ export function getHandler(requestJson: string, timeout: number): string {
 
       // Execute handler
       try {
+        // Set timeout to abort the operation using existing abortController
+        const timeoutId = setTimeout(() => {
+          req.abortController?.abort();
+        }, timeout);
+        
         const result = handler.handler(req, res);
         
         // Check if handler returned a promise
         if (result !== undefined && result !== null && typeof result === 'object' && typeof result.then === 'function') {
-          // Handler returned a promise - we can't wait for it synchronously
-          // Instead, we'll return immediately and let the promise resolve in background
-          const promiseId = getNextPromiseId();
-          const promise = result as Promise<any>;
-          
-          logger.debug(`🔄 Handler returned promise ${promiseId}, returning immediately`, 'rnode_server::handler');
-          
-          // Set up timeout to abort the request if it takes too long
-          setupPromiseTimeout(
-            promise,
-            promiseId,
-            timeout,
-            req.abortController!,
-            (value: any) => {
-              // Вызываем Rust функцию для установки результата
-              const result = {
-                content: res.content,
-                contentType: res.contentType,
-                headers: res.headers,
-                customParams: customParams
-              };
-              
-              try {
-                addon.setPromiseResult(promiseId, JSON.stringify(result));
-                logger.debug(`✅ Promise ${promiseId} resolved with result`, 'rnode_server::handler');
-              } catch (error) {
-                logger.error(`❌ Failed to set promise result: ${error}`, 'rnode_server::handler');
-              }
-            },
-            (error: any) => {
-              // Вызываем Rust функцию для установки ошибки
-              try {
-                addon.setPromiseError(promiseId, error.message || String(error));
-                logger.error(`❌ Promise ${promiseId} rejected: ${error}`, 'rnode_server::handler');
-              } catch (error) {
-                logger.error(`❌ Failed to set promise error: ${error}`, 'rnode_server::handler');
-              }
+          // Handler returned a promise - wait for it to resolve
+          logger.debug('🔄 Handler returned promise, waiting for resolution', 'rnode_server::handler');
+
+          try {
+            const resolvedResult = await result;
+            logger.debug('✅ Promise resolved successfully', 'rnode_server::handler');
+            
+            // Check if operation was aborted
+            if (req.abortController?.signal.aborted) {
+              logger.warn('⚠️ Handler was aborted due to timeout', 'rnode_server::handler');
+              clearTimeout(timeoutId);
+              return JSON.stringify({
+                content: `Handler timeout after ${timeout}ms`,
+                contentType: 'text/plain',
+                status: 408, // Request Timeout
+                error: 'timeout',
+                timeout: timeout
+              });
             }
-          );
+            
+            // Clear timeout since operation completed successfully
+            clearTimeout(timeoutId);
+            
+            // Update response with resolved result if it's a Response object
+            if (resolvedResult && typeof resolvedResult === 'object') {
+              // For now, just log the resolved result
+              logger.debug(`✅ Promise resolved with result: ${JSON.stringify(resolvedResult)}`, 'rnode_server::handler');
+            }
+            
+            return JSON.stringify({
+              content: res.content,
+              contentType: res.contentType,
+              headers: res.headers,
+              customParams: customParams
+            });
+          } catch (error: any) {
+            // Clear timeout on error
+            clearTimeout(timeoutId);
+            
+            logger.error(`❌ Promise rejected: ${error}`, 'rnode_server::handler');
+            return JSON.stringify({
+              content: error.message || 'Handler execution failed',
+              contentType: 'text/plain',
+              status: 500, // Internal Server Error
+              error: 'execution_failed'
+            });
+          }
+        } else {
+          // Synchronous result - clear timeout
+          clearTimeout(timeoutId);
           
-          // Return a response indicating the operation is in progress
+          // Check if operation was aborted
+          if (req.abortController?.signal.aborted) {
+            logger.warn('⚠️ Handler was aborted due to timeout', 'rnode_server::handler');
+            return JSON.stringify({
+              content: `Handler timeout after ${timeout}ms`,
+              contentType: 'text/plain'
+            });
+          }
+          
+          // Synchronous result
           return JSON.stringify({
-            content: `Async operation started. Promise ID: ${promiseId}`,
-            contentType: 'text/plain',
+            content: res.content,
+            contentType: res.contentType,
             headers: res.headers,
-            customParams: customParams,
-            __async: true,
-            __promiseId: promiseId,
-            __status: 'started'
+            customParams: customParams
           });
         }
-        
-        return JSON.stringify({
-          content: res.content,
-          contentType: res.contentType,
-          headers: res.headers,
-          customParams: customParams
-        });
-      } catch (error) {
+      } catch (error: any) {
+        logger.error(`❌ Handler execution error: ${error}`, 'rnode_server::handler');
         return JSON.stringify({
           content: 'Internal Server Error',
           contentType: 'text/plain'
@@ -120,11 +136,14 @@ export function getHandler(requestJson: string, timeout: number): string {
       }
     }
 
+    // Only return "Not Found" if no handler was found
     return JSON.stringify({
       content: 'Not Found',
       contentType: 'text/plain'
     });
-  } catch (error) {
+    
+  } catch (error: any) {
+    logger.error(`❌ getHandler error: ${error}`, 'rnode_server::handler');
     return JSON.stringify({
       content: 'Invalid request JSON',
       contentType: 'text/plain'

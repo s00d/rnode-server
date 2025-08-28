@@ -1,10 +1,11 @@
 use crate::middleware::execute_middleware;
-use crate::promise_utils::wait_for_promise_completion;
+// Убираем старую систему промисов - теперь используем встроенные промисы Neon
+
 
 use axum::http::HeaderMap;
 use base64::Engine;
 use futures::stream::{self};
-use log::{debug};
+use log::{debug, info};
 use multer::Multipart;
 use neon::prelude::*;
 use serde_json;
@@ -235,6 +236,7 @@ pub async fn dynamic_handler(
     timeout: u64, // Timeout from app options
     dev_mode: bool, // Dev mode from app options
 ) -> axum::response::Response<axum::body::Body> {
+    info!("🚀 Dynamic handler called - START");
     debug!("🔍 Dynamic handler called:");
     debug!("  Method: {}", method);
     debug!("  Actual path: {}", actual_path);
@@ -541,12 +543,23 @@ pub async fn dynamic_handler(
     );
 
     // Execute middleware after extracting all parameters
-            match execute_middleware(&mut request_data, timeout, dev_mode).await {
-        Ok(()) => (), // Middleware successfully executed, request_data modified
-        Err(middleware_response) => return middleware_response,
+    debug!("🔍 Starting middleware execution");
+    match execute_middleware(&mut request_data, timeout, dev_mode).await {
+        Ok(()) => {
+            debug!("✅ Middleware executed successfully, continuing to handler");
+        }, // Middleware successfully executed, request_data modified
+        Err(middleware_response) => {
+            debug!("❌ Middleware failed, returning error response");
+            return middleware_response;
+        },
     };
+    
+    debug!("🔍 After middleware execution, request_data keys: {:?}", request_data.keys().collect::<Vec<_>>());
+    debug!("🔍 After middleware execution, request_data: {:?}", request_data);
 
+    debug!("🔍 Preparing to call handler");
     let request_json = serde_json::to_string(&request_data).unwrap();
+    debug!("📝 Request JSON prepared: {} chars", request_json.len());
 
     // Clone data for transfer to JavaScript
     let request_json_clone = request_json.clone();
@@ -562,6 +575,7 @@ pub async fn dynamic_handler(
     };
 
     if let Some(channel) = channel {
+        debug!("🔍 Sending request to JavaScript handler");
         let _join_handle = channel.send(move |mut cx| {
             // Call global function getHandler
             let global: Handle<JsObject> = cx.global("global")?;
@@ -574,20 +588,64 @@ pub async fn dynamic_handler(
                 .arg(cx.number(timeout as f64))
                 .apply(&mut cx)?;
 
-            // Convert result to string and send it
-            let result_string = result
-                .to_string(&mut cx)
-                .unwrap_or_else(|_| cx.string("Failed to convert result"));
-            let _ = tx.send(result_string.value(&mut cx));
+            // Check if result is a Promise
+            if result.is_a::<JsPromise, _>(&mut cx) {
+                let promise: Handle<JsPromise> = result.downcast_or_throw(&mut cx)?;
+                
+                // Convert JavaScript Promise to Rust Future
+                let promise_future = promise.to_future(&mut cx, |mut cx, result| {
+                    // Get the promise's result value (or throw if it was rejected)
+                    let value = result.or_throw(&mut cx)?;
+                    
+                    // Convert the result to string
+                    let result_string = value
+                        .to_string(&mut cx)
+                        .unwrap_or_else(|_| cx.string("Failed to convert promise result"));
+                    
+                    Ok(result_string.value(&mut cx))
+                })?;
+                
+                // Spawn a task to await the future
+                let channel = cx.channel();
+                let tx_clone = tx.clone();
+                
+                // Spawn async task in separate thread
+                std::thread::spawn(move || {
+                    let rt = tokio::runtime::Builder::new_current_thread()
+                        .enable_all()
+                        .build()
+                        .unwrap();
+                    
+                    rt.block_on(async {
+                        let result = promise_future.await;
+                        
+                        match result {
+                            Ok(result_string) => {
+                                let _ = tx_clone.send(result_string);
+                            }
+                            Err(err) => {
+                                let error_msg = format!("Promise failed: {:?}", err);
+                                let _ = tx_clone.send(error_msg);
+                            }
+                        }
+                    });
+                });
+            } else {
+                // Not a promise, convert directly
+                let result_string = result
+                    .to_string(&mut cx)
+                    .unwrap_or_else(|_| cx.string("Failed to convert result"));
+                let _ = tx.send(result_string.value(&mut cx));
+            }
 
             Ok(())
         });
 
-        // Wait for result from JavaScript (using timeout from app options)
-        let result = match rx.recv_timeout(std::time::Duration::from_millis(timeout)) {
+        // Wait for result from JavaScript
+        let result = match rx.recv() {
             Ok(result) => result,
             Err(_) => format!(
-                "Timeout waiting for JavaScript handler: {} {}",
+                "Failed to receive result from JavaScript handler: {} {}",
                 method, registered_path
             ),
         };
@@ -597,46 +655,15 @@ pub async fn dynamic_handler(
             serde_json::json!({"content": format!("Failed to parse JS response: {}", result), "contentType": "text/plain"})
         });
 
-        // Check if this is an async response
-        if let Some(async_flag) = response_json_value.get("__async") {
-            if async_flag.as_bool().unwrap_or(false) {
-                // This is an async response, we need to wait for the result
-                debug!("🔄 Async response detected, waiting for result...");
 
-                // Get promise ID for tracking
-                let promise_id = response_json_value
-                    .get("__promiseId")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("unknown");
 
-                debug!("🔄 Waiting for promise {} to complete...", promise_id);
-
-                // Wait for the promise to complete using the new logic
-                match wait_for_promise_completion(promise_id, timeout).await {
-                    Ok(promise_result) => {
-                        debug!("✅ Promise {} completed, using result: {}", promise_id, promise_result);
-                        // Replace response_json_value with the final result
-                        response_json_value = promise_result;
-                    }
-                    Err(error_msg) => {
-                        debug!("❌ Promise {} failed: {}", promise_id, error_msg);
-                        // Don't try to clean up the promise to avoid channel errors
-                        // The promise will be cleaned up automatically by the PromiseStore
-                        
-                        return crate::html_templates::generate_timeout_error_page(
-                            timeout,
-                            Some(&error_msg)
-                        );
-                    }
-                }
-            }
-        }
-
-        // Use response content from handler (middleware only sets headers, not content)
-        let response_text = response_json_value["content"]
-            .as_str()
-            .unwrap_or("")
-            .to_string();
+            // Use response content from handler (middleware only sets headers, not content)
+    let response_text = response_json_value["content"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
+        
+    info!("🚀 Dynamic handler completed - END");
 
         // Use response content type from handler (middleware only sets headers, not content)
         let content_type = response_json_value["contentType"]
@@ -690,6 +717,26 @@ pub async fn dynamic_handler(
                         }
                     }
                 }
+            }
+        }
+
+        // Check if this is an error status and generate proper error page
+        if let Some(status) = response_json_value["status"].as_u64() {
+            if status >= 400 {
+                let error_message = response_json_value["content"]
+                    .as_str()
+                    .unwrap_or("An error occurred");
+                
+                let status_code = StatusCode::from_u16(status as u16)
+                    .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+                
+                return crate::html_templates::generate_error_page(
+                    status_code,
+                    "Error",
+                    error_message,
+                    None,
+                    dev_mode
+                );
             }
         }
 

@@ -30,7 +30,12 @@ export class Request {
   public ip?: string;
   public ips?: string[];
   public ipSource?: string;
-  public abortController?: AbortController;
+  public abortController: AbortController = new AbortController();
+
+  // Getter for abort signal
+  get abortSignal(): AbortSignal | undefined {
+    return this.abortController.signal;
+  }
 
   constructor(requestData: any) {
     const { method, path, registeredPath, pathParams, queryParams, body, cookies, headers, ip, ips, ipSource, customParams = {} } = requestData;
@@ -46,7 +51,6 @@ export class Request {
     this.ip = ip || '127.0.0.1';
     this.ips = ips || ['127.0.0.1'];
     this.ipSource = ipSource || 'default';
-    this.abortController = new AbortController();
   }
 
   // Helper for getting cookie by name
