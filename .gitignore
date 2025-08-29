@@ -8,3 +8,5 @@ cargo.log
 cross.log
 text
 docs/.vitepress/cache
+docs/.vitepress/dist
+docs/.vitepress/node_modules

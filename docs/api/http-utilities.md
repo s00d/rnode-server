@@ -13,14 +13,14 @@ Makes a single HTTP request with automatic JSON parsing.
 **Parameters:**
 - `method` (string) - HTTP method (GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS)
 - `url` (string) - Target URL
-- `headers` (Record<string, string>) - Request headers
+- `headers` (Record&lt;string, string&gt;) - Request headers
 - `body` (string) - Request body (empty string for GET requests)
 - `timeout` (number) - Timeout in milliseconds (default: 30000)
 
 **Returns:** Promise with response object containing:
 - `success` (boolean) - Request success status
 - `status` (number) - HTTP status code
-- `headers` (Record<string, string>) - Response headers
+- `headers` (Record&lt;string, string&gt;) - Response headers
 - `body` (any) - Parsed response body (JSON if possible, string otherwise)
 - `bodyRaw` (string) - Raw response body as string
 - `url` (string) - Requested URL
@@ -47,13 +47,13 @@ if (response.success) {
 Executes multiple HTTP requests concurrently with automatic request-response association.
 
 **Parameters:**
-- `requests` (Array<{method, url, headers?, body?}>) - Array of request objects
+- `requests` (Array&lt;{method, url, headers?, body?}&gt;) - Array of request objects
 - `timeout` (number) - Timeout in milliseconds for all requests
 
 **Returns:** Promise with batch response object containing:
 - `success` (boolean) - Overall success status
 - `count` (number) - Number of requests processed
-- `results` (Array<string>) - Array of JSON response strings, each with `requestIndex` field
+- `results` (Array&lt;string&gt;) - Array of JSON response strings, each with `requestIndex` field
 
 **Example:**
 ```typescript
