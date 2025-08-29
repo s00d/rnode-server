@@ -22,7 +22,7 @@ crate-type = ["cdylib"]
 neon = { version = "1.1", features = ["futures"] }
 tokio = { version = "1.0", features = ["full"] }
 tokio-util = { version = "0.7", features = ["io"] }
-axum = "0.8.4"
+axum = { version = "0.8.4", features = ["ws"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 http = "1.0"
@@ -34,6 +34,8 @@ brotli = "8.0.2"
 httpdate = "1.0"
 base64 = "0.22"
 futures = "0.3"
+futures-util = "0.3"
+uuid = { version = "1.0", features = ["v4", "serde"] }
 multer = "3.0"
 urlencoding = "2.1"
 reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }

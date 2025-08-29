@@ -30,6 +30,7 @@ export default withMermaid({
       { text: 'Home', link: '/' },
       { text: 'Guide', link: '/guide/' },
       { text: 'API', link: '/api/' },
+      { text: 'WebSocket', link: '/websocket/' },
       { text: 'Examples', link: '/examples/' },
       { text: 'Templates', link: '/templates/' },
       { text: 'Monitoring', link: '/monitoring/' },
@@ -55,6 +56,15 @@ export default withMermaid({
           { text: 'Response', link: '/api/response' },
           { text: 'HTTP Utilities', link: '/api/http-utilities' },
           { text: 'Error Codes', link: '/api/error-codes' }
+        ]
+      },
+      {
+        text: 'WebSocket',
+        items: [
+          { text: 'Overview', link: '/websocket/' },
+          { text: 'Server API', link: '/websocket/websocket' },
+          { text: 'Client Library', link: '/websocket/client' },
+          { text: 'Architecture', link: '/websocket/websocket-optimization' }
         ]
       },
       {

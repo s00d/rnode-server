@@ -52,6 +52,60 @@ declare module "./load.cjs" {
   function httpRequest(method: string, url: string, headers: string, body: string, timeout: number): string;
   function httpBatch(requests: string, timeout: number): string;
 
+  // WebSocket functions
+  function registerWebSocket(
+    path: string,
+    onConnect?: string,
+    onMessage?: string,
+    onClose?: string,
+    onError?: string,
+    onJoinRoom?: string,
+    onLeaveRoom?: string,
+    clientId?: string
+  ): void;
+  function createRoom(name: string, description?: string, maxConnections?: number): string;
+  function sendRoomMessage(roomId: string, message: string): boolean;
+  function getRoomInfo(roomId: string): {
+    id: string;
+    name: string;
+    connectionsCount: number;
+  } | null;
+  function joinRoom(connectionId: string, roomId: string): boolean;
+  function leaveRoom(connectionId: string, roomId: string): boolean;
+  function getAllRooms(): Array<{
+    id: string;
+    name: string;
+    description?: string;
+    maxConnections?: number;
+    connectionsCount: number;
+    metadata: Record<string, string>;
+    createdAt: string;
+  }>;
+  function getClientInfo(connectionId: string): {
+    id: string;
+    clientId: string;
+    path: string;
+    roomId?: string;
+    handlerId: string;
+    metadata: Record<string, string>;
+    createdAt: string;
+    lastPing: string;
+  } | null;
+  function getRoomInfo(roomId: string): {
+    id: string;
+    name: string;
+    connectionsCount: number;
+  } | null;
+  function getUserRooms(connectionId: string): Array<{
+    id: string;
+    name: string;
+    description?: string;
+    maxConnections?: number;
+    connectionsCount: number;
+    metadata: Record<string, string>;
+    createdAt: string;
+  }>;
+
 
 }
 

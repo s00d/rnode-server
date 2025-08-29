@@ -11,6 +11,8 @@
     "dev:mini": "tsx watch src/example_m.ts",
     "dev:cors_example": "tsx watch src/cors_example.ts",
     "dev:express": "node --watch src/example_express.js",
+    "websocket-example": "tsx src/websocket-example.ts",
+    "dev:websocket": "tsx watch src/websocket-example.ts",
     "build": "tsc",
     "build:watch": "tsc --watch",
     "ssl:generate": "chmod +x generate-ssl.sh && ./generate-ssl.sh"

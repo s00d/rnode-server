@@ -15,6 +15,7 @@ mod static_files;
 mod templates;
 mod types;
 mod utils;
+mod websocket;
 
 // Re-export public functions from modules
 use file_operations::{
@@ -67,6 +68,17 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     // Export template functions
     cx.export_function("initTemplates", init_templates_wrapper)?;
     cx.export_function("renderTemplate", render_template_wrapper)?;
+
+    // Export WebSocket functions
+    cx.export_function("registerWebSocket", websocket::register_websocket)?;
+    cx.export_function("createRoom", websocket::create_room)?;
+    cx.export_function("sendRoomMessage", websocket::send_room_message)?;
+    cx.export_function("getRoomInfo", websocket::get_room_info)?;
+    cx.export_function("joinRoom", websocket::join_room)?;
+    cx.export_function("leaveRoom", websocket::leave_room)?;
+    cx.export_function("getAllRooms", websocket::get_all_rooms)?;
+    cx.export_function("getClientInfo", websocket::get_client_info)?;
+    cx.export_function("getUserRooms", websocket::get_user_rooms)?;
 
     Ok(())
 }

@@ -8,7 +8,8 @@ import { createHttpMethodsUtils } from './http-methods';
 import { createMiddlewareUtils } from './middleware';
 import * as addon from '../load.cjs';
 import { DownloadOptions, UploadOptions } from "../types/app-router";
-import { handlers, middlewares } from './global-utils';
+import { handlers, middlewares, websocketCallbacks } from './global-utils';
+import { WebSocketOptions, WebSocketRoom } from '../types/websocket';
 
 export class RNodeApp extends Router {
   // Properties
@@ -252,6 +253,172 @@ export class RNodeApp extends Router {
     logger.info(`🎯 Router registered for path: ${path}`, 'rnode_server::router');
     logger.debug(`📊 Total handlers in system: ${router.getHandlers().size}`, 'rnode_server::router');
     logger.debug(`🔧 Global handlers updated: ${Array.from(handlers.keys()).join(', ')}`, 'rnode_server::router');
+  }
+
+  // WebSocket methods
+  websocket(path: string, options: WebSocketOptions = {}): void {
+    try {
+      // Определяем список включенных событий на основе наличия колбеков
+      // Если колбек настроен - добавляем событие в список для обработки
+      const enabledEvents: string[] = [];
+      
+      if (options.onConnect) enabledEvents.push('onConnect');
+      if (options.onMessage) enabledEvents.push('onMessage');
+      if (options.onClose) enabledEvents.push('onClose');
+      if (options.onError) enabledEvents.push('onError');
+      if (options.onJoinRoom) enabledEvents.push('onJoinRoom');
+      if (options.onLeaveRoom) enabledEvents.push('onLeaveRoom');
+      if (options.onPing) enabledEvents.push('onPing');
+      if (options.onPong) enabledEvents.push('onPong');
+      if (options.onBinaryMessage) enabledEvents.push('onBinaryMessage');
+      
+      // Регистрируем WebSocket роут с включенными событиями
+      // События НЕ в списке будут пропущены без обработки
+      addon.registerWebSocket(path, JSON.stringify(enabledEvents));
+      
+      // Сохраняем колбеки в глобальном хранилище для последующего вызова
+      websocketCallbacks.set(path, options);
+      
+      logger.info(`✅ WebSocket route registered: ${path}`, 'rnode_server::websocket');
+      logger.debug(`🔧 Events with callbacks: ${enabledEvents.join(', ')}`, 'rnode_server::websocket');
+      logger.debug(`🚫 Events without callbacks will be skipped`, 'rnode_server::websocket');
+    } catch (error) {
+      logger.error(`❌ Failed to register WebSocket route: ${path}`, 'rnode_server::websocket');
+      logger.error(`Error: ${error}`, 'rnode_server::websocket');
+    }
+  }
+
+  createRoom(name: string, description?: string, maxConnections?: number): string {
+    try {
+      const roomId = addon.createRoom(name, description, maxConnections);
+      logger.info(`✅ Room created: ${name} (${roomId})`, 'rnode_server::websocket');
+      return roomId;
+    } catch (error) {
+      logger.error(`❌ Failed to create room: ${name}`, 'rnode_server::websocket');
+      logger.error(`Error: ${error}`, 'rnode_server::websocket');
+      throw error;
+    }
+  }
+
+  sendRoomMessage(roomId: string, message: string): boolean {
+    try {
+      const result = addon.sendRoomMessage(roomId, message);
+      logger.debug(`📤 Room message sent to ${roomId}: ${message}`, 'rnode_server::websocket');
+      return result;
+    } catch (error) {
+      logger.error(`❌ Failed to send room message to ${roomId}`, 'rnode_server::websocket');
+      logger.error(`Error: ${error}`, 'rnode_server::websocket');
+      return false;
+    }
+  }
+
+  getRoomInfo(roomId: string): WebSocketRoom | null {
+    try {
+      const roomInfo = addon.getRoomInfo(roomId);
+      if (roomInfo && roomInfo.id) {
+        return {
+          id: roomInfo.id,
+          name: roomInfo.name,
+          description: undefined,
+          maxConnections: undefined,
+          connections: [],
+          metadata: {},
+          createdAt: new Date().toISOString(),
+        } as WebSocketRoom;
+      }
+      return null;
+    } catch (error) {
+      logger.error(`❌ Failed to get room info for ${roomId}`, 'rnode_server::websocket');
+      logger.error(`Error: ${error}`, 'rnode_server::websocket');
+      return null;
+    }
+  }
+
+  // Программное подключение клиента к комнате
+  joinRoom(connectionId: string, roomId: string): boolean {
+    try {
+      const result = addon.joinRoom(connectionId, roomId);
+      logger.info(`🔗 Client ${connectionId} joining room ${roomId}`, 'rnode_server::websocket');
+      return result;
+    } catch (error) {
+      logger.error(`❌ Failed to join room ${roomId} for client ${connectionId}`, 'rnode_server::websocket');
+      logger.error(`Error: ${error}`, 'rnode_server::websocket');
+      return false;
+    }
+  }
+
+  // Программный выход клиента из комнаты
+  leaveRoom(connectionId: string, roomId: string): boolean {
+    try {
+      const result = addon.leaveRoom(connectionId, roomId);
+      logger.info(`🚪 Client ${connectionId} leaving room ${roomId}`, 'rnode_server::websocket');
+      return result;
+    } catch (error) {
+      logger.error(`❌ Failed to leave room ${roomId} for client ${connectionId}`, 'rnode_server::websocket');
+      logger.error(`Error: ${error}`, 'rnode_server::websocket');
+      return false;
+    }
+  }
+
+  // Получить список всех комнат
+  getAllRooms(): WebSocketRoom[] {
+    try {
+      const rooms = addon.getAllRooms();
+      logger.debug(`📋 Getting all rooms`, 'rnode_server::websocket');
+      if (rooms && Array.isArray(rooms)) {
+        return rooms.map(room => ({
+          id: room.id,
+          name: room.name,
+          description: room.description,
+          maxConnections: room.maxConnections,
+          connections: [], // Rust не возвращает connections, используем пустой массив
+          metadata: room.metadata || {},
+          createdAt: room.createdAt || new Date().toISOString(),
+        } as WebSocketRoom));
+      }
+      return [];
+    } catch (error) {
+      logger.error(`❌ Failed to get all rooms`, 'rnode_server::websocket');
+      logger.error(`Error: ${error}`, 'rnode_server::websocket');
+      return [];
+    }
+  }
+
+  // Получить информацию о клиенте
+  getClientInfo(connectionId: string): any {
+    try {
+      const clientInfo = addon.getClientInfo(connectionId);
+      logger.debug(`👤 Getting client info for ${connectionId}`, 'rnode_server::websocket');
+      return clientInfo;
+    } catch (error) {
+      logger.error(`❌ Failed to get client info for ${connectionId}`, 'rnode_server::websocket');
+      logger.error(`Error: ${error}`, 'rnode_server::websocket');
+      return null;
+    }
+  }
+
+  // Получить комнаты пользователя
+  getUserRooms(connectionId: string): WebSocketRoom[] {
+    try {
+      const rooms = addon.getUserRooms(connectionId);
+      logger.debug(`🏠 Getting user rooms for ${connectionId}`, 'rnode_server::websocket');
+      if (rooms && Array.isArray(rooms)) {
+        return rooms.map(room => ({
+          id: room.id,
+          name: room.name,
+          description: room.description,
+          maxConnections: room.maxConnections,
+          connections: [], // Rust не возвращает connections, используем пустой массив
+          metadata: room.metadata || {},
+          createdAt: room.createdAt || new Date().toISOString(),
+        } as WebSocketRoom));
+      }
+      return [];
+    } catch (error) {
+      logger.error(`❌ Failed to get user rooms for ${connectionId}`, 'rnode_server::websocket');
+      logger.error(`Error: ${error}`, 'rnode_server::websocket');
+      return [];
+    }
   }
 
   listen(port: number, hostOrCallback?: string | (() => void), callback?: () => void): void {

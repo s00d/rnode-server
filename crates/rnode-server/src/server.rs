@@ -5,6 +5,7 @@ use crate::request::Request;
 use crate::static_files::handle_static_file;
 use crate::types::{get_download_routes, get_event_queue, get_routes, get_upload_routes};
 use crate::utils::config_extractor;
+use crate::websocket;
 use axum::{
     Router,
     body::Body,
@@ -160,6 +161,35 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 
             // Release lock before starting server
             drop(routes_map);
+
+            // Add WebSocket routes
+            let websocket_routes = websocket::get_websocket_routes();
+            let websocket_routes_map = websocket_routes.read().await;
+            let websocket_routes_vec: Vec<(String, websocket::WebSocketHandler)> = websocket_routes_map.iter()
+                .map(|(path, handler)| (path.clone(), handler.clone()))
+                .collect();
+
+            for (path, _handler) in websocket_routes_vec {
+                let path_clone = path.clone();
+                
+                // Generate unique handler ID for WebSocket
+                let handler_id = format!("ws_{}_{}", path.replace('/', "_"), std::process::id());
+                
+                let websocket_handler = move |req: axum::extract::Request| {
+                    let path = path_clone.clone();
+                    let handler_id = handler_id.clone();
+                    async move {
+                        // Use the upgrade handler for WebSocket connections
+                        websocket::upgrade::websocket_upgrade_handler(req, path, handler_id).await
+                    }
+                };
+
+                app = app.route(&path, any(websocket_handler));
+                debug!("🔌 WebSocket route registered: {}", path);
+            }
+
+            // Release WebSocket routes lock
+            drop(websocket_routes_map);
 
             // Add dynamic routes for file downloads
             let download_routes = get_download_routes();

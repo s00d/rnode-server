@@ -103,10 +103,92 @@ jobs:
       version: ${{ (inputs.version == 'custom' && inputs.custom) || inputs.version }}
       github-release: ${{ !!needs.setup.outputs.publish }}
 
+  build-packages:
+    name: Build Packages
+    if: ${{ needs.setup.outputs.publish }}
+    needs: [setup]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ needs.setup.outputs.ref }}
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install Dependencies
+        run: |
+          npm ci
+          # Устанавливаем зависимости для каждого пакета
+          for pkg in packages/*/; do
+            if [ -f "$pkg/package.json" ]; then
+              echo "Installing dependencies for $pkg"
+              npm ci --prefix "$pkg"
+            fi
+          done
+      - name: Update Package Versions
+        run: |
+          # Получаем новую версию из основного package.json
+          NEW_VERSION=$(node -p "require('./package.json').version")
+          echo "Updating all packages to version: $NEW_VERSION"
+          
+          # Обновляем версии всех пакетов
+          for pkg in packages/*/; do
+            if [ -f "$pkg/package.json" ]; then
+              echo "Updating version in $pkg"
+              npm version $NEW_VERSION --prefix "$pkg" --no-git-tag-version
+            fi
+          done
+      - name: Build Packages
+        run: |
+          # Собираем каждый пакет
+          for pkg in packages/*/; do
+            if [ -f "$pkg/package.json" ]; then
+              echo "Building $pkg"
+              npm run build --prefix "$pkg"
+            fi
+          done
+      - name: Pack Packages
+        run: |
+          mkdir -p dist-packages
+          # Упаковываем каждый пакет
+          for pkg in packages/*/; do
+            if [ -f "$pkg/package.json" ]; then
+              echo "Packing $pkg"
+              npm pack "$pkg" --silent --pack-destination=./dist-packages
+            fi
+          done
+      - name: Validate Packages
+        run: |
+          echo "Validating packages for publication..."
+          for pkg in packages/*/; do
+            if [ -f "$pkg/package.json" ]; then
+              echo "Validating $pkg"
+              # Проверяем, что пакет готов к публикации
+              npm publish --dry-run --prefix "$pkg"
+              
+              # Проверяем, что пакет имеет правильный scope
+              PACKAGE_NAME=$(node -p "require('$pkg/package.json').name")
+              if [[ $PACKAGE_NAME != @rnode/* ]]; then
+                echo "❌ Error: Package $PACKAGE_NAME does not use @rnode scope"
+                exit 1
+              fi
+              echo "✅ Package $PACKAGE_NAME has correct scope"
+            fi
+          done
+      - name: Upload Package Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: dist-packages/
+          retention-days: 1
+
   publish:
     name: Publish
     if: ${{ needs.setup.outputs.publish }}
-    needs: [setup, build]
+    needs: [setup, build, build-packages]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -119,17 +201,37 @@ jobs:
         uses: ./.github/actions/setup
         with:
           use-rust: false
-      - name: Fetch
+      - name: Fetch Main Package
         uses: robinraju/release-downloader@c39a3b234af58f0cf85888573d361fb6fa281534 # v1.10
         with:
           tag: ${{ needs.setup.outputs.tag }}
           fileName: "*.tgz"
           out-file-path: ./dist
-      - name: Publish
+      - name: Download Package Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: packages
+          path: ./dist-packages
+      - name: Publish Main Package
         shell: bash
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
+          echo "Publishing main package..."
           for p in ./dist/*.tgz ; do
             npm publish --access public --no-git-checks $p
           done
+      - name: Publish Packages
+        shell: bash
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          echo "Publishing packages..."
+          for p in ./dist-packages/*.tgz ; do
+            echo "Publishing $p"
+            PACKAGE_NAME=$(basename "$p" .tgz)
+            echo "Package: $PACKAGE_NAME"
+            npm publish --access public --no-git-checks "$p"
+            echo "✅ Successfully published $PACKAGE_NAME"
+          done
+          echo "🎉 All packages published successfully!"

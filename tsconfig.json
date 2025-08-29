@@ -5,5 +5,5 @@
     "declaration": true,
     "outDir": "lib"
   },
-  "exclude": ["lib", "playground", "tests", "vitest.config.mts"]
+  "exclude": ["lib", "playground", "tests", "vitest.config.mts", "packages"]
 }
