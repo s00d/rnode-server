@@ -7,3 +7,4 @@ lib
 cargo.log
 cross.log
 text
+docs/.vitepress/cache
