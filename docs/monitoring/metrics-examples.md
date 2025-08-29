@@ -55,22 +55,22 @@ app.use((req, res, next) => {
 ## 📈 Monitoring Queries
 
 ### Request Rate
-```promql
+```sql
 rate(http_requests_total[5m])
 ```
 
 ### Error Rate
-```promql
+```sql
 rate(http_requests_total{status=~"5.."}[5m])
 ```
 
 ### 95th Percentile Response Time
-```promql
+```sql
 histogram_quantile(0.95, rate(http_requests_duration_seconds_bucket[5m]))
 ```
 
 ### Cache Hit Ratio
-```promql
+```sql
 rate(rnode_server_cache_hits_total[5m]) / (rate(rnode_server_cache_hits_total[5m]) + rate(rnode_server_cache_misses_total[5m]))
 ```
 

@@ -12,18 +12,11 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="4d8c55b6-5a63-439f-adcf-d024569129f5" name="Changes" comment="update">
-      <change afterPath="$PROJECT_DIR$/crates/rnode-server/src/http_utils.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Cargo.lock" beforeDir="false" afterPath="$PROJECT_DIR$/Cargo.lock" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crates/rnode-server/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/Cargo.toml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/handlers.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/handlers.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/lib.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/lib.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/middleware.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/middleware.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/playground/src/example_m.ts" beforeDir="false" afterPath="$PROJECT_DIR$/playground/src/example_m.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/index.cts" beforeDir="false" afterPath="$PROJECT_DIR$/src/index.cts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/app.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/app.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/router.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/router.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/grafana-dashboard.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/metrics-examples.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -135,22 +128,6 @@
       <workItem from="1755847652223" duration="50023000" />
       <workItem from="1755983601443" duration="12392000" />
       <workItem from="1756069919594" duration="25963000" />
-    </task>
-    <task id="LOCAL-00012" summary="init">
-      <option name="closed" value="true" />
-      <created>1755976318675</created>
-      <option name="number" value="00012" />
-      <option name="presentableId" value="LOCAL-00012" />
-      <option name="project" value="LOCAL" />
-      <updated>1755976318675</updated>
-    </task>
-    <task id="LOCAL-00013" summary="init">
-      <option name="closed" value="true" />
-      <created>1756016828319</created>
-      <option name="number" value="00013" />
-      <option name="presentableId" value="LOCAL-00013" />
-      <option name="project" value="LOCAL" />
-      <updated>1756016828319</updated>
     </task>
     <task id="LOCAL-00014" summary="init">
       <option name="closed" value="true" />
@@ -528,7 +505,23 @@
       <option name="project" value="LOCAL" />
       <updated>1756406948555</updated>
     </task>
-    <option name="localTasksCounter" value="61" />
+    <task id="LOCAL-00061" summary="update">
+      <option name="closed" value="true" />
+      <created>1756408616870</created>
+      <option name="number" value="00061" />
+      <option name="presentableId" value="LOCAL-00061" />
+      <option name="project" value="LOCAL" />
+      <updated>1756408616870</updated>
+    </task>
+    <task id="LOCAL-00062" summary="update">
+      <option name="closed" value="true" />
+      <created>1756408915446</created>
+      <option name="number" value="00062" />
+      <option name="presentableId" value="LOCAL-00062" />
+      <option name="project" value="LOCAL" />
+      <updated>1756408915446</updated>
+    </task>
+    <option name="localTasksCounter" value="63" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
