@@ -1,7 +1,7 @@
 {
   "name": "@rnode-server/linux-arm-gnueabihf",
   "description": "Prebuilt binary package for `rnode-server` on `linux-arm-gnueabihf`.",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "os": [
     "linux"
   ],
