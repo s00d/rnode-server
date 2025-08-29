@@ -4,6 +4,23 @@
 
 Complete API reference for RNode Server with examples and usage patterns.
 
+**Main Application Objects:**
+- [App](./app.md) - Main application instance
+- [Router](./router.md) - Modular routing system
+- [Request](./request.md) - HTTP request handling
+- [Response](./response.md) - HTTP response methods
+
+**Quick Method Reference:**
+- HTTP methods (GET, POST, PUT, DELETE)
+- Middleware and routing
+- Static files and templates
+- File operations and utilities
+
+**Code Examples:**
+- Working code samples
+- Best practices
+- Common patterns
+
 ## Core APIs
 
 - **[App](./app.md)** - Main application methods and configuration

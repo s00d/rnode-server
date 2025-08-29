@@ -12,7 +12,14 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="4d8c55b6-5a63-439f-adcf-d024569129f5" name="Changes" comment="update">
-      <change beforePath="$PROJECT_DIR$/docs/api/http-utilities.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/api/http-utilities.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/.vitepress/config.mts" beforeDir="false" afterPath="$PROJECT_DIR$/docs/.vitepress/config.mts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/api/index.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/api/index.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/examples/index.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/examples/index.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/guide/installation.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/guide/installation.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/index.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/index.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -124,14 +131,6 @@
       <workItem from="1755847652223" duration="50023000" />
       <workItem from="1755983601443" duration="12392000" />
       <workItem from="1756069919594" duration="25963000" />
-    </task>
-    <task id="LOCAL-00016" summary="init">
-      <option name="closed" value="true" />
-      <created>1756070220990</created>
-      <option name="number" value="00016" />
-      <option name="presentableId" value="LOCAL-00016" />
-      <option name="project" value="LOCAL" />
-      <updated>1756070220990</updated>
     </task>
     <task id="LOCAL-00017" summary="init">
       <option name="closed" value="true" />
@@ -517,7 +516,15 @@
       <option name="project" value="LOCAL" />
       <updated>1756472424380</updated>
     </task>
-    <option name="localTasksCounter" value="65" />
+    <task id="LOCAL-00065" summary="update">
+      <option name="closed" value="true" />
+      <created>1756472737346</created>
+      <option name="number" value="00065" />
+      <option name="presentableId" value="LOCAL-00065" />
+      <option name="project" value="LOCAL" />
+      <updated>1756472737346</updated>
+    </task>
+    <option name="localTasksCounter" value="66" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

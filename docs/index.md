@@ -1,3 +1,33 @@
+---
+layout: home
+
+hero:
+  name: "RNode Server"
+  text: "High-performance Node.js server built with Rust"
+  tagline: Express-like API with advanced middleware support, featuring revolutionary promise management and zero CPU waste.
+  actions:
+    - theme: brand
+      text: 🚀 Get Started
+      link: /guide/
+    - theme: alt
+      text: ⭐ View on GitHub
+      link: https://github.com/s00d/rnode-server
+
+features:
+  - title: ⚡ High Performance
+    details: 🚀 Built with Rust backend for native speed, achieving ~2.7× faster request processing compared to Express.js.
+  - title: 🔄 Revolutionary Promise System
+    details: 🧠 JavaScript promises awaited directly in Rust with zero CPU waste, instant notification, and built-in timeouts.
+  - title: 🎯 Express-like API
+    details: 🛠️ Familiar routing and middleware patterns, making it easy to migrate from Express.js applications.
+  - title: 🎨 Template Engine
+    details: 🔧 Integrated Tera template engine for server-side HTML rendering with inheritance and macros.
+  - title: 📁 Advanced File Operations
+    details: 📤 Comprehensive file upload, download, and management with security options and wildcard support.
+  - title: 📊 Built-in Monitoring
+    details: 📈 Prometheus metrics, Grafana dashboards, and performance monitoring out of the box.
+---
+
 # RNode Server
 
 > **🚀 Experimental Project**: High-performance Node.js server built with Rust, featuring Express-like API with advanced middleware support.
@@ -28,9 +58,24 @@ RNode Server is a **full-featured server implementation** built from the ground 
 
 ## Quick Start
 
+### Installation
+
+:::tabs
+== npm
 ```bash
 npm install rnode-server
 ```
+
+== pnpm
+```bash
+pnpm add rnode-server
+```
+
+== yarn
+```bash
+yarn add rnode-server
+```
+:::
 
 ```javascript
 import { createApp } from 'rnode-server';

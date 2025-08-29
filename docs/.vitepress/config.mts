@@ -1,5 +1,6 @@
 import { defineConfig } from 'vitepress'
 import { withMermaid } from "vitepress-plugin-mermaid";
+import { tabsMarkdownPlugin } from 'vitepress-plugin-tabs'
 
 // https://vitepress.dev/reference/site-config
 export default withMermaid({
@@ -8,6 +9,11 @@ export default withMermaid({
   lastUpdated: true,
   cleanUrls: true,
   base: process.env.NODE_ENV === 'production' ? '/rnode-server/' : '/',
+  markdown: {
+    config(md) {
+      md.use(tabsMarkdownPlugin)
+    }
+  },
   mermaid: {
     // refer https://mermaid.js.org/config/setup/modules/mermaidAPI.html#mermaidapi-configuration-defaults for options
   },

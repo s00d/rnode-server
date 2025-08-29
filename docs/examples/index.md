@@ -4,6 +4,23 @@
 
 Practical examples and use cases for RNode Server.
 
+**Essential Examples:**
+- Basic server setup
+- Middleware integration
+- Router usage
+- File operations
+
+**Complete Code Samples:**
+- Working examples for every feature
+- Copy-paste ready code
+- Best practices included
+
+**Production Patterns:**
+- Authentication middleware
+- Error handling
+- Performance optimization
+- Security best practices
+
 ## Code Examples
 
 - **[Middleware](./middleware.md)** - Middleware patterns and examples
