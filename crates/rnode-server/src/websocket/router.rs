@@ -182,6 +182,10 @@ pub async fn handle_websocket(socket: WebSocket, path: String, handler_id: Strin
             Ok(Message::Binary(data)) => {
                 log::debug!("📦 Binary message received: {} bytes", data.len());
                 
+                // Record binary message received metric
+                let room_id = get_connection_room(&connection_id).await;
+                crate::metrics::record_websocket_message_received("binary", room_id.as_deref(), &path, data.len());
+                
                 // Call WebSocket callbacks BEFORE processing binary message
                 let binary_result = send_websocket_event("binary_message", &connection_id, &path, &handler_id, Some(&format!("Binary data: {} bytes", data.len())), None).await;
                 match binary_result {
@@ -197,6 +201,7 @@ pub async fn handle_websocket(socket: WebSocket, path: String, handler_id: Strin
                     Err(e) => {
                         log::error!("Failed to call WebSocket binary message callback: {}", e);
                         // При ошибке колбека событие отменяется автоматически
+                        crate::metrics::record_websocket_error("binary_message_callback_failed", &path, room_id.as_deref());
                         // Не обрабатываем бинарное сообщение
                     }
                 }
@@ -212,6 +217,8 @@ pub async fn handle_websocket(socket: WebSocket, path: String, handler_id: Strin
             }
             Err(e) => {
                 log::error!("❌ WebSocket error: {}", e);
+                let room_id = get_connection_room(&connection_id).await;
+                crate::metrics::record_websocket_error("websocket_error", &path, room_id.as_deref());
                 break;
             }
             _ => {}
@@ -253,33 +260,42 @@ pub async fn handle_websocket(socket: WebSocket, path: String, handler_id: Strin
     Ok(())
 }
 
-async fn handle_text_message(connection_id: &Uuid, _path: &str, _handler_id: &str, text: &str) -> Result<(), String> {
+async fn handle_text_message(connection_id: &Uuid, path: &str, _handler_id: &str, text: &str) -> Result<(), String> {
+    // Record message received metric
+    let room_id = crate::websocket::connections::get_connection_room(connection_id).await;
+    crate::metrics::record_websocket_message_received("text", room_id.as_deref(), path, text.len());
+    
     // Парсим сообщение
     if let Ok(data) = serde_json::from_str::<serde_json::Value>(text) {
         match data.get("type").and_then(|t| t.as_str()) {
             Some("join_room") => {
                 if let Err(e) = handle_join_room_message(connection_id, &data).await {
                     log::error!("Join room error: {}", e);
+                    crate::metrics::record_websocket_error("join_room_failed", path, room_id.as_deref());
                 }
             },
             Some("leave_room") => {
                 if let Err(e) = handle_leave_room_message(connection_id, &data).await {
                     log::error!("Leave room error: {}", e);
+                    crate::metrics::record_websocket_error("leave_room_failed", path, room_id.as_deref());
                 }
             },
             Some("room_message") => {
                 if let Err(e) = handle_room_message_message(connection_id, &data).await {
                     log::error!("Room message error: {}", e);
+                    crate::metrics::record_websocket_error("room_message_failed", path, room_id.as_deref());
                 }
             },
             Some("direct_message") => {
                 if let Err(e) = handle_direct_message_message(connection_id, &data).await {
                     log::error!("Direct message error: {}", e);
+                    crate::metrics::record_websocket_error("direct_message_failed", path, room_id.as_deref());
                 }
             },
             Some("ping") => {
                 if let Err(e) = handle_ping_message(connection_id).await {
                     log::error!("Ping error: {}", e);
+                    crate::metrics::record_websocket_error("ping_failed", path, room_id.as_deref());
                 }
             },
             _ => {
@@ -288,9 +304,13 @@ async fn handle_text_message(connection_id: &Uuid, _path: &str, _handler_id: &st
                 
                 if let Err(e) = send_direct_message(connection_id, &message_ack).await {
                     log::error!("Failed to send message ack: {}", e);
+                    crate::metrics::record_websocket_error("message_ack_failed", path, room_id.as_deref());
                 }
             }
         }
+    } else {
+        // JSON parsing error
+        crate::metrics::record_websocket_error("json_parse_failed", path, room_id.as_deref());
     }
     Ok(())
 }
@@ -457,12 +477,26 @@ async fn handle_leave_room_message(connection_id: &Uuid, data: &serde_json::Valu
 async fn handle_room_message_message(connection_id: &Uuid, data: &serde_json::Value) -> Result<(), String> {
     log::debug!("🔍 Processing room message: {}", data);
     
-    // Поддерживаем оба формата: room_id/roomId и message/data (включая вложенные в data)
+    // Поддерживаем оба формата: room_id/roomId и message/data
     let room_id = data.get("room_id").and_then(|r| r.as_str())
         .or_else(|| data.get("roomId").and_then(|r| r.as_str()))
         .or_else(|| data.get("data").and_then(|d| d.get("roomId")).and_then(|r| r.as_str()));
+    
+    // Message может быть в поле "message", "data" (если data - строка), или в data.message
     let message = data.get("message").and_then(|m| m.as_str())
-        .or_else(|| data.get("data").and_then(|m| m.as_str()));
+        .or_else(|| {
+            // Если data - строка, используем её как сообщение
+            if let Some(data_val) = data.get("data") {
+                if data_val.is_string() {
+                    data_val.as_str()
+                } else {
+                    // Если data - объект, ищем поле message
+                    data_val.get("message").and_then(|m| m.as_str())
+                }
+            } else {
+                None
+            }
+        });
     
     log::debug!("🔍 Extracted room_id: {:?}, message: {:?}", room_id, message);
     

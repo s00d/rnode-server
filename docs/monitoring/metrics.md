@@ -29,6 +29,16 @@ const app = createApp({
 | `rnode_server_cache_hits_total` | Counter | Cache hits | - |
 | `rnode_server_cache_misses_total` | Counter | Cache misses | - |
 | `rnode_server_total_connections` | Counter | Total connections | - |
+| `rnode_server_websocket_connections_total` | Counter | Total WebSocket connections | - |
+| `rnode_server_websocket_disconnections_total` | Counter | Total WebSocket disconnections | - |
+| `rnode_server_websocket_connections_active` | Gauge | Active WebSocket connections | - |
+| `rnode_server_websocket_rooms_total` | Gauge | Total WebSocket rooms | - |
+| `rnode_server_websocket_room_connections` | Gauge | Connections per room | `room_id`, `room_name` |
+| `rnode_server_websocket_messages_sent_total` | Counter | Total messages sent | `type`, `room_id`, `path` |
+| `rnode_server_websocket_messages_received_total` | Counter | Total messages received | `type`, `room_id`, `path` |
+| `rnode_server_websocket_connection_duration_seconds` | Histogram | Connection duration | `path`, `room_id` |
+| `rnode_server_websocket_message_size_bytes` | Histogram | Message size | `type`, `direction` |
+| `rnode_server_websocket_errors_total` | Counter | Total WebSocket errors | `error_type`, `path`, `room_id` |
 
 ## PromQL Queries
 
@@ -72,6 +82,41 @@ rnode_server_process_memory_kb
 
 # Server uptime
 rnode_server_uptime_seconds
+```
+
+### WebSocket Metrics
+```sql
+# WebSocket connection rate
+rate(rnode_server_websocket_connections_total[5m])
+
+# Active WebSocket connections
+rnode_server_websocket_connections_active
+
+# WebSocket message rate
+rate(rnode_server_websocket_messages_sent_total[5m])
+rate(rnode_server_websocket_messages_received_total[5m])
+
+# WebSocket error rate
+rate(rnode_server_websocket_errors_total[5m])
+
+# Average connection duration
+histogram_quantile(0.95, rate(rnode_server_websocket_connection_duration_seconds_bucket[5m]))
+
+# Average message size
+histogram_quantile(0.50, rate(rnode_server_websocket_message_size_bytes_bucket[5m]))
+
+# Messages by type
+rate(rnode_server_websocket_messages_sent_total[5m]) by (type)
+rate(rnode_server_websocket_messages_received_total[5m]) by (type)
+
+# Errors by type
+rate(rnode_server_websocket_errors_total[5m]) by (error_type)
+
+# Room connections
+rnode_server_websocket_room_connections
+
+# Total rooms
+rnode_server_websocket_rooms_total
 ```
 
 ## Grafana Dashboard

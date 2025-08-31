@@ -6,6 +6,7 @@ This document provides a complete Grafana dashboard configuration for monitoring
 
 The dashboard includes:
 - **HTTP Performance**: Request rates, response times, status codes
+- **WebSocket Monitoring**: Connection rates, message throughput, error tracking
 - **System Resources**: CPU, memory, uptime
 - **Business Metrics**: Cache performance, slow requests
 - **Real-time Monitoring**: Live updates every 15 seconds
@@ -331,6 +332,143 @@ docker run -d \
           }
         },
         "gridPos": {"h": 8, "w": 8, "x": 16, "y": 40}
+      },
+      {
+        "id": 14,
+        "title": "WebSocket Connections",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "rnode_server_websocket_connections_active",
+            "legendFormat": "Active Connections"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "displayMode": "list"
+            },
+            "unit": "short"
+          }
+        },
+        "gridPos": {"h": 8, "w": 8, "x": 0, "y": 48}
+      },
+      {
+        "id": 15,
+        "title": "WebSocket Connection Rate",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(rnode_server_websocket_connections_total[5m])",
+            "legendFormat": "Connections/sec"
+          },
+          {
+            "expr": "rate(rnode_server_websocket_disconnections_total[5m])",
+            "legendFormat": "Disconnections/sec"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "unit": "connps"
+          }
+        },
+        "gridPos": {"h": 8, "w": 16, "x": 8, "y": 48}
+      },
+      {
+        "id": 16,
+        "title": "WebSocket Message Rate",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(rnode_server_websocket_messages_sent_total[5m])",
+            "legendFormat": "Sent"
+          },
+          {
+            "expr": "rate(rnode_server_websocket_messages_received_total[5m])",
+            "legendFormat": "Received"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "unit": "msgps"
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 56}
+      },
+      {
+        "id": 17,
+        "title": "WebSocket Error Rate",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(rnode_server_websocket_errors_total[5m])",
+            "legendFormat": "Errors/sec"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "unit": "errps"
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 56}
+      },
+      {
+        "id": 18,
+        "title": "WebSocket Rooms",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "rnode_server_websocket_rooms_total",
+            "legendFormat": "Total Rooms"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "displayMode": "list"
+            },
+            "unit": "short"
+          }
+        },
+        "gridPos": {"h": 8, "w": 8, "x": 0, "y": 64}
+      },
+      {
+        "id": 19,
+        "title": "Room Connections",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "rnode_server_websocket_room_connections",
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "displayMode": "list"
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 16, "x": 8, "y": 64}
       }
     ],
     "time": {
@@ -385,6 +523,30 @@ groups:
           severity: warning
         annotations:
           summary: "Too many slow requests"
+          
+      - alert: HighWebSocketErrorRate
+        expr: rate(rnode_server_websocket_errors_total[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High WebSocket error rate detected"
+          
+      - alert: WebSocketConnectionDrop
+        expr: rate(rnode_server_websocket_disconnections_total[5m]) > rate(rnode_server_websocket_connections_total[5m]) * 0.8
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "WebSocket connections dropping rapidly"
+          
+      - alert: WebSocketMessageQueue
+        expr: rate(rnode_server_websocket_messages_received_total[5m]) > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High WebSocket message rate"
 ```
 
 ## 📱 Mobile Dashboard
@@ -410,3 +572,10 @@ The dashboard is responsive and works on mobile devices. Key metrics are display
 - Monitor `http_requests_duration_seconds`
 - Check `rnode_server_slow_requests_total`
 - Optimize database queries and external API calls
+
+### WebSocket Issues
+
+- Monitor `rnode_server_websocket_errors_total` for error patterns
+- Check `rnode_server_websocket_connection_duration_seconds` for connection stability
+- Monitor `rnode_server_websocket_messages_sent_total` vs `rnode_server_websocket_messages_received_total` for message flow
+- Check `rnode_server_websocket_room_connections` for room distribution

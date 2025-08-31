@@ -309,6 +309,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                     loop {
                         interval.tick().await;
                         update_system_metrics();
+                        crate::metrics::update_websocket_metrics();
                     }
                 });
 

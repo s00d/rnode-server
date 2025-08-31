@@ -12,30 +12,19 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="4d8c55b6-5a63-439f-adcf-d024569129f5" name="Changes" comment="update">
-      <change afterPath="$PROJECT_DIR$/.cursorrules" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/CACHING_SYSTEM_PLAN.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/PLUGIN_SYSTEM_PLAN.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/QUEUE_SYSTEM_PLAN.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/TASK_TEMPLATE.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/WEBSOCKET_PLAN.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/crates/rnode-server/src/file_operations/handlers.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/crates/rnode-server/src/file_operations/mod.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/crates/rnode-server/src/file_operations/operations.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/crates/rnode-server/src/file_operations/routes.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/crates/rnode-server/src/file_operations/types.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/crates/rnode-server/src/file_operations/utils.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/crates/rnode-server/src/static_files/cache.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/crates/rnode-server/src/static_files/compression.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/crates/rnode-server/src/static_files/fallback.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/crates/rnode-server/src/static_files/handlers.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/crates/rnode-server/src/static_files/options.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/crates/rnode-server/src/static_files/security.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/crates/rnode-server/src/static_files/types.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/crates/rnode-server/src/metrics/business.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/crates/rnode-server/src/metrics/http.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/crates/rnode-server/src/metrics/mod.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/crates/rnode-server/src/metrics/system.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/crates/rnode-server/src/metrics/websocket.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/file_operations.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/metrics.rs" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/server.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/server.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/static_files.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/static_files/mod.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/playground/auth.db" beforeDir="false" afterPath="$PROJECT_DIR$/playground/auth.db" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/websocket/connections.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/websocket/connections.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/websocket/rooms.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/websocket/rooms.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/websocket/router.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/websocket/router.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/monitoring/grafana-dashboard.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/monitoring/grafana-dashboard.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/monitoring/metrics.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/monitoring/metrics.md" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -151,15 +140,7 @@
       <workItem from="1756577197892" duration="1601000" />
       <workItem from="1756579296550" duration="3976000" />
       <workItem from="1756584051753" duration="1037000" />
-      <workItem from="1756585274949" duration="9893000" />
-    </task>
-    <task id="LOCAL-00018" summary="init">
-      <option name="closed" value="true" />
-      <created>1756102132987</created>
-      <option name="number" value="00018" />
-      <option name="presentableId" value="LOCAL-00018" />
-      <option name="project" value="LOCAL" />
-      <updated>1756102132987</updated>
+      <workItem from="1756585274949" duration="11062000" />
     </task>
     <task id="LOCAL-00019" summary="init">
       <option name="closed" value="true" />
@@ -545,7 +526,15 @@
       <option name="project" value="LOCAL" />
       <updated>1756646469376</updated>
     </task>
-    <option name="localTasksCounter" value="67" />
+    <task id="LOCAL-00067" summary="update">
+      <option name="closed" value="true" />
+      <created>1756663699887</created>
+      <option name="number" value="00067" />
+      <option name="presentableId" value="LOCAL-00067" />
+      <option name="project" value="LOCAL" />
+      <updated>1756663699887</updated>
+    </task>
+    <option name="localTasksCounter" value="68" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

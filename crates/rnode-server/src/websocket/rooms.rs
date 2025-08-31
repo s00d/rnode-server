@@ -47,6 +47,10 @@ pub async fn join_room(connection_id: &Uuid, room_id: &str) -> bool {
                 room.connections.push(*connection_id);
                 conn.room_id = Some(room_id.to_string());
                 log::debug!("✅ Successfully joined room {} for connection {}", room_id, connection_id);
+                
+                // Update WebSocket room metrics
+                crate::metrics::websocket::update_room_connections(room_id, &room.name, room.connections.len() as i64);
+                
                 return true;
             } else {
                 log::debug!("⚠️ Connection {} already in room {}", connection_id, room_id);
@@ -68,6 +72,23 @@ pub async fn leave_room(connection_id: &Uuid, room_id: &str) -> bool {
     
     if let Some(room) = rooms.get_mut(room_id) {
         room.connections.retain(|&id| id != *connection_id);
+        
+        // Update WebSocket room metrics
+        crate::metrics::websocket::update_room_connections(room_id, &room.name, room.connections.len() as i64);
+        
+        // If room is empty, remove it
+        if room.connections.is_empty() {
+            log::info!("🗑️ Removing empty room: {} ({})", room_id, room.name);
+            rooms.remove(room_id);
+            
+            // Update total room count
+            let total_rooms = rooms.len();
+            crate::metrics::websocket::update_room_count(total_rooms as i64);
+        } else {
+            // Update total room count (no change in count, but refresh the metric)
+            let total_rooms = rooms.len();
+            crate::metrics::websocket::update_room_count(total_rooms as i64);
+        }
     }
     
     if let Some(conn) = connections.get_mut(connection_id) {
@@ -98,6 +119,13 @@ pub async fn create_room(room_id: &str, name: &str, _metadata: Option<serde_json
     
     rooms.insert(room_id.to_string(), room);
     log::info!("✅ Room {} created: {}", room_id, name);
+    
+    // Update WebSocket room metrics
+    crate::metrics::websocket::update_room_connections(room_id, name, 0);
+    
+    // Update total room count
+    let total_rooms = rooms.len(); // rooms.len() already includes the room we just added
+    crate::metrics::websocket::update_room_count(total_rooms as i64);
     true
 }
 

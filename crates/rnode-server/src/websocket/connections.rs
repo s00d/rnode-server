@@ -27,28 +27,43 @@ pub fn get_websocket_senders() -> &'static RwLock<SendersMap> {
 pub async fn add_connection(connection_id: Uuid, connection: WebSocketConnection) {
     log::debug!("🔄 add_connection called for connection_id: {}", connection_id);
     
+    // Extract path and room_id before moving connection
+    let path = connection.path.clone();
+    let room_id = connection.room_id.clone();
+    
     let mut connections = crate::websocket::rooms::get_websocket_connections().write().await;
     log::debug!("📊 Got write lock on connections, current count: {}", connections.len());
     
     connections.insert(connection_id, connection);
     log::debug!("✅ Connection {} added (total connections: {})", connection_id, connections.len());
+    
+    // Record WebSocket connection metrics
+    crate::metrics::record_websocket_connection_start(&connection_id, &path, room_id.as_deref());
 }
 
 pub async fn remove_connection(connection_id: &Uuid) {
-    // Удаляем соединение из комнаты
-    let room_id = {
+    // Get connection info before removing
+    let (path, room_id) = {
         let connections = crate::websocket::rooms::get_websocket_connections().read().await;
-        connections.get(connection_id).and_then(|conn| conn.room_id.clone())
+        if let Some(conn) = connections.get(connection_id) {
+            (conn.path.clone(), conn.room_id.clone())
+        } else {
+            ("unknown".to_string(), None)
+        }
     };
     
-    if let Some(room_id) = room_id {
-        crate::websocket::rooms::leave_room(connection_id, &room_id).await;
+    // Удаляем соединение из комнаты
+    if let Some(room_id_ref) = &room_id {
+        crate::websocket::rooms::leave_room(connection_id, room_id_ref).await;
     }
     
     // Удаляем соединение
     let mut connections = crate::websocket::rooms::get_websocket_connections().write().await;
     connections.remove(connection_id);
     log::debug!("🗑️ Connection {} removed (remaining connections: {})", connection_id, connections.len());
+    
+    // Record WebSocket disconnection metrics
+    crate::metrics::record_websocket_connection_end(connection_id, &path, room_id.as_deref());
 }
 
 pub async fn get_connection_info(connection_id: &Uuid) -> Option<WebSocketConnection> {
@@ -164,12 +179,23 @@ pub async fn send_direct_message(connection_id: &Uuid, message: &serde_json::Val
         let message_text = message.to_string();
         log::debug!("📤 Sending message: {}", message_text);
         
+        // Determine message type before sending
+        let message_type = if message_text.contains("welcome") { "welcome" } else if message_text.contains("error") { "error" } else { "text" };
+        let message_size = message_text.len();
+        
         if let Err(e) = sender_guard.send(axum::extract::ws::Message::Text(message_text.into())).await {
             log::error!("❌ Failed to send direct message to {}: {}", connection_id, e);
             return Err(format!("Failed to send message: {}", e));
         }
         
         log::debug!("✅ Message sent successfully to {}", connection_id);
+        
+        // Record message sent metric
+        let connection_info = get_connection_info(connection_id).await;
+        if let Some(conn) = connection_info {
+            crate::metrics::record_websocket_message_sent(message_type, conn.room_id.as_deref(), &conn.path, message_size);
+        }
+        
         Ok(())
     } else {
         log::error!("❌ No sender found for connection_id: {}", connection_id);
@@ -182,7 +208,13 @@ pub async fn send_direct_message(connection_id: &Uuid, message: &serde_json::Val
 pub async fn broadcast_to_room(room_id: &str, message: &serde_json::Value) -> Result<(), String> {
     let rooms = crate::websocket::rooms::get_websocket_rooms().read().await;
     
+    log::debug!("📊 Broadcasting to room {}: found {} total rooms", room_id, rooms.len());
+    log::debug!("📋 Available rooms: {:?}", rooms.keys().collect::<Vec<_>>());
+    
     if let Some(room) = rooms.get(room_id) {
+        log::debug!("✅ Room {} found with {} connections", room_id, room.connections.len());
+        log::debug!("👥 Connections in room: {:?}", room.connections);
+        
         for connection_id in &room.connections {
             log::debug!("🔄 Attempting to send room message to {}: {}", connection_id, message);
             if let Err(e) = send_direct_message(connection_id, &message).await {
@@ -191,6 +223,8 @@ pub async fn broadcast_to_room(room_id: &str, message: &serde_json::Value) -> Re
                 log::info!("✅ Room message sent to {}: {}", connection_id, message);
             }
         }
+    } else {
+        log::error!("❌ Room {} not found for broadcasting", room_id);
     }
     
     Ok(())
@@ -227,7 +261,7 @@ pub async fn send_websocket_event(event_type: &str, connection_id: &Uuid, path: 
         }
     } else {
         log::warn!("⚠️ No WebSocket handler found for path: {}", path);
-        return Ok(None); // Нет обработчика, пропускаем
+        return Ok(Some(serde_json::json!({"proceed": true}))); // Нет обработчика, но пропускаем событие
     }
     
     // Вызываем onWebSocketEvent через global для вызова колбеков
