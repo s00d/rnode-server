@@ -1,0 +1,633 @@
+# RNode Server - Cursor Rules
+
+You are an expert in Rust, Node.js, TypeScript, and Neon FFI for building high-performance web servers.
+
+## Key Principles
+
+- Write high-performance, production-ready code with Rust backend and Node.js frontend
+- Leverage Neon FFI effectively for seamless Rust-Node.js integration
+- Prioritize Express API compatibility while extending with advanced features
+- Use descriptive variable names and follow Rust/TypeScript naming conventions
+- Organize code using the established RNode Server architecture patterns
+
+## RNode Server Architecture
+
+### Core Structure
+- **Rust Backend** (`crates/rnode-server/src/`): High-performance server logic
+- **TypeScript Wrappers** (`src/`): Node.js API and utilities
+- **FFI Bridge**: Neon for Rust-Node.js communication
+- **Playground** (`playground/`): Examples and testing environment
+- **Documentation** (`docs/`): VitePress-based comprehensive docs
+
+### Key Components
+- **Server Core**: Axum-based HTTP server with Tokio runtime
+- **Request/Response**: Express-compatible objects with Rust backend
+- **Router System**: Modular routing with middleware support
+- **File Operations**: Secure file upload/download with validation
+- **Template Engine**: Tera template integration
+- **Promise System**: Revolutionary zero-waste promise management
+
+## Project Structure
+
+### Root Directory
+```
+rnode-server/
+├── Cargo.toml                 # Rust workspace configuration
+├── package.json               # Node.js package configuration
+├── tsconfig.json              # TypeScript configuration
+├── vitest.config.mts          # Test configuration
+├── .cursorrules               # This file
+├── README.md                  # Project overview
+├── LICENSE                    # MIT license
+├── index.node                 # Compiled binary
+├── lib/                       # Compiled TypeScript output
+├── src/                       # TypeScript source code
+├── crates/                    # Rust crates
+├── playground/                # Development playground
+├── docs/                      # Documentation
+├── tests/                     # Test files
+├── platforms/                 # Platform-specific binaries
+├── target/                    # Rust build artifacts
+└── assets/                    # Project assets
+```
+
+### Source Code Structure
+```
+src/
+├── index.cts                  # CommonJS entry point
+├── index.mts                  # ES module entry point
+├── load.cts                   # FFI loading utilities
+├── types/                     # TypeScript type definitions
+│   ├── app-router.ts          # App and router interfaces
+│   └── request-response.ts    # Request/response interfaces
+└── utils/                     # Utility classes and functions
+    ├── app.ts                 # Main application class
+    ├── router.ts              # Router implementation
+    ├── request.ts             # Request object wrapper
+    ├── response.ts            # Response object wrapper
+    ├── middleware.ts          # Middleware utilities
+    ├── http-methods.ts        # HTTP method handlers
+    ├── file-utils.ts          # File operation utilities
+    ├── cookie-utils.ts        # Cookie handling
+    ├── promise-utils.ts       # Promise management
+    ├── logger.ts              # Logging system
+    ├── express-utils.ts       # Express compatibility
+    ├── template-utils.ts      # Template utilities
+    ├── shutdown-utils.ts      # Graceful shutdown
+    ├── global-utils.ts        # Global state management
+    ├── app-factory.ts         # App creation factory
+    └── handler-utils.ts       # Request handler utilities
+```
+
+### Rust Backend Structure
+```
+crates/rnode-server/src/
+├── lib.rs                     # Library entry point
+├── server.rs                  # Main server implementation
+├── handlers.rs                # HTTP request handlers
+├── middleware.rs              # Middleware system
+├── request.rs                 # Request parsing and validation
+├── response.rs                # Response building and formatting
+├── static_files.rs            # Static file serving
+├── file_operations.rs         # File upload/download operations
+├── templates.rs               # Template engine integration
+├── html_templates.rs          # HTML template processing
+├── routes.rs                  # Route management
+├── http_utils.rs              # HTTP utility functions
+├── metrics.rs                 # Prometheus metrics collection
+├── types.rs                   # Rust type definitions
+└── utils.rs                   # Utility functions
+```
+
+### Playground Structure
+```
+playground/
+├── package.json               # Playground dependencies
+├── tsconfig.json              # TypeScript configuration
+├── src/                       # Source code
+│   ├── index.ts               # Main playground entry point
+│   ├── auth-database.ts       # Authentication database
+│   ├── database.ts            # Database utilities
+│   ├── cors_example.ts        # CORS configuration example
+│   ├── example_express.js     # Express.js comparison
+│   ├── example_m.ts           # Minimal example
+│   └── routers/               # Example routers
+│       ├── common.ts          # Common routes
+│       ├── api.ts             # API routes
+│       ├── users.ts           # User management routes
+│       ├── auth_api.ts        # Authentication routes
+│       ├── templates.ts       # Template rendering routes
+│       ├── static.ts          # Static file routes
+│       ├── multipart.ts       # File upload routes
+│       └── cors.ts            # CORS example routes
+├── templates/                 # Tera template files
+│   ├── index.html             # Main template
+│   ├── user_profile.html      # User profile template
+│   ├── macros.html            # Template macros
+│   ├── layouts/               # Template layouts
+│   │   └── base.html          # Base layout template
+│   └── components/            # Template components
+│       ├── header.html        # Header component
+│       └── footer.html        # Footer component
+├── uploads/                   # File upload directory
+├── ssl/                       # SSL certificates
+├── public/                    # Static public files
+├── css/                       # Stylesheets
+├── js/                        # JavaScript files
+├── images/                    # Image assets
+└── upload-demo/               # Upload demo files
+```
+
+### Documentation Structure
+```
+docs/
+├── .vitepress/                # VitePress configuration
+│   ├── config.mts             # Site configuration
+│   └── theme/                 # Custom theme
+│       └── index.ts           # Theme customization
+├── index.md                   # Main landing page
+├── STRUCTURE.md               # Documentation structure
+├── guide/                     # Getting started guides
+│   ├── index.md               # Guide overview
+│   ├── installation.md        # Installation instructions
+│   ├── quick-start.md         # Quick start guide
+│   └── configuration.md       # Configuration options
+├── api/                       # API reference
+│   ├── index.md               # API overview
+│   ├── app.md                 # App object methods
+│   ├── router.md              # Router API
+│   ├── request.md             # Request object
+│   ├── response.md            # Response object
+│   ├── http-utilities.md      # HTTP client utilities
+│   └── error-codes.md         # Error status codes
+├── examples/                  # Code examples
+│   ├── index.md               # Examples overview
+│   ├── middleware.md          # Middleware examples
+│   ├── file-operations.md     # File handling examples
+│   ├── advanced-usage.md      # Advanced patterns
+│   ├── body-handling.md       # Body type handling
+│   └── playground.md          # Playground examples
+├── templates/                 # Template engine
+│   ├── index.md               # Templates overview
+│   ├── syntax.md              # Tera syntax
+│   └── examples.md            # Template examples
+├── architecture/              # System architecture
+│   ├── index.md               # Architecture overview
+│   ├── overview.md            # System design
+│   └── promise-system.md      # Promise management system
+├── monitoring/                # Monitoring and metrics
+│   ├── index.md               # Monitoring overview
+│   ├── metrics.md             # Prometheus metrics
+│   ├── metrics-examples.md    # PromQL queries
+│   └── grafana-dashboard.md   # Grafana configuration
+└── types/                     # TypeScript types
+    ├── index.md               # Types overview
+    └── interfaces.md          # Core interfaces
+```
+
+### Test Structure
+```
+tests/
+├── setup.ts                   # Test configuration
+├── helpers.ts                 # Test utilities
+├── auth.test.ts               # Authentication tests
+├── file-operations.test.ts    # File operation tests
+├── http-methods.test.ts       # HTTP method tests
+├── middleware.test.ts         # Middleware tests
+├── request-response.test.ts   # Request/response tests
+├── router.test.ts             # Router tests
+├── routers.test.ts            # Router integration tests
+├── templates.test.ts          # Template tests
+├── static/                    # Static test files
+│   ├── test.css               # Test stylesheet
+│   ├── test.html              # Test HTML
+│   ├── test.js                # Test JavaScript
+│   ├── test.txt               # Test text file
+│   └── test.json              # Test JSON file
+└── templates/                 # Test templates
+    ├── test.html              # Test template
+    ├── test.css               # Test template styles
+    ├── layout.html            # Test layout
+    ├── component.html         # Test component
+    ├── macro.html             # Test macro
+    ├── nested.html            # Nested template
+    ├── conditional.html       # Conditional template
+    └── loop.html              # Loop template
+```
+
+### Platform Support Structure
+```
+platforms/
+├── android-arm-eabi/          # Android ARM
+├── darwin-arm64/              # macOS ARM64
+├── darwin-x64/                # macOS x64
+├── linux-arm-gnueabihf/       # Linux ARM
+├── linux-arm64-gnu/           # Linux ARM64 GNU
+├── linux-arm64-musl/          # Linux ARM64 Musl
+├── linux-x64-gnu/             # Linux x64 GNU
+├── linux-x64-musl/            # Linux x64 Musl
+├── win32-arm64-msvc/          # Windows ARM64 MSVC
+└── win32-x64-msvc/            # Windows x64 MSVC
+```
+
+## Rust Development
+
+### Backend Architecture
+- Use Rust 2024 edition with modern async/await patterns
+- Implement with Axum web framework for high performance
+- Leverage Tokio runtime for async operations
+- Follow Rust naming conventions: `snake_case` for functions/variables
+- Use proper error handling with `Result<T, E>` types
+
+### Key Rust Modules
+- **server.rs**: Main server implementation and lifecycle
+- **handlers.rs**: HTTP request handlers and routing
+- **middleware.rs**: Middleware system and processing
+- **request.rs**: Request parsing and validation
+- **response.rs**: Response building and formatting
+- **static_files.rs**: File serving with compression
+- **file_operations.rs**: Upload/download operations
+- **templates.rs**: Tera template integration
+- **metrics.rs**: Prometheus metrics collection
+
+### Rust Best Practices
+- Implement comprehensive error handling
+- Use async/await with Tokio for I/O operations
+- Leverage Serde for JSON serialization/deserialization
+- Implement proper logging with `log` crate
+- Use type-safe interfaces for FFI communication
+
+## TypeScript Development
+
+### Frontend Architecture
+- Use strict TypeScript with Node.js 20+ standards
+- Implement ES modules with CommonJS compatibility
+- Follow Express API patterns for familiarity
+- Use proper JSDoc documentation for all public APIs
+
+### Core TypeScript Classes
+- **RNodeApp**: Main application class extending Router
+- **Router**: Modular routing with middleware support
+- **Request**: Express-compatible request object
+- **Response**: Express-compatible response object
+- **Logger**: Structured logging with configurable levels
+
+### TypeScript Best Practices
+- Use strict type checking and interfaces
+- Implement proper error handling and validation
+- Follow Express middleware patterns
+- Use async/await for asynchronous operations
+- Implement proper TypeScript declarations for FFI
+
+## API Design Patterns
+
+### Express Compatibility
+- Support all HTTP methods: GET, POST, PUT, DELETE, PATCH, OPTIONS, TRACE
+- Implement middleware system with `use()` method
+- Support route parameters and query strings
+- Maintain Express-like request/response objects
+
+### Advanced Features
+- **Static File Serving**: In-memory with compression (gzip, brotli)
+- **File Operations**: Secure upload/download with validation
+- **Template Engine**: Tera templates with inheritance
+- **HTTPS Support**: SSL/TLS with certificate management
+- **CORS Support**: Configurable cross-origin handling
+- **Cookie Management**: Advanced cookie operations
+- **Parameter System**: Global and route-specific parameters
+
+### Middleware System
+- Support Express middleware compatibility
+- Implement custom middleware functions
+- Support error handling middleware
+- Enable middleware chaining and composition
+
+## File Operations
+
+### Upload System
+- Support multipart form data
+- Implement file size and type validation
+- Support multiple file uploads
+- Enable subfolder organization
+- Implement security measures (path traversal protection)
+
+### Download System
+- Secure file serving with validation
+- Support compression (gzip, brotli)
+- Implement caching and ETags
+- Enable subfolder access control
+- Support custom MIME types
+
+### Static File Serving
+- In-memory file handling
+- Automatic compression
+- Cache control headers
+- Security validation
+- Performance optimization
+
+## Template System
+
+### Tera Integration
+- Support Tera template syntax
+- Enable template inheritance
+- Support custom filters and functions
+- Implement proper escaping
+- Enable dynamic content rendering
+
+### Template Features
+- Auto-escape configuration
+- Custom template functions
+- Context data passing
+- Error handling and validation
+- Performance optimization
+
+### Template Structure
+- **Layouts**: Base templates with common structure
+- **Components**: Reusable template components
+- **Macros**: Template utility functions
+- **Inheritance**: Template extension system
+- **Conditionals**: Dynamic content rendering
+- **Loops**: Iterative content generation
+
+## Security Implementation
+
+### Input Validation
+- Validate all incoming data
+- Implement MIME type checking
+- File extension whitelisting
+- Path traversal protection
+- Size limit enforcement
+
+### File Security
+- Secure file serving
+- Upload validation
+- Download restrictions
+- Subfolder access control
+- Hidden file protection
+
+### HTTP Security
+- CORS configuration
+- Header validation
+- Cookie security
+- Request sanitization
+- Error message security
+
+## Monitoring and Metrics
+
+### Prometheus Integration
+- Request/response metrics
+- Performance indicators
+- Error rate tracking
+- System resource monitoring
+- Custom business metrics
+
+### Logging System
+- Configurable log levels (trace, debug, info, warn, error)
+- Structured logging format
+- Performance logging
+- Error tracking
+- Request/response logging
+
+### Grafana Dashboards
+- Real-time monitoring
+- Performance visualization
+- Error rate analysis
+- System health metrics
+- Custom dashboards
+
+## Testing Strategy
+
+### Rust Testing
+- Unit tests for all modules
+- Integration tests for FFI
+- Performance benchmarks
+- Error handling tests
+- Security validation tests
+
+### TypeScript Testing
+- Vitest for unit testing
+- Express compatibility tests
+- Middleware testing
+- File operation tests
+- Template rendering tests
+
+### Test Organization
+- `tests/` directory for all tests
+- `tests/setup.ts` for test configuration
+- `tests/helpers.ts` for test utilities
+- Mock data and fixtures
+- Integration test examples
+
+## Build and Development
+
+### Development Workflow
+```bash
+npm run cargo-build    # Debug build
+npm run build          # Release build
+npm run cross          # Cross-platform build
+npm test               # Run tests
+npm run docs:dev       # Documentation development
+```
+
+### Neon Integration
+- Proper FFI binding setup
+- Cross-platform compilation
+- Binary distribution
+- Platform-specific builds
+- Development environment setup
+
+### TypeScript Compilation
+- Strict type checking
+- Declaration file generation
+- ES modules support
+- CommonJS compatibility
+- Source map generation
+
+## Documentation Standards
+
+### Code Documentation
+- Comprehensive JSDoc for TypeScript
+- Rust doc comments for public APIs
+- Example usage in comments
+- Type definitions and interfaces
+- Error handling documentation
+
+### API Documentation
+- VitePress-based documentation
+- Interactive examples
+- Performance benchmarks
+- Architecture diagrams
+- Migration guides
+
+### Documentation Structure
+- Installation and setup guides
+- API reference documentation
+- Example implementations
+- Architecture overview
+- Troubleshooting guides
+
+## Error Handling
+
+### Rust Error Handling
+- Use `Result<T, E>` types
+- Implement custom error types
+- Proper error propagation
+- Logging and monitoring
+- User-friendly error messages
+
+### TypeScript Error Handling
+- Try-catch blocks for async operations
+- Error middleware support
+- Custom error classes
+- Error logging and tracking
+- Graceful degradation
+
+### Error Codes
+- HTTP status code mapping
+- Custom error codes
+- Error categorization
+- Debug information
+- User guidance
+
+## Middleware Development
+
+### Express Compatibility
+- Support existing Express middleware
+- Implement custom middleware
+- Error handling middleware
+- Authentication middleware
+- Logging middleware
+
+### Custom Middleware
+- Request/response modification
+- Authentication and authorization
+- Rate limiting
+- Caching
+- Monitoring and metrics
+
+### Middleware Patterns
+- Chain of responsibility
+- Pipeline processing
+- Error handling
+- Performance monitoring
+- Security validation
+
+## Router System
+
+### Modular Routing
+- Nested router support
+- Route parameter handling
+- Query string processing
+- Middleware application
+- Error handling
+
+### Route Organization
+- API route grouping
+- Static file routes
+- Template routes
+- File operation routes
+- Custom route handlers
+
+### Router Features
+- Path parameter extraction
+- Query string parsing
+- Middleware chaining
+- Error propagation
+- Performance optimization
+
+## File Structure Conventions
+
+### Rust Code Organization
+- `src/lib.rs`: Main library entry point
+- `src/server.rs`: Server implementation
+- `src/handlers.rs`: Request handlers
+- `src/middleware.rs`: Middleware system
+- `src/utils.rs`: Utility functions
+
+### TypeScript Organization
+- `src/index.cts`: CommonJS entry point
+- `src/index.mts`: ES module entry point
+- `src/types/`: Type definitions
+- `src/utils/`: Utility functions
+- `src/load.cts`: FFI loading
+
+### Test Organization
+- `tests/`: Test files
+- `tests/setup.ts`: Test configuration
+- `tests/helpers.ts`: Test utilities
+- `tests/static/`: Static test files
+- `tests/templates/`: Template test files
+
+## Performance Monitoring
+
+### Metrics Collection
+- Request/response timing
+- Memory usage tracking
+- CPU utilization
+- File operation performance
+- Template rendering speed
+
+### Performance Analysis
+- Bottleneck identification
+- Memory leak detection
+- CPU profiling
+- Network performance
+- Disk I/O optimization
+
+### Optimization Strategies
+- Caching implementation
+- Lazy loading
+- Resource pooling
+- Async operation optimization
+- Memory management
+
+## Deployment and Distribution
+
+### Platform Support
+- macOS (ARM64, x64)
+- Linux (ARM64, x64, ARM)
+- Windows (ARM64, x64)
+- Android (ARM)
+
+### Build Optimization
+- Release mode compilation
+- Link-time optimization (LTO)
+- Binary stripping
+- Panic optimization
+- Code generation optimization
+
+### Distribution
+- npm package distribution
+- Platform-specific binaries
+- Cross-platform compilation
+- Version management
+- Release automation
+
+## Key Conventions
+
+1. Follow Rust and TypeScript style guides
+2. Implement comprehensive error handling
+3. Use proper logging and monitoring
+4. Maintain Express API compatibility
+5. Prioritize performance and security
+6. Write comprehensive tests
+7. Document all public APIs
+8. Follow established architectural patterns
+
+## Troubleshooting
+
+### Common Issues
+- Neon build errors
+- TypeScript type mismatches
+- Platform-specific problems
+- Performance regressions
+- Memory leaks
+
+### Debugging Tools
+- Rust logging and debugging
+- Node.js debugging tools
+- Performance profiling
+- Memory leak detection
+- Network analysis
+
+Refer to the RNode Server documentation and source code for detailed implementation examples and best practices.

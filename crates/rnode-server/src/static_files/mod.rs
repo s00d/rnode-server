@@ -1,110 +1,28 @@
+pub mod types;
+pub mod options;
+pub mod cache;
+pub mod compression;
+pub mod security;
+pub mod handlers;
+pub mod fallback;
+
 use crate::metrics::{record_cache_hit, record_cache_miss};
 use log::{debug, error, info, warn};
 use neon::prelude::*;
-use std::collections::HashMap;
+
 use std::path::PathBuf;
 use std::sync::{OnceLock, RwLock};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-// Structure for static file settings
-#[derive(Debug, Clone)]
-pub struct StaticOptions {
-    pub cache: bool,
-    pub max_age: Option<u32>,
-    pub max_file_size: Option<usize>,
-    pub etag: bool,
-    pub last_modified: bool,
-    pub gzip: bool,
-    pub brotli: bool,
-    pub allow_hidden_files: bool,
-    pub allow_system_files: bool,
-    pub allowed_extensions: Vec<String>,
-    pub blocked_paths: Vec<String>,
-}
-
-impl Default for StaticOptions {
-    fn default() -> Self {
-        Self {
-            cache: true,
-            max_age: Some(3600),                   // 1 hour by default
-            max_file_size: Some(10 * 1024 * 1024), // 10MB by default
-            etag: true,
-            last_modified: true,
-            gzip: true,
-            brotli: false,
-            allow_hidden_files: false,
-            allow_system_files: false,
-            allowed_extensions: vec![
-                "html".to_string(),
-                "css".to_string(),
-                "js".to_string(),
-                "json".to_string(),
-                "png".to_string(),
-                "jpg".to_string(),
-                "jpeg".to_string(),
-                "gif".to_string(),
-                "svg".to_string(),
-                "ico".to_string(),
-                "woff".to_string(),
-                "woff2".to_string(),
-                "ttf".to_string(),
-                "eot".to_string(),
-            ],
-            blocked_paths: vec![
-                ".git".to_string(),
-                ".env".to_string(),
-                ".htaccess".to_string(),
-                "thumbs.db".to_string(),
-                ".ds_store".to_string(),
-                "desktop.ini".to_string(),
-            ],
-        }
-    }
-}
-
-// Structure for storing static file information
-#[derive(Debug, Clone)]
-pub struct StaticFile {
-    pub content: Vec<u8>,
-    pub mime_type: String,
-    pub size: usize,
-    pub modified_time: u64,
-    pub etag: String,
-    pub content_type_header: String, // Ready Content-Type header with encoding
-
-    // Ready compressed versions (if enabled)
-    pub gzip_content: Option<Vec<u8>>,
-    pub brotli_content: Option<Vec<u8>>,
-
-    // Ready headers for different response types
-    pub headers: StaticFileHeaders,
-}
-
-// Structure for storing ready headers
-#[derive(Debug, Clone)]
-pub struct StaticFileHeaders {
-    pub etag: String,
-    pub last_modified: String,
-    pub cache_control: String,
-}
-
-// Structure for storing folder settings
-#[derive(Debug, Clone)]
-pub struct StaticFolder {
-    pub path: String,
-    pub options: StaticOptions,
-}
+use self::types::{StaticFile, StaticFileHeaders, StaticFolder, StaticOptions};
+use self::cache::get_static_files_cache;
+use self::options::parse_static_options;
+use self::security::is_file_safe;
+use self::compression::{compress_gzip, compress_brotli};
+use self::handlers::build_static_response;
 
 // Global storage for multiple folders
 static STATIC_FOLDERS: OnceLock<RwLock<Vec<StaticFolder>>> = OnceLock::new();
-
-// Global storage for static files cache
-static STATIC_FILES_CACHE: OnceLock<RwLock<HashMap<String, StaticFile>>> = OnceLock::new();
-
-// Function for getting static files cache
-pub fn get_static_files_cache() -> &'static RwLock<HashMap<String, StaticFile>> {
-    STATIC_FILES_CACHE.get_or_init(|| RwLock::new(HashMap::new()))
-}
 
 // Function for getting static folders
 fn get_static_folders() -> &'static RwLock<Vec<StaticFolder>> {
@@ -184,117 +102,6 @@ pub fn load_static_files(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     Ok(cx.undefined())
 }
 
-// Function for parsing options from JavaScript object
-fn parse_static_options(cx: &mut FunctionContext, options_obj: Handle<JsObject>) -> StaticOptions {
-    let mut options = StaticOptions::default();
-
-    // Parse cache
-    if let Ok(cache) = options_obj.get::<JsBoolean, _, _>(cx, "cache") {
-        options.cache = cache.value(cx);
-    }
-
-    // Parse maxAge
-    if let Ok(max_age) = options_obj.get::<JsNumber, _, _>(cx, "maxAge") {
-        options.max_age = Some(max_age.value(cx) as u32);
-    }
-
-    // Parse maxFileSize
-    if let Ok(max_file_size) = options_obj.get::<JsNumber, _, _>(cx, "maxFileSize") {
-        options.max_file_size = Some(max_file_size.value(cx) as usize);
-    }
-
-    // Parse etag
-    if let Ok(etag) = options_obj.get::<JsBoolean, _, _>(cx, "etag") {
-        options.etag = etag.value(cx);
-    }
-
-    // Parse lastModified
-    if let Ok(last_modified) = options_obj.get::<JsBoolean, _, _>(cx, "lastModified") {
-        options.last_modified = last_modified.value(cx);
-    }
-
-    // Parse gzip
-    if let Ok(gzip) = options_obj.get::<JsBoolean, _, _>(cx, "gzip") {
-        options.gzip = gzip.value(cx);
-    }
-
-    // Parse brotli
-    if let Ok(brotli) = options_obj.get::<JsBoolean, _, _>(cx, "brotli") {
-        options.brotli = brotli.value(cx);
-    }
-
-    // Parse security options directly
-    if let Ok(allow_hidden) = options_obj.get::<JsBoolean, _, _>(cx, "allowHiddenFiles") {
-        options.allow_hidden_files = allow_hidden.value(cx);
-    }
-    if let Ok(allow_system) = options_obj.get::<JsBoolean, _, _>(cx, "allowSystemFiles") {
-        options.allow_system_files = allow_system.value(cx);
-    }
-    if let Ok(allowed_ext) = options_obj.get::<JsArray, _, _>(cx, "allowedExtensions") {
-        let mut extensions = Vec::new();
-        for i in 0..allowed_ext.len(cx) {
-            if let Ok(ext) = allowed_ext.get::<JsString, _, _>(cx, i) {
-                extensions.push(ext.value(cx));
-            }
-        }
-        if !extensions.is_empty() {
-            options.allowed_extensions = extensions;
-        }
-    }
-    if let Ok(blocked_paths) = options_obj.get::<JsArray, _, _>(cx, "blockedPaths") {
-        let mut paths = Vec::new();
-        for i in 0..blocked_paths.len(cx) {
-            if let Ok(path) = blocked_paths.get::<JsString, _, _>(cx, i) {
-                paths.push(path.value(cx));
-            }
-        }
-        if !paths.is_empty() {
-            options.blocked_paths = paths;
-        }
-    }
-
-    options
-}
-
-// Function for checking file security
-fn is_file_safe(path: &std::path::Path, options: &StaticOptions) -> bool {
-    let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
-
-    let path_str = path.to_string_lossy();
-
-    // Check blocked paths
-    for blocked in &options.blocked_paths {
-        if path_str.contains(blocked) {
-            return false;
-        }
-    }
-
-    // Check hidden files
-    if !options.allow_hidden_files && file_name.starts_with('.') {
-        return false;
-    }
-
-    // Check system files
-    if !options.allow_system_files {
-        let lower_name = file_name.to_lowercase();
-        if lower_name == "thumbs.db" || lower_name == ".ds_store" || lower_name == "desktop.ini" {
-            return false;
-        }
-    }
-
-    // Check file extensions
-    if let Some(extension) = path.extension() {
-        if let Some(ext_str) = extension.to_str() {
-            let ext_lower = ext_str.to_lowercase();
-            if !options.allowed_extensions.contains(&ext_lower) {
-                return false;
-            }
-        }
-    }
-
-    true
-}
-
 // Function for determining file MIME type
 pub fn get_mime_type(path: &std::path::Path) -> String {
     mime_guess::from_path(path)
@@ -316,6 +123,58 @@ fn get_file_from_cache(path: &str) -> Option<StaticFile> {
     }
 
     result
+}
+
+// Function for determining file encoding
+fn get_file_encoding(path: &std::path::Path, mime_type: &str) -> String {
+    // For text files determine encoding
+    if mime_type.starts_with("text/")
+        || mime_type.contains("javascript")
+        || mime_type.contains("json")
+        || mime_type.contains("xml")
+    {
+        // Read file content for analysis
+        if let Ok(content) = std::fs::read(path) {
+            // Check BOM (Byte Order Mark)
+            if content.len() >= 3 {
+                // UTF-8 BOM
+                if content[0] == 0xEF && content[1] == 0xBB && content[2] == 0xBF {
+                    return "utf-8".to_string();
+                }
+                // UTF-16 LE BOM
+                if content[0] == 0xFF && content[1] == 0xFE {
+                    return "utf-16le".to_string();
+                }
+                // UTF-16 BE BOM
+                if content[0] == 0xFE && content[1] == 0xFF {
+                    return "utf-16be".to_string();
+                }
+            }
+
+            // Try UTF-8
+            if std::str::from_utf8(&content).is_ok() {
+                return "utf-8".to_string();
+            }
+        }
+
+        // Default to UTF-8 for text files
+        return "utf-8".to_string();
+    }
+
+    // For binary files encoding is not needed
+    "".to_string()
+}
+
+// Function for generating ETag
+fn generate_etag(content: &[u8], modified_time: u64) -> String {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+
+    let mut hasher = DefaultHasher::new();
+    content.hash(&mut hasher);
+    modified_time.hash(&mut hasher);
+
+    format!("\"{:x}\"", hasher.finish())
 }
 
 // Function for preparing file for response (compression, headers, etc.)
@@ -394,90 +253,6 @@ fn process_file_for_response(
         last_modified,
         cache_control: "public, max-age=3600".to_string(),
     };
-}
-
-// Function for determining file encoding
-fn get_file_encoding(path: &std::path::Path, mime_type: &str) -> String {
-    // For text files determine encoding
-    if mime_type.starts_with("text/")
-        || mime_type.contains("javascript")
-        || mime_type.contains("json")
-        || mime_type.contains("xml")
-    {
-        // Read file content for analysis
-        if let Ok(content) = std::fs::read(path) {
-            // Check BOM (Byte Order Mark)
-            if content.len() >= 3 {
-                // UTF-8 BOM
-                if content[0] == 0xEF && content[1] == 0xBB && content[2] == 0xBF {
-                    return "utf-8".to_string();
-                }
-                // UTF-16 LE BOM
-                if content[0] == 0xFF && content[1] == 0xFE {
-                    return "utf-16le".to_string();
-                }
-                // UTF-16 BE BOM
-                if content[0] == 0xFE && content[1] == 0xFF {
-                    return "utf-16be".to_string();
-                }
-            }
-
-            // Try UTF-8
-            if std::str::from_utf8(&content).is_ok() {
-                return "utf-8".to_string();
-            }
-        }
-
-        // Default to UTF-8 for text files
-        return "utf-8".to_string();
-    }
-
-    // For binary files encoding is not needed
-    "".to_string()
-}
-
-// Function for generating ETag
-fn generate_etag(content: &[u8], modified_time: u64) -> String {
-    use std::collections::hash_map::DefaultHasher;
-    use std::hash::{Hash, Hasher};
-
-    let mut hasher = DefaultHasher::new();
-    content.hash(&mut hasher);
-    modified_time.hash(&mut hasher);
-
-    format!("\"{:x}\"", hasher.finish())
-}
-
-// Function for Gzip compression
-fn compress_gzip(data: &[u8]) -> Option<Vec<u8>> {
-    use flate2::Compression;
-    use flate2::write::GzEncoder;
-    use std::io::Write;
-
-    let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
-    if encoder.write_all(data).is_ok() {
-        encoder.finish().ok()
-    } else {
-        None
-    }
-}
-
-// Function for Brotli compression
-fn compress_brotli(data: &[u8]) -> Option<Vec<u8>> {
-    use brotli::BrotliCompress;
-    use brotli::enc::BrotliEncoderParams;
-    use std::io::Cursor;
-
-    let mut params = BrotliEncoderParams::default();
-    params.quality = 11; // Maximum quality
-
-    let mut output = Vec::new();
-    let mut input = Cursor::new(data);
-    if BrotliCompress(&mut input, &mut output, &params).is_ok() {
-        Some(output)
-    } else {
-        None
-    }
 }
 
 // Function for loading file to cache
@@ -778,97 +553,6 @@ pub async fn handle_static_file(
 
     warn!("❌ File not found: {}", path);
     None
-}
-
-// Function for building response with static file
-fn build_static_response(
-    static_file: &StaticFile,
-    accept_encoding: Option<&str>,
-    _file_path: &str,
-) -> Option<axum::response::Response<axum::body::Body>> {
-    use axum::body::Body;
-    use axum::http::StatusCode;
-    use axum::response::Response;
-
-    debug!(
-        "🔧 Building response for file: {} bytes, MIME: {}",
-        static_file.size, static_file.mime_type
-    );
-
-    // Determine content and compression headers
-    let (content, content_encoding) = if let Some(accept_enc) = accept_encoding {
-        if accept_enc.contains("br") && static_file.brotli_content.is_some() {
-            let compressed = static_file.brotli_content.as_ref().unwrap();
-            debug!(
-                "🗜️  Using Brotli compressed content: {} -> {} bytes",
-                static_file.size,
-                compressed.len()
-            );
-            (compressed, "br")
-        } else if accept_enc.contains("gzip") && static_file.gzip_content.is_some() {
-            let compressed = static_file.gzip_content.as_ref().unwrap();
-            debug!(
-                "🗜️  Using Gzip compressed content: {} -> {} bytes",
-                static_file.size,
-                compressed.len()
-            );
-            (compressed, "gzip")
-        } else {
-            debug!(
-                "📄 Using uncompressed content: {} bytes",
-                static_file.content.len()
-            );
-            (&static_file.content, "")
-        }
-    } else {
-        debug!(
-            "📄 No accept-encoding, using uncompressed content: {} bytes",
-            static_file.content.len()
-        );
-        (&static_file.content, "")
-    };
-
-    let mut response_builder = Response::builder().status(StatusCode::OK);
-
-    // Use ready Content-Type header
-    response_builder = response_builder.header("content-type", &static_file.content_type_header);
-    debug!(
-        "📄 Content-Type: {} (cached)",
-        static_file.content_type_header
-    );
-
-    // Add Content-Length only for uncompressed content
-    if content_encoding.is_empty() {
-        response_builder = response_builder.header("content-length", content.len().to_string());
-        debug!("📏 Added content-length header: {} bytes", content.len());
-    } else {
-        debug!(
-            "📏 Skipping content-length for compressed content ({} -> {} bytes)",
-            static_file.size,
-            content.len()
-        );
-    }
-
-    // Add ready headers from cache
-    response_builder = response_builder
-        .header("cache-control", &static_file.headers.cache_control)
-        .header("etag", &static_file.headers.etag)
-        .header("last-modified", &static_file.headers.last_modified);
-
-    debug!(
-        "🏷️  Added cached headers: ETag={}, Last-Modified={}, Cache-Control={}",
-        static_file.headers.etag,
-        static_file.headers.last_modified,
-        static_file.headers.cache_control
-    );
-
-    if !content_encoding.is_empty() {
-        response_builder = response_builder.header("content-encoding", content_encoding);
-        debug!("🗜️  Added content-encoding header: {}", content_encoding);
-    }
-
-    info!("✅ Response built successfully for {} bytes", content.len());
-    response_builder.body(Body::from(content.clone())).ok()
 }
 
 // Function for clearing static files cache
