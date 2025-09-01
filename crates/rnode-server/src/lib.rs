@@ -7,7 +7,6 @@ mod handlers;
 mod html_templates;
 mod http_utils;
 mod metrics;
-mod middleware;
 mod request;
 mod request_parser;
 mod routes;
@@ -23,8 +22,7 @@ use file_operations::{
     delete_file, download_file, file_exists, get_file_content, list_files, register_download_route,
     register_upload_route, save_file,
 };
-use handlers::process_http_request;
-use middleware::register_middleware;
+use handlers::{process_http_request, register_middleware};
 use routes::*;
 use server::start_listen;
 use static_files::{clear_static_cache, get_static_stats, load_static_files};

@@ -1,10 +1,15 @@
-// Убираем старую систему промисов - теперь используем встроенные промисы Neon
 use crate::request::Request;
-use crate::types::{get_event_queue, get_middleware};
+use crate::types::get_middleware;
 use globset::{Glob, GlobSetBuilder};
 use log::{debug, error, info, warn};
 use neon::prelude::*;
 use serde_json;
+use axum::body::Body;
+use axum::http::StatusCode;
+use axum::response::Response;
+
+use super::javascript_bridge::JavaScriptBridge;
+use super::timeout_manager::TimeoutManager;
 
 // Function for middleware registration
 pub fn register_middleware(mut cx: FunctionContext) -> JsResult<JsUndefined> {
@@ -58,14 +63,9 @@ pub async fn execute_middleware(
     timeout: &mut u64,   // Timeout from app options - mutable reference to update remaining time
     dev_mode: bool, // Dev mode from app options
 ) -> Result<(), axum::response::Response<axum::body::Body>> {
-    use axum::body::Body;
-    use axum::http::StatusCode;
-    use axum::response::Response;
-    use std::time::Instant;
-
     // Get path from request
     let actual_path = request.path.clone();
-    let start_time = Instant::now();
+    let timeout_manager = TimeoutManager::new(*timeout);
 
     debug!("🔍 Executing middleware for path: '{}' with timeout: {}ms", actual_path, timeout);
     debug!("🔍 Available middleware: {:?}", request.custom_params);
@@ -140,128 +140,24 @@ pub async fn execute_middleware(
         debug!("🔍 Executing middleware for path: {}", actual_path);
 
         // Calculate remaining time for middleware execution
-        let elapsed = start_time.elapsed().as_millis() as u64;
-        let remaining_timeout = if elapsed >= *timeout {
-            0 // No time left
-        } else {
-            *timeout - elapsed
-        };
-
-        debug!("⏱️ Middleware execution - Elapsed: {}ms, Remaining: {}ms", elapsed, remaining_timeout);
+        let remaining_timeout = timeout_manager.get_remaining_time();
+        timeout_manager.log_timeout_status("Middleware execution");
 
         // Check if we've already exceeded the timeout
-        if remaining_timeout == 0 {
-            warn!("⏰ Middleware execution timeout exceeded before start: {}ms elapsed, {}ms limit", elapsed, *timeout);
+        if timeout_manager.is_expired() {
+            warn!("⏰ Middleware execution timeout exceeded before start: {}ms elapsed, {}ms limit", 
+                timeout_manager.get_elapsed_time(), timeout_manager.get_total_timeout());
             return Err(Response::builder()
                 .status(StatusCode::REQUEST_TIMEOUT)
                 .body(Body::from("Request timeout exceeded"))
                 .unwrap());
         }
 
-        // Call JavaScript executeMiddleware function through event queue
-        let event_queue = get_event_queue();
-        let middleware_result = {
-            let channel = {
-                let event_queue_map = event_queue.read().unwrap();
-                event_queue_map.clone()
-            };
-
-            if let Some(channel) = channel {
-                let (tx, rx) = std::sync::mpsc::channel();
-                let request_json = serde_json::to_string(&request.to_json_map()).unwrap();
-                let request_json_clone = request_json.clone();
-
-                let _join_handle = channel.send(move |mut cx| {
-                    let global: Handle<JsObject> = cx.global("global")?;
-                    let execute_middleware_fn: Handle<JsFunction> =
-                        global.get(&mut cx, "executeMiddleware")?;
-
-                    // Call executeMiddleware function with remaining timeout - it returns a Promise
-                    let result: Handle<JsValue> = execute_middleware_fn
-                        .call_with(&mut cx)
-                        .arg(cx.string(&request_json_clone))
-                        .arg(cx.number(remaining_timeout as f64)) // Pass remaining timeout instead of total
-                        .apply(&mut cx)?;
-
-                    // Check if result is a Promise
-                    if result.is_a::<JsPromise, _>(&mut cx) {
-                        let promise: Handle<JsPromise> = result.downcast_or_throw(&mut cx)?;
-
-                        // Convert JavaScript Promise to Rust Future
-                        let promise_future = promise.to_future(&mut cx, |mut cx, result| {
-                            // Get the promise's result value (or throw if it was rejected)
-                            let value = result.or_throw(&mut cx)?;
-
-                            // Convert the result to string
-                            let result_string = value
-                                .to_string(&mut cx)
-                                .unwrap_or_else(|_| cx.string("Failed to convert promise result"));
-
-                            Ok(result_string.value(&mut cx))
-                        })?;
-
-                        // Spawn a task to await the future with timeout control
-                        let _channel = cx.channel();
-                        let tx_clone = tx.clone();
-                        let remaining_timeout_clone = remaining_timeout;
-
-                        // Spawn async task in separate thread with timeout control
-                        let _thread_handle = std::thread::spawn(move || {
-                            let rt = tokio::runtime::Builder::new_current_thread()
-                                .enable_all()
-                                .build()
-                                .unwrap();
-
-                            rt.block_on(async {
-                                // Use tokio::time::timeout for timeout control
-                                match tokio::time::timeout(
-                                    tokio::time::Duration::from_millis(remaining_timeout_clone),
-                                    promise_future
-                                ).await {
-                                    Ok(result) => {
-                                        match result {
-                                            Ok(result_string) => {
-                                                let _ = tx_clone.send(result_string);
-                                            }
-                                            Err(err) => {
-                                                let error_msg = format!("Promise failed: {:?}", err);
-                                                let _ = tx_clone.send(error_msg);
-                                            }
-                                        }
-                                    }
-                                    Err(_) => {
-                                        // Timeout occurred
-                                        let _ = tx_clone.send(format!("Middleware timeout after {}ms", remaining_timeout_clone));
-                                    }
-                                }
-                            });
-                        });
-                    } else {
-                        // Not a promise, convert directly
-                        let result_string = result
-                            .to_string(&mut cx)
-                            .unwrap_or_else(|_| cx.string("Failed to handle middleware result"));
-                        let _ = tx.send(result_string.value(&mut cx));
-                    }
-
-                    Ok(())
-                });
-
-                // Wait for middleware result
-                let result = match rx.recv() {
-                    Ok(result) => result,
-                    Err(_) => {
-                        warn!(
-                            "❌ Failed to receive middleware result for: {}",
-                            actual_path
-                        );
-                        return Err(Response::builder()
-                            .status(StatusCode::INTERNAL_SERVER_ERROR)
-                            .body(Body::from("Middleware failed"))
-                            .unwrap());
-                    }
-                };
-
+        // Call JavaScript executeMiddleware function through bridge
+        let request_json = serde_json::to_string(&request.to_json_map()).unwrap();
+        
+        let middleware_result = match JavaScriptBridge::call_execute_middleware(request_json, remaining_timeout) {
+            Ok(result) => {
                 debug!("🔍 Middleware result: {}", result);
                 debug!(
                     "🔍 Middleware result type: {}",
@@ -274,11 +170,10 @@ pub async fn execute_middleware(
                 );
 
                 // Parse middleware result
-                let middleware_result: serde_json::Value = serde_json::from_str(&result)
-                    .unwrap_or_else(|_| serde_json::json!({"shouldContinue": true}));
-
-                middleware_result
-            } else {
+                serde_json::from_str(&result)
+                    .unwrap_or_else(|_| serde_json::json!({"shouldContinue": true}))
+            }
+            Err(_) => {
                 error!("❌ No event queue available");
                 serde_json::json!({"shouldContinue": true})
             }
@@ -408,14 +303,13 @@ pub async fn execute_middleware(
         }
 
         // Update the timeout with remaining time after middleware execution
-        let total_elapsed = start_time.elapsed().as_millis() as u64;
-        if total_elapsed >= *timeout {
+        if timeout_manager.is_expired() {
             *timeout = 0; // No time left
         } else {
-            *timeout = *timeout - total_elapsed;
+            *timeout = timeout_manager.get_remaining_time();
         }
         
-        debug!("⏱️ After middleware - Total elapsed: {}ms, Remaining timeout: {}ms", total_elapsed, *timeout);
+        debug!("⏱️ After middleware - Remaining timeout: {}ms", *timeout);
         
         debug!(
             "🔧 request after middleware update: {:?}",
