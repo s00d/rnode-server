@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RNode Server - Тестирование кэша</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .server-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .status {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 25px;
+        }
+
+        .section h2 {
+            color: #495057;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .btn-secondary:hover {
+            box-shadow: 0 5px 15px rgba(108, 117, 125, 0.4);
+        }
+
+        .btn-danger {
+            background: #dc3545;
+        }
+
+        .btn-danger:hover {
+            box-shadow: 0 5px 15px rgba(220, 53, 69, 0.4);
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            background: white;
+            border-left: 4px solid #667eea;
+            display: none;
+        }
+
+        .result.show {
+            display: block;
+        }
+
+        .result.success {
+            border-left-color: #28a745;
+            background: #f8fff9;
+        }
+
+        .result.error {
+            border-left-color: #dc3545;
+            background: #fff8f8;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .quick-btn {
+            background: white;
+            border: 2px solid #e9ecef;
+            padding: 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .quick-btn:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .auto-tests {
+            background: #e3f2fd;
+            border: 2px solid #2196f3;
+        }
+
+        .auto-tests:hover {
+            border-color: #1976d2;
+        }
+
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 12px;
+            border: 1px solid #e9ecef;
+        }
+
+        .host-info {
+            font-size: 0.9em;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 RNode Server</h1>
+            <p>Упрощенная система кэширования - Тестирование</p>
+        </div>
+
+        <div class="server-info">
+            <div>
+                <strong>Сервер:</strong> <span id="serverUrl">Определение...</span>
+                <div class="host-info">Автоматическое определение хоста</div>
+            </div>
+            <div class="status info" id="status">Готов к тестированию</div>
+        </div>
+
+        <div class="content">
+            <!-- Основные операции -->
+            <div class="section">
+                <h2>🔧 Основные операции</h2>
+                
+                <!-- Установка значения -->
+                <div class="form-group">
+                    <label for="setKey">Ключ:</label>
+                    <input type="text" id="setKey" placeholder="example:key" value="test:key">
+                </div>
+                <div class="form-group">
+                    <label for="setValue">Значение:</label>
+                    <textarea id="setValue" rows="3" placeholder="Введите значение для кэширования">{"message": "Hello from cache!", "timestamp": "2024-01-01T00:00:00Z"}</textarea>
+                </div>
+                <div class="form-group">
+                    <label for="setTtl">TTL (секунды):</label>
+                    <input type="number" id="setTtl" placeholder="3600" value="3600">
+                </div>
+                <button class="btn" onclick="setValue()">💾 Установить значение</button>
+                
+                <div class="loading" id="setLoading">Установка значения...</div>
+                <div class="result" id="setResult"></div>
+            </div>
+
+            <!-- Получение значения -->
+            <div class="section">
+                <h2>📖 Получение значения</h2>
+                <div class="form-group">
+                    <label for="getKey">Ключ:</label>
+                    <input type="text" id="getKey" placeholder="example:key" value="test:key">
+                </div>
+                <button class="btn" onclick="getValue()">🔍 Получить значение</button>
+                
+                <div class="loading" id="getLoading">Получение значения...</div>
+                <div class="result" id="getResult"></div>
+            </div>
+
+            <!-- Проверка существования -->
+            <div class="section">
+                <h2>🔍 Проверка существования</h2>
+                <div class="form-group">
+                    <label for="existsKey">Ключ:</label>
+                    <input type="text" id="existsKey" placeholder="example:key" value="test:key">
+                </div>
+                <button class="btn" onclick="checkExists()">✅ Проверить существование</button>
+                
+                <div class="loading" id="existsLoading">Проверка...</div>
+                <div class="result" id="existsResult"></div>
+            </div>
+
+            <!-- Удаление значения -->
+            <div class="section">
+                <h2>🗑️ Удаление значения</h2>
+                <div class="form-group">
+                    <label for="deleteKey">Ключ:</label>
+                    <input type="text" id="deleteKey" placeholder="example:key" value="test:key">
+                </div>
+                <button class="btn btn-danger" onclick="deleteValue()">🗑️ Удалить значение</button>
+                
+                <div class="loading" id="deleteLoading">Удаление...</div>
+                <div class="result" id="deleteResult"></div>
+            </div>
+
+            <!-- Очистка кэша -->
+            <div class="section">
+                <h2>🧹 Очистка кэша</h2>
+                <p>Удаляет все значения из кэша</p>
+                <button class="btn btn-danger" onclick="clearCache()">🧹 Очистить весь кэш</button>
+                
+                <div class="loading" id="clearLoading">Очистка кэша...</div>
+                <div class="result" id="clearResult"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Определяем текущий хост
+        const currentHost = window.location.protocol + '//' + window.location.host;
+        document.getElementById('serverUrl').textContent = currentHost;
+
+        // Функции для работы с API
+        async function apiCall(endpoint, options = {}) {
+            const url = `${currentHost}${endpoint}`;
+            const response = await fetch(url, {
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                ...options
+            });
+            return await response.json();
+        }
+
+        // Функции для обновления UI
+        function updateStatus(message, type = 'info') {
+            const statusElement = document.getElementById('status');
+            statusElement.textContent = message;
+            statusElement.className = `status ${type}`;
+        }
+
+        function showLoading(elementId) {
+            document.getElementById(elementId).classList.add('show');
+        }
+
+        function hideLoading(elementId) {
+            document.getElementById(elementId).classList.remove('show');
+        }
+
+        function showResult(elementId, data, isSuccess = true) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            element.className = `result show ${isSuccess ? 'success' : 'error'}`;
+        }
+
+        function showError(elementId, error) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<strong>Ошибка:</strong> ${error}`;
+            element.className = 'result show error';
+        }
+
+        // Основные операции кэша
+        async function setValue() {
+            const key = document.getElementById('setKey').value;
+            const value = document.getElementById('setValue').value;
+            const ttl = parseInt(document.getElementById('setTtl').value) || 3600;
+
+            if (!key || !value) {
+                alert('Введите ключ и значение');
+                return;
+            }
+
+            showLoading('setLoading');
+            updateStatus('Установка значения в кэш...', 'info');
+
+            try {
+                const result = await apiCall('/api/cache/set', {
+                    method: 'POST',
+                    body: JSON.stringify({ key, value, ttl })
+                });
+
+                hideLoading('setLoading');
+                showResult('setResult', result, result.success);
+                updateStatus(result.success ? 'Значение установлено' : 'Ошибка установки', result.success ? 'success' : 'error');
+            } catch (error) {
+                hideLoading('setLoading');
+                showError('setResult', error.message);
+                updateStatus('Ошибка сети', 'error');
+            }
+        }
+
+        async function getValue() {
+            const key = document.getElementById('getKey').value;
+
+            if (!key) {
+                alert('Введите ключ');
+                return;
+            }
+
+            showLoading('getLoading');
+            updateStatus('Получение значения из кэша...', 'info');
+
+            try {
+                const result = await apiCall(`/api/cache/get/${key}`);
+
+                hideLoading('getLoading');
+                showResult('getResult', result, result.success);
+                updateStatus(result.success ? 'Значение получено' : 'Ключ не найден', result.success ? 'success' : 'info');
+            } catch (error) {
+                hideLoading('getLoading');
+                showError('getResult', error.message);
+                updateStatus('Ошибка сети', 'error');
+            }
+        }
+
+        async function checkExists() {
+            const key = document.getElementById('existsKey').value;
+
+            if (!key) {
+                alert('Введите ключ');
+                return;
+            }
+
+            showLoading('existsLoading');
+            updateStatus('Проверка существования ключа...', 'info');
+
+            try {
+                const result = await apiCall(`/api/cache/exists/${key}`);
+
+                hideLoading('existsLoading');
+                showResult('existsResult', result, result.success);
+                updateStatus(`Ключ ${result.exists ? 'существует' : 'не существует'}`, result.exists ? 'success' : 'info');
+            } catch (error) {
+                hideLoading('existsLoading');
+                showError('existsResult', error.message);
+                updateStatus('Ошибка сети', 'error');
+            }
+        }
+
+        async function deleteValue() {
+            const key = document.getElementById('deleteKey').value;
+
+            if (!key) {
+                alert('Введите ключ');
+                return;
+            }
+
+            showLoading('deleteLoading');
+            updateStatus('Удаление значения из кэша...', 'info');
+
+            try {
+                const result = await apiCall(`/api/cache/delete/${key}`, {
+                    method: 'DELETE'
+                });
+
+                hideLoading('deleteLoading');
+                showResult('deleteResult', result, result.success);
+                updateStatus(result.success ? 'Значение удалено' : 'Ключ не найден', result.success ? 'success' : 'info');
+            } catch (error) {
+                hideLoading('deleteLoading');
+                showError('deleteResult', error.message);
+                updateStatus('Ошибка сети', 'error');
+            }
+        }
+
+        async function clearCache() {
+            if (!confirm('Вы уверены, что хотите очистить весь кэш?')) {
+                return;
+            }
+
+            showLoading('clearLoading');
+            updateStatus('Очистка кэша...', 'info');
+
+            try {
+                const result = await apiCall('/api/cache/clear', {
+                    method: 'POST'
+                });
+
+                hideLoading('clearLoading');
+                showResult('clearResult', result, result.success);
+                updateStatus(result.success ? 'Кэш очищен' : 'Ошибка очистки', result.success ? 'success' : 'error');
+            } catch (error) {
+                hideLoading('clearLoading');
+                showError('clearResult', error.message);
+                updateStatus('Ошибка сети', 'error');
+            }
+        }
+
+        // Тестовые функции
+        async function testBasicCache() {
+            updateStatus('Тестирование базового кэша...', 'info');
+            
+            try {
+                // Тест 1: Установка
+                const setResult = await apiCall('/api/cache/set', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        key: 'test:basic',
+                        value: {
+                            message: 'Hello from cache!',
+                            timestamp: new Date().toISOString(),
+                            random: Math.random()
+                        },
+                        ttl: 3600
+                    })
+                });
+
+                if (!setResult.success) {
+                    throw new Error('Ошибка установки значения');
+                }
+
+                // Тест 2: Получение
+                const getResult = await apiCall('/api/cache/get/test:basic');
+                
+                if (!getResult.success) {
+                    throw new Error('Ошибка получения значения');
+                }
+
+                // Тест 3: Проверка существования
+                const existsResult = await apiCall('/api/cache/exists/test:basic');
+                
+                if (!existsResult.exists) {
+                    throw new Error('Ключ не существует после установки');
+                }
+
+                // Тест 4: Удаление
+                const deleteResult = await apiCall('/api/cache/delete/test:basic', {
+                    method: 'DELETE'
+                });
+
+                if (!deleteResult.success) {
+                    throw new Error('Ошибка удаления значения');
+                }
+
+                // Тест 5: Проверка после удаления
+                const existsAfterDelete = await apiCall('/api/cache/exists/test:basic');
+                
+                if (existsAfterDelete.exists) {
+                    throw new Error('Ключ все еще существует после удаления');
+                }
+
+                updateStatus('Базовый тест пройден успешно!', 'success');
+                alert('✅ Базовый тест кэша пройден успешно!');
+            } catch (error) {
+                updateStatus('Ошибка в базовом тесте', 'error');
+                alert(`❌ Ошибка в базовом тесте: ${error.message}`);
+            }
+        }
+
+        async function testTTL() {
+            updateStatus('Тестирование TTL...', 'info');
+            
+            try {
+                // Устанавливаем значение с TTL = 3 секунды
+                const setResult = await apiCall('/api/cache/set', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        key: 'test:ttl',
+                        value: 'This will expire soon',
+                        ttl: 3
+                    })
+                });
+
+                if (!setResult.success) {
+                    throw new Error('Ошибка установки значения с TTL');
+                }
+
+                // Проверяем сразу
+                const immediateGet = await apiCall('/api/cache/get/test:ttl');
+                
+                if (!immediateGet.success) {
+                    throw new Error('Значение не найдено сразу после установки');
+                }
+
+                // Ждем 4 секунды и проверяем снова
+                setTimeout(async () => {
+                    const delayedGet = await apiCall('/api/cache/get/test:ttl');
+                    
+                    if (delayedGet.success) {
+                        updateStatus('TTL не работает - значение не истекло', 'error');
+                        alert('❌ TTL не работает - значение не истекло через 4 секунды');
+                    } else {
+                        updateStatus('TTL работает корректно!', 'success');
+                        alert('✅ TTL работает корректно!');
+                    }
+                }, 4000);
+
+                updateStatus('TTL тест запущен, ожидание 4 секунды...', 'info');
+            } catch (error) {
+                updateStatus('Ошибка в TTL тесте', 'error');
+                alert(`❌ Ошибка в TTL тесте: ${error.message}`);
+            }
+        }
+
+        async function testClear() {
+            updateStatus('Тестирование очистки кэша...', 'info');
+            
+            try {
+                // Устанавливаем несколько значений
+                const keys = ['test:clear:1', 'test:clear:2', 'test:clear:3'];
+                
+                for (const key of keys) {
+                    await apiCall('/api/cache/set', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            key,
+                            value: `value for ${key}`,
+                            ttl: 3600
+                        })
+                    });
+                }
+
+                // Проверяем что они существуют
+                for (const key of keys) {
+                    const exists = await apiCall(`/api/cache/exists/${key}`);
+                    if (!exists.exists) {
+                        throw new Error(`Ключ ${key} не существует после установки`);
+                    }
+                }
+
+                // Очищаем кэш
+                const clearResult = await apiCall('/api/cache/clear', {
+                    method: 'POST'
+                });
+
+                if (!clearResult.success) {
+                    throw new Error('Ошибка очистки кэша');
+                }
+
+                // Проверяем что они удалены
+                for (const key of keys) {
+                    const exists = await apiCall(`/api/cache/exists/${key}`);
+                    if (exists.exists) {
+                        throw new Error(`Ключ ${key} все еще существует после очистки`);
+                    }
+                }
+
+                updateStatus('Тест очистки пройден успешно!', 'success');
+                alert('✅ Тест очистки кэша пройден успешно!');
+            } catch (error) {
+                updateStatus('Ошибка в тесте очистки', 'error');
+                alert(`❌ Ошибка в тесте очистки: ${error.message}`);
+            }
+        }
+
+        async function runAllTests() {
+            updateStatus('Запуск всех тестов...', 'info');
+            
+            try {
+                await testBasicCache();
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                await testTTL();
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                await testClear();
+                
+                updateStatus('Все тесты пройдены успешно!', 'success');
+                alert('🎉 Все тесты пройдены успешно!');
+            } catch (error) {
+                updateStatus('Ошибка в тестах', 'error');
+                alert(`❌ Ошибка в тестах: ${error.message}`);
+            }
+        }
+    </script>
+</body>
+</html>

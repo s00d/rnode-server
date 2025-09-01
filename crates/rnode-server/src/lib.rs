@@ -1,6 +1,7 @@
 use neon::prelude::*;
 
 // Import modules
+mod cache;
 mod file_operations;
 mod handlers;
 mod html_templates;
@@ -30,6 +31,7 @@ use server::start_listen;
 use static_files::{clear_static_cache, get_static_stats, load_static_files};
 use templates::{init_templates_wrapper, render_template_wrapper};
 use utils::*;
+use cache::neon::*;
 
 #[neon::main]
 fn main(mut cx: ModuleContext) -> NeonResult<()> {
@@ -79,6 +81,15 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("getAllRooms", websocket::get_all_rooms)?;
     cx.export_function("getClientInfo", websocket::get_client_info)?;
     cx.export_function("getUserRooms", websocket::get_user_rooms)?;
+
+    // Export cache functions
+    cx.export_function("initCacheSystem", init_cache_system_wrapper)?;
+    cx.export_function("cacheGet", cache_get_wrapper)?;
+    cx.export_function("cacheSet", cache_set_wrapper)?;
+    cx.export_function("cacheDelete", cache_delete_wrapper)?;
+    cx.export_function("cacheExists", cache_exists_wrapper)?;
+    cx.export_function("cacheClear", cache_clear_wrapper)?;
+    cx.export_function("cacheFlushByTags", cache_flush_by_tags_wrapper)?;
 
     Ok(())
 }

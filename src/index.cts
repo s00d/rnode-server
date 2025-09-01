@@ -106,6 +106,20 @@ declare module "./load.cjs" {
     createdAt: string;
   }>;
 
+  // Cache functions
+  function initCacheSystem(config: {
+    defaultTtl?: number;
+    maxMemory?: number;
+    redisUrl?: string;
+    fileCachePath?: string;
+  }): void;
+  function cacheGet(key: string, tags: string[]): string | null;
+  function cacheSet(key: string, value: string, tags: string[], ttl: number): boolean;
+  function cacheDelete(key: string, tags: string[]): boolean;
+  function cacheExists(key: string, tags: string[]): boolean;
+  function cacheClear(): boolean;
+  function cacheFlushByTags(tags: string[]): number;
+
 
 }
 

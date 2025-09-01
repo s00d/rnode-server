@@ -35,6 +35,11 @@ docs/
 │   ├── index.md                # Templates overview
 │   ├── syntax.md               # Tera syntax
 │   └── examples.md             # Template examples
+├── caching/                    # Caching system
+│   ├── index.md                # Caching overview
+│   ├── api.md                  # Cache API reference
+│   ├── examples.md             # Cache examples
+│   └── architecture.md         # Cache architecture
 ├── architecture/               # System architecture
 │   ├── index.md                # Architecture overview
 │   ├── overview.md             # System design
@@ -56,6 +61,7 @@ docs/
 - **High Performance**: Rust backend with Node.js bindings
 - **Express-like API**: Familiar routing and middleware patterns
 - **Template Engine**: Tera template integration
+- **Caching System**: Multi-level caching with memory, Redis, and file storage
 - **Static File Serving**: In-memory file handling with security
 - **File Operations**: Upload, download, and management
 - **HTTP Utilities**: Built-in client for external requests
@@ -83,6 +89,7 @@ docs/
 - **API Reference**: Complete API documentation for all objects
 - **Examples**: Practical code examples for all features
 - **Templates**: Template engine documentation and examples
+- **Caching**: Multi-level caching system documentation and examples
 - **Architecture**: System design and promise management
 - **Monitoring**: Metrics and monitoring setup
 - **Types**: TypeScript interface definitions
@@ -111,9 +118,6 @@ docs/
 - `docs/README.md` - Redundant with new structure
 - `docs/SUMMARY.md` - Not needed in VitePress
 
-### Moved Files
-- `docs/grafana-dashboard.md` → `docs/monitoring/grafana-dashboard.md`
-- `docs/metrics-examples.md` → `docs/monitoring/metrics-examples.md`
 
 ## What Was Preserved
 

@@ -112,7 +112,6 @@ pub struct CacheItem<T> {
 #[derive(Debug, Clone)]
 pub struct CacheConfig {
     pub default_ttl: u64, // в секундах
-    pub max_memory: usize, // в байтах
     pub compression: bool,
     pub serialization: CacheSerialization,
 }
@@ -1122,7 +1121,6 @@ const app = createApp({
       retryAttempts: 3
     },
     memory: {
-      maxSize: parseSize(process.env.CACHE_MAX_MEMORY) || 100 * 1024 * 1024,
       defaultTtl: parseInt(process.env.CACHE_DEFAULT_TTL) || 300,
       compression: process.env.CACHE_COMPRESSION === 'true',
       evictionPolicy: process.env.CACHE_EVICTION_POLICY || 'LRU'

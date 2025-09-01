@@ -1,4 +1,3 @@
-import { defineConfig } from 'vitepress'
 import { withMermaid } from "vitepress-plugin-mermaid";
 import { tabsMarkdownPlugin } from 'vitepress-plugin-tabs'
 
@@ -30,10 +29,16 @@ export default withMermaid({
       { text: 'Home', link: '/' },
       { text: 'Guide', link: '/guide/' },
       { text: 'API', link: '/api/' },
-      { text: 'WebSocket', link: '/websocket/' },
-      { text: 'Examples', link: '/examples/' },
-      { text: 'Templates', link: '/templates/' },
-      { text: 'Monitoring', link: '/monitoring/' },
+      {
+        text: 'Guide',
+        items: [
+          { text: 'WebSocket', link: '/websocket/' },
+          { text: 'Examples', link: '/examples/' },
+          { text: 'Templates', link: '/templates/' },
+          { text: 'Caching', link: '/caching/' },
+          { text: 'Monitoring', link: '/monitoring/' },
+        ],
+      },
     ],
 
     sidebar: [
@@ -84,6 +89,15 @@ export default withMermaid({
           { text: 'Overview', link: '/templates/' },
           { text: 'Syntax', link: '/templates/syntax' },
           { text: 'Examples', link: '/templates/examples' }
+        ]
+      },
+      {
+        text: 'Caching',
+        items: [
+          { text: 'Overview', link: '/caching/' },
+          { text: 'API Reference', link: '/caching/api' },
+          { text: 'Examples', link: '/caching/examples' },
+          { text: 'Architecture', link: '/caching/architecture' }
         ]
       },
       {

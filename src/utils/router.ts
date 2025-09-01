@@ -5,8 +5,10 @@ import { createMiddlewareUtils, type MiddlewareUtils } from './middleware';
 import { listFiles, saveFile, deleteFile, getFileContent, fileExists, loadStaticFiles, initTemplates, renderTemplate } from './file-utils';
 import { TemplateOptions } from '../types/app-router';
 import { createExpressMiddlewareWrapper, createExpressErrorMiddlewareWrapper } from './express-middleware-utils';
-import {handlers} from "./global-utils";
 import * as addon from "../load.cjs";
+import { CacheManager, CacheInitConfig } from '../types/cache';
+import { initCacheSystem, createCacheManager } from './cache';
+import { logger } from './logger';
 
 export type Middleware = (req: Request, res: Response, next: (error?: any) => void) => void | Promise<any>;
 
@@ -15,6 +17,7 @@ export class Router {
   private routerMiddlewares: Map<string, Middleware[]>;
   private httpMethods: HttpMethodsUtils;
   private middlewareUtils: MiddlewareUtils;
+  private cacheManager: CacheManager | null = null;
 
   constructor() {
     this.routerHandlers = new Map<string, { method: string; handler: (req: Request, res: Response) => void | Promise<any> }>();
@@ -26,6 +29,7 @@ export class Router {
     // Bind methods to preserve 'this' context
     this.useExpress = this.useExpress.bind(this);
     this.useExpressError = this.useExpressError.bind(this);
+    this.cache = this.cache.bind(this);
   }
 
   // HTTP Methods
@@ -113,7 +117,6 @@ export class Router {
     return this.routerMiddlewares;
   }
 
-
   // HTTP utility methods
   async httpRequest(method: string, url: string, headers: Record<string, string> = {}, body: string = '', timeout: number = 30000): Promise<any> {
     const headersJson = JSON.stringify(headers);
@@ -152,6 +155,22 @@ export class Router {
     this.use((req: Request, res: Response, next: (error?: any) => void) => {
       createExpressErrorMiddlewareWrapper(middleware, req, res, next);
     });
+  }
+
+  // Cache methods
+  cache(config: CacheInitConfig = {}): CacheManager {
+    if (!this.cacheManager) {
+      // Инициализируем систему кэширования если еще не инициализирована
+      const success = initCacheSystem(config);
+      if (success) {
+        this.cacheManager = createCacheManager();
+        logger.info('✅ Cache manager created for router', 'rnode_server::router');
+      } else {
+        logger.error('❌ Failed to initialize cache system', 'rnode_server::router');
+        throw new Error('Failed to initialize cache system');
+      }
+    }
+    return this.cacheManager;
   }
 }
 
