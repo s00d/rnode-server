@@ -28,6 +28,12 @@ const app = createApp({
 | `rnode_server_slow_requests_total` | Counter | Slow requests (>1s) | `method`, `path`, `duration_range` |
 | `rnode_server_cache_hits_total` | Counter | Cache hits | - |
 | `rnode_server_cache_misses_total` | Counter | Cache misses | - |
+| `rnode_server_data_cache_operations_total` | Counter | Total data cache operations | `operation`, `cache_type`, `status` |
+| `rnode_server_data_cache_hits_total` | Counter | Total data cache hits | `cache_type`, `key_pattern` |
+| `rnode_server_data_cache_misses_total` | Counter | Total data cache misses | `cache_type`, `key_pattern` |
+| `rnode_server_data_cache_errors_total` | Counter | Total data cache errors | `error_type`, `cache_type`, `operation` |
+| `rnode_server_data_cache_operation_duration_seconds` | Histogram | Data cache operation duration | `operation`, `cache_type` |
+| `rnode_server_data_cache_tag_operations_total` | Counter | Total data cache tag operations | `operation`, `cache_type` |
 | `rnode_server_total_connections` | Counter | Total connections | - |
 | `rnode_server_websocket_connections_total` | Counter | Total WebSocket connections | - |
 | `rnode_server_websocket_disconnections_total` | Counter | Total WebSocket disconnections | - |
@@ -119,6 +125,44 @@ rnode_server_websocket_room_connections
 rnode_server_websocket_rooms_total
 ```
 
+### Cache Metrics
+```sql
+# Cache hit rate
+rate(rnode_server_data_cache_hits_total[5m]) / (rate(rnode_server_data_cache_hits_total[5m]) + rate(rnode_server_data_cache_misses_total[5m])) * 100
+
+# Cache operations rate
+rate(rnode_server_data_cache_operations_total[5m]) by (operation, cache_type)
+
+# Cache error rate
+rate(rnode_server_data_cache_errors_total[5m]) by (error_type, cache_type)
+
+# Cache operation duration
+histogram_quantile(0.95, rate(rnode_server_data_cache_operation_duration_seconds_bucket[5m])) by (operation, cache_type)
+
+# Average cache operation duration
+rate(rnode_server_data_cache_operation_duration_seconds_sum[5m]) / rate(rnode_server_data_cache_operation_duration_seconds_count[5m]) by (operation, cache_type)
+
+
+
+# Tag operations rate
+rate(rnode_server_data_cache_tag_operations_total[5m]) by (operation, cache_type)
+
+# Cache hits by key pattern
+rate(rnode_server_data_cache_hits_total[5m]) by (key_pattern)
+
+# Cache misses by key pattern
+rate(rnode_server_data_cache_misses_total[5m]) by (key_pattern)
+
+# Tag operations by type
+rate(rnode_server_data_cache_tag_operations_total[5m]) by (operation, cache_type)
+
+# Operations with tags vs without tags
+rate(rnode_server_cache_operations_total[5m]) by (operation, cache_type, status)
+
+# Most used tags (by tag operations)
+rate(rnode_server_cache_tag_operations_total[5m]) by (operation)
+```
+
 ## Grafana Dashboard
 
 For a complete monitoring setup, see [Grafana Dashboard Configuration](./grafana-dashboard.md).
@@ -176,4 +220,40 @@ groups:
         annotations:
           summary: "High CPU usage detected"
           description: "CPU usage is {{ $value }}%"
+```
+
+### Low Cache Hit Rate
+```yaml
+      - alert: LowCacheHitRate
+        expr: (rate(rnode_server_data_cache_hits_total[5m]) / (rate(rnode_server_data_cache_hits_total[5m]) + rate(rnode_server_data_cache_misses_total[5m]))) * 100 < 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low cache hit rate detected"
+          description: "Cache hit rate is {{ $value }}%"
+```
+
+### High Cache Error Rate
+```yaml
+      - alert: HighCacheErrorRate
+        expr: rate(rnode_server_data_cache_errors_total[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High cache error rate detected"
+          description: "Cache error rate is {{ $value }} errors/second"
+```
+
+### High Cache Operation Duration
+```yaml
+      - alert: HighCacheOperationDuration
+        expr: histogram_quantile(0.95, rate(rnode_server_data_cache_operation_duration_seconds_bucket[5m])) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High cache operation duration detected"
+          description: "95th percentile cache operation duration is {{ $value }}s"
 ```

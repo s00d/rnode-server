@@ -12,18 +12,14 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="4d8c55b6-5a63-439f-adcf-d024569129f5" name="Changes" comment="update">
+      <change afterPath="$PROJECT_DIR$/crates/rnode-server/src/metrics/cache.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CACHING_SYSTEM_PLAN.md" beforeDir="false" afterPath="$PROJECT_DIR$/CACHING_SYSTEM_PLAN.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Cargo.lock" beforeDir="false" afterPath="$PROJECT_DIR$/Cargo.lock" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crates/rnode-server/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/Cargo.toml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/lib.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/lib.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/.vitepress/config.mts" beforeDir="false" afterPath="$PROJECT_DIR$/docs/.vitepress/config.mts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/STRUCTURE.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/STRUCTURE.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/playground/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/playground/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/index.cts" beforeDir="false" afterPath="$PROJECT_DIR$/src/index.cts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/router.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/router.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/cache/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/cache/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/metrics/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/metrics/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/monitoring/grafana-dashboard.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/monitoring/grafana-dashboard.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/monitoring/metrics.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/monitoring/metrics.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/cache/index.json" beforeDir="false" afterPath="$PROJECT_DIR$/playground/cache/index.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -139,15 +135,7 @@
       <workItem from="1756577197892" duration="1601000" />
       <workItem from="1756579296550" duration="3976000" />
       <workItem from="1756584051753" duration="1037000" />
-      <workItem from="1756585274949" duration="22842000" />
-    </task>
-    <task id="LOCAL-00020" summary="init">
-      <option name="closed" value="true" />
-      <created>1756105395688</created>
-      <option name="number" value="00020" />
-      <option name="presentableId" value="LOCAL-00020" />
-      <option name="project" value="LOCAL" />
-      <updated>1756105395688</updated>
+      <workItem from="1756585274949" duration="24552000" />
     </task>
     <task id="LOCAL-00021" summary="init">
       <option name="closed" value="true" />
@@ -533,7 +521,15 @@
       <option name="project" value="LOCAL" />
       <updated>1756665162182</updated>
     </task>
-    <option name="localTasksCounter" value="69" />
+    <task id="LOCAL-00069" summary="update">
+      <option name="closed" value="true" />
+      <created>1756736948811</created>
+      <option name="number" value="00069" />
+      <option name="presentableId" value="LOCAL-00069" />
+      <option name="project" value="LOCAL" />
+      <updated>1756736948811</updated>
+    </task>
+    <option name="localTasksCounter" value="70" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

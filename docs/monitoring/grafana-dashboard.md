@@ -7,6 +7,7 @@ This document provides a complete Grafana dashboard configuration for monitoring
 The dashboard includes:
 - **HTTP Performance**: Request rates, response times, status codes
 - **WebSocket Monitoring**: Connection rates, message throughput, error tracking
+- **Cache Monitoring**: Hit rates, operation performance, memory usage, tag operations
 - **System Resources**: CPU, memory, uptime
 - **Business Metrics**: Cache performance, slow requests
 - **Real-time Monitoring**: Live updates every 15 seconds
@@ -262,6 +263,143 @@ docker run -d \
         },
         "gridPos": {"h": 8, "w": 12, "x": 12, "y": 32}
       },
+      {
+        "id": 19,
+        "title": "Cache Hit Rate",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "(rate(rnode_server_data_cache_hits_total[5m]) / (rate(rnode_server_data_cache_hits_total[5m]) + rate(rnode_server_data_cache_misses_total[5m]))) * 100",
+            "legendFormat": "Hit Rate"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "yellow", "value": 80},
+                {"color": "green", "value": 95}
+              ]
+            },
+            "unit": "percent",
+            "decimals": 1
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 12, "y": 32}
+      },
+      {
+        "id": 20,
+        "title": "Cache Operations Rate",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(rnode_server_data_cache_operations_total[5m]) by (operation)",
+            "legendFormat": "{{operation}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "unit": "ops"
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 72}
+      },
+      {
+        "id": 21,
+        "title": "Cache Hit/Miss Rate",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(rnode_server_data_cache_hits_total[5m])",
+            "legendFormat": "Hits"
+          },
+          {
+            "expr": "rate(rnode_server_data_cache_misses_total[5m])",
+            "legendFormat": "Misses"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "unit": "reqps"
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 72}
+      },
+      {
+        "id": 22,
+        "title": "Cache Operation Duration",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(rnode_server_data_cache_operation_duration_seconds_bucket[5m])) by (operation)",
+            "legendFormat": "95th percentile - {{operation}}"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(rnode_server_data_cache_operation_duration_seconds_bucket[5m])) by (operation)",
+            "legendFormat": "50th percentile - {{operation}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "unit": "s"
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 80}
+      },
+      {
+        "id": 23,
+        "title": "Cache Errors",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(rnode_server_data_cache_errors_total[5m]) by (error_type)",
+            "legendFormat": "{{error_type}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "unit": "errors"
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 80}
+      },
+      {
+        "id": 24,
+        "title": "Cache Tag Operations",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(rnode_server_data_cache_tag_operations_total[5m]) by (operation)",
+            "legendFormat": "{{operation}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "unit": "ops"
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 88}
+      },
+
       {
         "id": 10,
         "title": "Pending Requests",
@@ -547,6 +685,42 @@ groups:
           severity: warning
         annotations:
           summary: "High WebSocket message rate"
+          
+      - alert: LowCacheHitRate
+        expr: (rate(rnode_server_data_cache_hits_total[5m]) / (rate(rnode_server_data_cache_hits_total[5m]) + rate(rnode_server_data_cache_misses_total[5m]))) * 100 < 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low cache hit rate detected"
+          description: "Cache hit rate is {{ $value }}%"
+          
+      - alert: HighCacheErrorRate
+        expr: rate(rnode_server_data_cache_errors_total[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High cache error rate detected"
+          description: "Cache error rate is {{ $value }} errors/second"
+          
+      - alert: HighCacheOperationDuration
+        expr: histogram_quantile(0.95, rate(rnode_server_data_cache_operation_duration_seconds_bucket[5m])) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High cache operation duration detected"
+          description: "95th percentile cache operation duration is {{ $value }}s"
+          
+      - alert: HighCacheMemoryUsage
+        expr: rnode_server_cache_memory_usage_bytes / 1024 / 1024 > 500
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High cache memory usage detected"
+          description: "Cache memory usage is {{ $value }}MB"
 ```
 
 ## 📱 Mobile Dashboard
@@ -579,3 +753,10 @@ The dashboard is responsive and works on mobile devices. Key metrics are display
 - Check `rnode_server_websocket_connection_duration_seconds` for connection stability
 - Monitor `rnode_server_websocket_messages_sent_total` vs `rnode_server_websocket_messages_received_total` for message flow
 - Check `rnode_server_websocket_room_connections` for room distribution
+
+### Cache Issues
+
+- Monitor `rnode_server_data_cache_hits_total` vs `rnode_server_data_cache_misses_total` for hit rate
+- Check `rnode_server_data_cache_errors_total` for error patterns
+- Monitor `rnode_server_data_cache_operation_duration_seconds` for performance issues
+- Monitor `rnode_server_data_cache_tag_operations_total` for tag usage patterns
