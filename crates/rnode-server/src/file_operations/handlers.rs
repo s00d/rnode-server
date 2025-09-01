@@ -1,23 +1,35 @@
 use crate::html_templates;
 use crate::types::{DownloadRouteConfig, UploadRouteConfig};
+use crate::request_parser::RequestParser;
+use crate::request_parser::types::FileInfo as ParserFileInfo;
 use axum::{body::Body, extract::Request, response::Response};
-use futures::stream::{self};
+use base64::Engine;
 use globset::{Glob, GlobSetBuilder};
 use http;
 use log::{debug, error, info, warn};
 use mime_guess::MimeGuess;
-use multer::Multipart;
-use serde_json;
+use serde_json::Value;
 use std::collections::HashMap;
 use std::path::Path;
 
-// Structure for file information
+// Structure for file information (using request_parser types)
 #[derive(serde::Serialize)]
 struct FileInfo {
     name: String,
     size: u64,
     mime_type: String,
     relative_path: String,
+}
+
+impl From<ParserFileInfo> for FileInfo {
+    fn from(parser_file: ParserFileInfo) -> Self {
+        Self {
+            name: parser_file.filename.clone(),
+            size: parser_file.size as u64,
+            mime_type: parser_file.content_type,
+            relative_path: parser_file.filename, // Will be set later
+        }
+    }
 }
 
 // Function for checking wildcard pattern
@@ -270,7 +282,7 @@ pub async fn upload_handler_impl(
 
     debug!("📄 Content-Type: '{}'", content_type);
 
-    if !content_type.contains("multipart/form-data") {
+    if !RequestParser::is_multipart(&content_type) {
         warn!(
             "❌ Content-Type must be multipart/form-data, got: '{}'",
             content_type
@@ -281,12 +293,7 @@ pub async fn upload_handler_impl(
             .unwrap());
     }
 
-    // Extract boundary
-    let boundary = content_type.split("boundary=").nth(1).unwrap_or("boundary");
-
-    debug!("📄 Boundary: '{}'", boundary);
-
-    // Get body - try using req.into_body() directly
+    // Get body
     debug!("📄 Reading request body...");
     let body = req.into_body();
     let body_bytes = axum::body::to_bytes(body, 100 * 1024 * 1024)
@@ -298,239 +305,234 @@ pub async fn upload_handler_impl(
 
     debug!("📄 Body size: {} bytes", body_bytes.len());
 
-    // Create stream for multer
-    debug!("📄 Creating multipart stream...");
-    let stream =
-        stream::once(async move { Result::<axum::body::Bytes, std::io::Error>::Ok(body_bytes) });
-
-    // Create Multipart
-    debug!("📄 Creating multipart parser...");
-    let mut multipart = Multipart::new(stream, boundary);
+    // Use RequestParser to parse multipart data
+    debug!("📄 Parsing multipart data with RequestParser...");
+    let (body_data, files_data) = RequestParser::parse_request_body(&body_bytes, &content_type).await;
 
     let mut uploaded_files = Vec::new();
     let mut form_fields = HashMap::new();
-    // Use subfolder from query parameter
-    let subfolder_from_form = subfolder_from_url;
 
-    debug!("📄 Starting to process multipart fields...");
-    // Process all fields and files - use the same approach as request_parser.rs
-    loop {
-        match multipart.next_field().await {
-            Ok(Some(field)) => {
-                let field_name = field.name().unwrap_or("unknown").to_string();
-                debug!("📄 Processing field: '{}'", field_name);
+    // Process form fields
+    if let Value::Object(fields_map) = body_data {
+        for (key, value) in fields_map {
+            if let Value::String(val) = value {
+                form_fields.insert(key, val);
+            }
+        }
+    }
 
-                if let Some(filename) = field.file_name() {
-                    // This is a file - process immediately
-                    let filename = filename.to_string();
-                    debug!("📄 Processing file: '{}'", filename);
+    // Process files
+    if let Value::Object(files_map) = files_data {
+        for (_field_name, file_data) in files_map {
+            if let Value::Object(file_obj) = file_data {
+                // Extract file information
+                let filename = file_obj.get("filename")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("unknown")
+                    .to_string();
 
-                    // Debug field information
-                    debug!("📄 Field name: '{}'", field_name);
-                    debug!("📄 Content type: '{:?}'", field.content_type());
-                    debug!("📄 File name: '{}'", filename);
+                let _content_type = file_obj.get("contentType")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("application/octet-stream")
+                    .to_string();
 
-                    // Check if subfolder is allowed
-                    let upload_folder = if let Some(ref subfolder) = subfolder_from_form {
-                        debug!("📁 Using subfolder from query parameter: '{}'", subfolder);
-                        // Check if subfolder is allowed with wildcard support
-                        if let Some(ref allowed_subfolders) = config.allowed_subfolders {
-                            debug!("📁 Checking allowed subfolders: {:?}", allowed_subfolders);
+                let size = file_obj.get("size")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(0);
 
-                            let is_allowed = allowed_subfolders
-                                .iter()
-                                .any(|allowed| matches_pattern(allowed, subfolder));
+                let data = file_obj.get("data")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
 
-                            if !is_allowed {
-                                warn!("❌ Subfolder '{}' not allowed", subfolder);
-                                return Ok(Response::builder()
-                                    .status(http::StatusCode::FORBIDDEN)
-                                    .body(Body::from(format!(
-                                        "Subfolder '{}' not allowed",
-                                        subfolder
-                                    )))
-                                    .unwrap());
-                            }
-                            debug!("✅ Subfolder '{}' allowed", subfolder);
-                        }
-                        let folder = format!("{}/{}", config.folder, subfolder);
-                        debug!("📁 Full upload folder: '{}'", folder);
-                        folder
-                    } else {
-                        debug!(
-                            "📁 Subfolder not specified, using root: '{}'",
-                            config.folder
-                        );
-                        config.folder.clone()
-                    };
+                debug!("📄 Processing file: '{}' ({} bytes)", filename, size);
 
-                    // Create relative file path
-                    let relative_path = if let Some(ref subfolder) = subfolder_from_form {
-                        let path = format!("{}/{}", subfolder, filename);
-                        debug!("📁 Relative file path: '{}'", path);
-                        path
-                    } else {
-                        debug!("📁 Relative path (no subfolder): '{}'", filename);
-                        filename.clone()
-                    };
+                // Check if subfolder is allowed
+                let upload_folder = if let Some(ref subfolder) = subfolder_from_url {
+                    debug!("📁 Using subfolder from query parameter: '{}'", subfolder);
+                    // Check if subfolder is allowed with wildcard support
+                    if let Some(ref allowed_subfolders) = config.allowed_subfolders {
+                        debug!("📁 Checking allowed subfolders: {:?}", allowed_subfolders);
 
-                    // Check extension
-                    if let Some(ref allowed_extensions) = config.allowed_extensions {
-                        if let Some(extension) = Path::new(&filename).extension() {
-                            let ext_str = extension.to_string_lossy().to_lowercase();
-                            if !allowed_extensions.iter().any(|allowed| {
-                                allowed.trim_start_matches('.').to_lowercase() == ext_str
-                            }) {
-                                warn!("❌ File extension .{} not allowed", ext_str);
-                                return Ok(Response::builder()
-                                    .status(http::StatusCode::FORBIDDEN)
-                                    .body(Body::from(format!(
-                                        "File extension .{} not allowed",
-                                        ext_str
-                                    )))
-                                    .unwrap());
-                            }
-                        }
-                    }
+                        let is_allowed = allowed_subfolders
+                            .iter()
+                            .any(|allowed| matches_pattern(allowed, subfolder));
 
-                    // Determine MIME type via mime_guess
-                    let mime_type = MimeGuess::from_path(&filename)
-                        .first_or_octet_stream()
-                        .to_string();
-
-                    // Check MIME type for security
-                    if let Some(ref allowed_mime_types) = config.allowed_mime_types {
-                        if !allowed_mime_types.contains(&mime_type) {
-                            warn!("❌ MIME type {} not allowed", mime_type);
+                        if !is_allowed {
+                            warn!("❌ Subfolder '{}' not allowed", subfolder);
                             return Ok(Response::builder()
                                 .status(http::StatusCode::FORBIDDEN)
-                                .body(Body::from(format!("MIME type {} not allowed", mime_type)))
-                                .unwrap());
-                        }
-                    }
-
-                    // Read file content
-                    let data = match field.bytes().await {
-                        Ok(data) => {
-                            debug!("📄 File data size: {} bytes", data.len());
-                            if data.is_empty() {
-                                warn!("⚠️ File '{}' is empty, skipping", filename);
-                                continue;
-                            }
-                            data
-                        }
-                        Err(e) => {
-                            error!("❌ Failed to read file data: {:?}", e);
-                            return Ok(Response::builder()
-                                .status(http::StatusCode::BAD_REQUEST)
-                                .body(Body::from("Failed to read file data"))
-                                .unwrap());
-                        }
-                    };
-
-                    // Check file size
-                    if let Some(max_size) = config.max_file_size {
-                        if data.len() as u64 > max_size {
-                            warn!("❌ File size {} exceeds limit {}", data.len(), max_size);
-                            return Ok(Response::builder()
-                                .status(http::StatusCode::PAYLOAD_TOO_LARGE)
                                 .body(Body::from(format!(
-                                    "File size {} exceeds limit {}",
-                                    data.len(),
-                                    max_size
+                                    "Subfolder '{}' not allowed",
+                                    subfolder
+                                )))
+                                .unwrap());
+                        }
+                        debug!("✅ Subfolder '{}' allowed", subfolder);
+                    }
+                    let folder = format!("{}/{}", config.folder, subfolder);
+                    debug!("📁 Full upload folder: '{}'", folder);
+                    folder
+                } else {
+                    debug!(
+                        "📁 Subfolder not specified, using root: '{}'",
+                        config.folder
+                    );
+                    config.folder.clone()
+                };
+
+                // Create relative file path
+                let relative_path = if let Some(ref subfolder) = subfolder_from_url {
+                    let path = format!("{}/{}", subfolder, filename);
+                    debug!("📁 Relative file path: '{}'", path);
+                    path
+                } else {
+                    debug!("📁 Relative path (no subfolder): '{}'", filename);
+                    filename.clone()
+                };
+
+                // Check extension
+                if let Some(ref allowed_extensions) = config.allowed_extensions {
+                    if let Some(extension) = Path::new(&filename).extension() {
+                        let ext_str = extension.to_string_lossy().to_lowercase();
+                        if !allowed_extensions.iter().any(|allowed| {
+                            allowed.trim_start_matches('.').to_lowercase() == ext_str
+                        }) {
+                            warn!("❌ File extension .{} not allowed", ext_str);
+                            return Ok(Response::builder()
+                                .status(http::StatusCode::FORBIDDEN)
+                                .body(Body::from(format!(
+                                    "File extension .{} not allowed",
+                                    ext_str
                                 )))
                                 .unwrap());
                         }
                     }
+                }
 
-                    // Check overwrite
-                    let file_path = format!("{}/{}", upload_folder, filename);
-                    if !config.overwrite && Path::new(&file_path).exists() {
-                        warn!("❌ File {} already exists", relative_path);
+                // Determine MIME type via mime_guess
+                let mime_type = MimeGuess::from_path(&filename)
+                    .first_or_octet_stream()
+                    .to_string();
+
+                // Check MIME type for security
+                if let Some(ref allowed_mime_types) = config.allowed_mime_types {
+                    if !allowed_mime_types.contains(&mime_type) {
+                        warn!("❌ MIME type {} not allowed", mime_type);
                         return Ok(Response::builder()
-                            .status(http::StatusCode::CONFLICT)
-                            .body(Body::from(format!("File {} already exists", relative_path)))
+                            .status(http::StatusCode::FORBIDDEN)
+                            .body(Body::from(format!("MIME type {} not allowed", mime_type)))
                             .unwrap());
                     }
+                }
 
-                    // Create folder if it doesn't exist
-                    debug!("📁 Creating folder: '{}'", upload_folder);
-                    if let Err(e) = std::fs::create_dir_all(&upload_folder) {
-                        error!("❌ Error creating folder '{}': {}", upload_folder, e);
-                        return Ok(html_templates::generate_generic_error_page(
-                            "Failed to create upload directory",
-                            Some(&format!("Error: {}", e)),
-                        ));
-                    }
-                    debug!("✅ Folder created successfully: '{}'", upload_folder);
-
-                    // Save file
-                    debug!("💾 Saving file to: '{}'", file_path);
-                    if let Err(e) = std::fs::write(&file_path, &data) {
-                        error!("❌ Error saving file '{}': {}", file_path, e);
-                        return Ok(html_templates::generate_generic_error_page(
-                            "Failed to save file",
-                            Some(&format!("Error: {}", e)),
-                        ));
-                    }
-                    debug!("✅ File saved successfully: '{}'", file_path);
-
-                    // Check file count based on upload type
-                    if config.multiple {
-                        // For multiple uploads check maxFiles
-                        if let Some(max_files) = config.max_files {
-                            if uploaded_files.len() >= max_files as usize {
-                                warn!("❌ Maximum number of files ({}) exceeded", max_files);
-                                return Ok(html_templates::generate_error_page(
-                                    http::StatusCode::PAYLOAD_TOO_LARGE,
-                                    "Too Many Files",
-                                    &format!("Maximum number of files ({}) exceeded", max_files),
-                                    None,
-                                    dev_mode,
-                                ));
-                            }
+                // Decode base64 data
+                let file_data = match base64::engine::general_purpose::STANDARD.decode(&data) {
+                    Ok(decoded) => {
+                        debug!("📄 File data decoded: {} bytes", decoded.len());
+                        if decoded.is_empty() {
+                            warn!("⚠️ File '{}' is empty, skipping", filename);
+                            continue;
                         }
-                    } else {
-                        // For single upload allow only 1 file
-                        if uploaded_files.len() >= 1 {
-                            warn!("❌ Single file upload route received multiple files");
-                            return Ok(html_templates::generate_bad_request_page(
-                                "Single file upload route received multiple files",
+                        decoded
+                    }
+                    Err(e) => {
+                        error!("❌ Failed to decode file data: {:?}", e);
+                        return Ok(Response::builder()
+                            .status(http::StatusCode::BAD_REQUEST)
+                            .body(Body::from("Failed to decode file data"))
+                            .unwrap());
+                    }
+                };
+
+                // Check file size
+                if let Some(max_size) = config.max_file_size {
+                    if file_data.len() as u64 > max_size {
+                        warn!("❌ File size {} exceeds limit {}", file_data.len(), max_size);
+                        return Ok(Response::builder()
+                            .status(http::StatusCode::PAYLOAD_TOO_LARGE)
+                            .body(Body::from(format!(
+                                "File size {} exceeds limit {}",
+                                file_data.len(),
+                                max_size
+                            )))
+                            .unwrap());
+                    }
+                }
+
+                // Check overwrite
+                let file_path = format!("{}/{}", upload_folder, filename);
+                if !config.overwrite && Path::new(&file_path).exists() {
+                    warn!("❌ File {} already exists", relative_path);
+                    return Ok(Response::builder()
+                        .status(http::StatusCode::CONFLICT)
+                        .body(Body::from(format!("File {} already exists", relative_path)))
+                        .unwrap());
+                }
+
+                // Create folder if it doesn't exist
+                debug!("📁 Creating folder: '{}'", upload_folder);
+                if let Err(e) = std::fs::create_dir_all(&upload_folder) {
+                    error!("❌ Error creating folder '{}': {}", upload_folder, e);
+                    return Ok(html_templates::generate_generic_error_page(
+                        "Failed to create upload directory",
+                        Some(&format!("Error: {}", e)),
+                    ));
+                }
+                debug!("✅ Folder created successfully: '{}'", upload_folder);
+
+                // Save file
+                debug!("💾 Saving file to: '{}'", file_path);
+                if let Err(e) = std::fs::write(&file_path, &file_data) {
+                    error!("❌ Error saving file '{}': {}", file_path, e);
+                    return Ok(html_templates::generate_generic_error_page(
+                        "Failed to save file",
+                        Some(&format!("Error: {}", e)),
+                    ));
+                }
+                debug!("✅ File saved successfully: '{}'", file_path);
+
+                // Check file count based on upload type
+                if config.multiple {
+                    // For multiple uploads check maxFiles
+                    if let Some(max_files) = config.max_files {
+                        if uploaded_files.len() >= max_files as usize {
+                            warn!("❌ Maximum number of files ({}) exceeded", max_files);
+                            return Ok(html_templates::generate_error_page(
+                                http::StatusCode::PAYLOAD_TOO_LARGE,
+                                "Too Many Files",
+                                &format!("Maximum number of files ({}) exceeded", max_files),
                                 None,
+                                dev_mode,
                             ));
                         }
                     }
-
-                    // Create file information
-                    let file_info = FileInfo {
-                        name: filename.clone(),
-                        size: data.len() as u64,
-                        mime_type: mime_type.clone(),
-                        relative_path,
-                    };
-
-                    uploaded_files.push(file_info);
-                    debug!(
-                        "💾 File saved: {} ({} bytes, {})",
-                        file_path,
-                        data.len(),
-                        mime_type
-                    );
                 } else {
-                    // This is a regular form field
-                    debug!("📝 Processing regular form field: '{}'", field_name);
-                    let value = field.text().await.unwrap_or_else(|_| String::new());
-                    debug!("📝 Form field value: '{}' = '{}'", field_name, value);
-                    form_fields.insert(field_name, value);
+                    // For single upload allow only 1 file
+                    if uploaded_files.len() >= 1 {
+                        warn!("❌ Single file upload route received multiple files");
+                        return Ok(html_templates::generate_bad_request_page(
+                            "Single file upload route received multiple files",
+                            None,
+                        ));
+                    }
                 }
-            }
-            Ok(None) => {
-                debug!("📄 No more fields found, ending multipart processing");
-                break; // End of multipart data
-            }
-            Err(e) => {
-                error!("❌ Error parsing multipart field: {:?}", e);
-                break; // Parsing error
+
+                // Create file information
+                let file_info = FileInfo {
+                    name: filename.clone(),
+                    size: file_data.len() as u64,
+                    mime_type: mime_type.clone(),
+                    relative_path,
+                };
+
+                uploaded_files.push(file_info);
+                debug!(
+                    "💾 File saved: {} ({} bytes, {})",
+                    file_path,
+                    file_data.len(),
+                    mime_type
+                );
             }
         }
     }

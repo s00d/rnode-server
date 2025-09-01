@@ -5,7 +5,7 @@ use mime_guess::MimeGuess;
 
 use serde_json;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 // Function for saving file implementation
 pub fn save_file_impl(
@@ -46,17 +46,46 @@ pub fn save_file_impl(
     }
 }
 
+// ... existing code ...
+
+// Helper function to recursively remove empty directories
+fn remove_empty_directories(mut path: PathBuf) {
+    while let Some(parent) = path.parent() {
+        if path.is_dir() && path.read_dir().map(|mut d| d.next().is_none()).unwrap_or(false) {
+            if let Err(e) = fs::remove_dir(&path) {
+                info!("⚠️ Failed to remove empty directory {}: {}", path.display(), e);
+                break;
+            } else {
+                info!("🗑️ Empty directory removed: {}", path.display());
+            }
+        } else {
+            break;
+        }
+        path = parent.to_path_buf();
+    }
+}
+
 // Function for deleting file implementation
 pub fn delete_file_impl(
     filename: &str,
     uploads_dir: &str,
 ) -> String {
     let file_path = format!("{}/{}", uploads_dir, filename);
+    let path = Path::new(&file_path);
 
-    if Path::new(&file_path).exists() {
+    if path.exists() {
+        // Get the parent directory path for cleanup
+        let parent_dir = path.parent().map(|p| p.to_path_buf());
+        
         match fs::remove_file(&file_path) {
             Ok(_) => {
                 info!("🗑️ File deleted: {}", file_path);
+                
+                // Remove empty directories recursively
+                if let Some(parent) = parent_dir {
+                    remove_empty_directories(parent);
+                }
+                
                 format!(
                     "{{\"success\":true,\"message\":\"File {} deleted successfully\"}}",
                     filename

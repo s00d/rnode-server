@@ -24,7 +24,6 @@ use file_operations::{
     register_upload_route, save_file,
 };
 use handlers::process_http_request;
-use http_utils::{http_request, http_batch};
 use middleware::register_middleware;
 use routes::*;
 use server::start_listen;
@@ -32,6 +31,7 @@ use static_files::{clear_static_cache, get_static_stats, load_static_files};
 use templates::{init_templates_wrapper, render_template_wrapper};
 use utils::*;
 use cache::neon::*;
+use crate::http_utils::{http_batch, http_request};
 
 #[neon::main]
 fn main(mut cx: ModuleContext) -> NeonResult<()> {
