@@ -253,6 +253,6 @@ app.websocket('/custom', {
 
 ## Related
 
-- [WebSocket API](../api/websocket.md) - Complete API reference
-- [WebSocket Examples](../examples/websocket.md) - Practical examples
+- [WebSocket API](../websocket/websocket.md) - Complete API reference
+- [WebSocket Client](../websocket/client.md) - Client-side implementation
 - [Performance Monitoring](../monitoring/) - Metrics and monitoring
