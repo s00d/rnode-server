@@ -131,7 +131,9 @@ jobs:
           for pkg in packages/*/; do
             if [ -f "$pkg/package.json" ]; then
               echo "Updating version in $pkg"
-              npm version $NEW_VERSION --prefix "$pkg" --no-git-tag-version
+              # Убираем завершающий слеш из пути
+              PKG_PATH="${pkg%/}"
+              npm version $NEW_VERSION --prefix "$PKG_PATH" --no-git-tag-version
             fi
           done
       - name: Build Packages
@@ -140,7 +142,9 @@ jobs:
           for pkg in packages/*/; do
             if [ -f "$pkg/package.json" ]; then
               echo "Building $pkg"
-              npm run build --prefix "$pkg"
+              # Убираем завершающий слеш из пути
+              PKG_PATH="${pkg%/}"
+              npm run build --prefix "$PKG_PATH"
             fi
           done
       - name: Pack Packages
@@ -150,7 +154,9 @@ jobs:
           for pkg in packages/*/; do
             if [ -f "$pkg/package.json" ]; then
               echo "Packing $pkg"
-              npm pack "$pkg" --silent --pack-destination=./dist-packages
+              # Убираем завершающий слеш из пути
+              PKG_PATH="${pkg%/}"
+              npm pack "$PKG_PATH" --silent --pack-destination=./dist-packages
             fi
           done
       - name: Validate Packages
@@ -163,7 +169,9 @@ jobs:
               npm publish --dry-run --prefix "$pkg"
               
               # Проверяем, что пакет имеет правильный scope
-              PACKAGE_NAME=$(node -p "require('$pkg/package.json').name")
+              # Убираем завершающий слеш из пути
+              PKG_PATH="${pkg%/}"
+              PACKAGE_NAME=$(node -p "require('$PKG_PATH/package.json').name")
               if [[ $PACKAGE_NAME != @rnode/* ]]; then
                 echo "❌ Error: Package $PACKAGE_NAME does not use @rnode scope"
                 exit 1
