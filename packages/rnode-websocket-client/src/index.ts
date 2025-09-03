@@ -84,14 +84,6 @@ if (typeof window !== 'undefined') {
   console.log('   - window.createWebSocketClient():', typeof (window as any).createWebSocketClient);
   console.log('   - window.WebSocketUtils:', typeof (window as any).WebSocketUtils);
   console.log('   - window.WebSocketLogger:', typeof (window as any).WebSocketLogger);
-  
-  // Тестируем создание экземпляра
-  try {
-    const testClient = new (window as any).RNodeWebSocketClient({ url: 'ws://test' });
-    console.log('✅ RNodeWebSocketClient успешно создан как конструктор');
-  } catch (error) {
-    console.error('❌ RNodeWebSocketClient не является конструктором:', error);
-  }
 }
 
 // Экспорт для модульных систем
