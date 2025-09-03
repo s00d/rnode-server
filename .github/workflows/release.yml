@@ -121,13 +121,6 @@ jobs:
       - name: Install Dependencies
         run: |
           npm ci
-          # Устанавливаем зависимости для каждого пакета
-          for pkg in packages/*/; do
-            if [ -f "$pkg/package.json" ]; then
-              echo "Installing dependencies for $pkg"
-              npm ci --prefix "$pkg"
-            fi
-          done
       - name: Update Package Versions
         run: |
           # Получаем новую версию из основного package.json
