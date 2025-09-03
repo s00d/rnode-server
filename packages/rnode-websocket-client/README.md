@@ -1,121 +1,121 @@
 # @rnode/websocket-client
 
-WebSocket клиент для RNode Server с поддержкой комнат, автоматического переподключения и ping/pong механизма.
+WebSocket client for RNode Server with support for rooms, automatic reconnection, and ping/pong mechanism.
 
-## Установка
+## Installation
 
 ```bash
 npm install @rnode/websocket-client
 ```
 
-## Быстрый старт
+## Quick Start
 
 ```typescript
 import { createWebSocketClient, WebSocketEvent } from '@rnode/websocket-client';
 
-// Создание клиента
+// Create client
 const client = createWebSocketClient({
   url: 'ws://localhost:3000/chat',
   clientId: 'user123',
   autoReconnect: true,
   onConnect: (event: WebSocketEvent) => {
-    console.log('Подключен к серверу!');
+    console.log('Connected to server!');
   },
   onMessage: (event: WebSocketEvent) => {
-    console.log('Получено сообщение:', event.data);
+    console.log('Received message:', event.data);
   }
 });
 
-// Подключение
+// Connect
 await client.connect();
 
-// Отправка сообщения
-client.send('Привет, мир!');
+// Send message
+client.send('Hello, world!');
 
-// Подключение к комнате
+// Join room
 client.joinRoom('general');
 
-// Отправка сообщения в комнату
-client.send('Сообщение в комнату', 'general');
+// Send message to room
+client.send('Message to room', 'general');
 ```
 
-## Основные возможности
+## Key Features
 
-### 🔌 Автоматическое переподключение
-- Экспоненциальная задержка между попытками
-- Настраиваемое количество попыток
-- Настраиваемый интервал переподключения
+### 🔌 Automatic Reconnection
+- Exponential backoff between attempts
+- Configurable number of attempts
+- Configurable reconnection interval
 
-### 🏠 Система комнат
-- Подключение к комнатам
-- Отправка сообщений в конкретные комнаты
-- Автоматическое отслеживание текущей комнаты
+### 🏠 Room System
+- Join rooms
+- Send messages to specific rooms
+- Automatic tracking of current room
 
-### 🏓 Ping/Pong механизм
-- Автоматическая проверка состояния соединения
-- Настраиваемые интервалы
-- Таймауты для обнаружения "мертвых" соединений
+### 🏓 Ping/Pong Mechanism
+- Automatic connection health check
+- Configurable intervals
+- Timeouts for detecting "dead" connections
 
-### 📱 События
-- `onConnect` - подключение установлено
-- `onDisconnect` - соединение разорвано
-- `onMessage` - получено сообщение
-- `onError` - произошла ошибка
-- `onJoinRoom` - подключение к комнате
-- `onLeaveRoom` - выход из комнаты
-- `onPing` - отправлен ping
-- `onPong` - получен pong
+### 📱 Events
+- `onConnect` - connection established
+- `onDisconnect` - connection closed
+- `onMessage` - message received
+- `onError` - error occurred
+- `onJoinRoom` - joined room
+- `onLeaveRoom` - left room
+- `onPing` - ping sent
+- `onPong` - pong received
 
 ## API
 
 ### RNodeWebSocketClient
 
-#### Конструктор
+#### Constructor
 ```typescript
 new RNodeWebSocketClient(options: WebSocketOptions)
 ```
 
-#### Методы
+#### Methods
 
 ##### `connect(): Promise<void>`
-Подключение к WebSocket серверу.
+Connect to WebSocket server.
 
 ##### `disconnect(): void`
-Отключение от сервера.
+Disconnect from server.
 
 ##### `send(data: any, roomId?: string): boolean`
-Отправка сообщения. Если `roomId` не указан, сообщение отправляется в текущую комнату.
+Send message. If `roomId` is not specified, message is sent to current room.
 
 ##### `joinRoom(roomId: string): boolean`
-Подключение к комнате.
+Join room.
 
 ##### `leaveRoom(roomId?: string): boolean`
-Выход из комнаты. Если `roomId` не указан, выход из текущей комнаты.
+Leave room. If `roomId` is not specified, leave current room.
 
 ##### `isConnected(): boolean`
-Проверка состояния подключения.
+Check connection status.
 
 ##### `getState(): number`
-Получение текущего состояния WebSocket.
+Get current WebSocket state.
 
 ##### `getCurrentRoom(): string | null`
-Получение ID текущей комнаты.
+Get current room ID.
 
 ##### `updateOptions(newOptions: Partial<WebSocketOptions>): void`
-Обновление конфигурации клиента.
+Update client configuration.
 
 ### WebSocketOptions
 
 ```typescript
 interface WebSocketOptions {
-  url: string;                           // URL WebSocket сервера
-  protocols?: string | string[];         // Протоколы WebSocket
-  clientId?: string;                     // ID клиента
-  autoReconnect?: boolean;               // Автоматическое переподключение
-  reconnectInterval?: number;            // Интервал переподключения (мс)
-  maxReconnectAttempts?: number;         // Максимальное количество попыток
-  pingInterval?: number;                 // Интервал ping (мс)
-  pongTimeout?: number;                  // Таймаут pong (мс)
+  url: string;                           // WebSocket server URL
+  protocols?: string | string[];         // WebSocket protocols
+  clientId?: string;                     // Client ID
+  autoReconnect?: boolean;                // Automatic reconnection
+  reconnectInterval?: number;            // Reconnection interval (ms)
+  maxReconnectAttempts?: number;         // Maximum number of attempts
+  pingInterval?: number;                 // Ping interval (ms)
+  pongTimeout?: number;                  // Pong timeout (ms)
   onConnect?: (event: WebSocketEvent) => void;
   onDisconnect?: (event: WebSocketEvent) => void;
   onMessage?: (event: WebSocketEvent) => void;
@@ -137,9 +137,9 @@ interface WebSocketEvent {
 }
 ```
 
-## Примеры использования
+## Usage Examples
 
-### Чат приложение
+### Chat Application
 
 ```typescript
 import { createWebSocketClient } from '@rnode/websocket-client';
@@ -150,7 +150,7 @@ const chatClient = createWebSocketClient({
   autoReconnect: true,
   
   onConnect: () => {
-    console.log('Подключен к чату');
+    console.log('Connected to chat');
     chatClient.joinRoom('general');
   },
   
@@ -162,14 +162,14 @@ const chatClient = createWebSocketClient({
   },
   
   onJoinRoom: (event) => {
-    console.log(`Подключился к комнате: ${event.data.roomId}`);
+    console.log(`Joined room: ${event.data.roomId}`);
   }
 });
 
-// Подключение
+// Connect
 await chatClient.connect();
 
-// Отправка сообщения в чат
+// Send message to chat
 function sendMessage(text: string) {
   chatClient.send({
     type: 'chat',
@@ -179,7 +179,7 @@ function sendMessage(text: string) {
 }
 ```
 
-### Игровое приложение
+### Game Application
 
 ```typescript
 import { createWebSocketClient } from '@rnode/websocket-client';
@@ -188,10 +188,10 @@ const gameClient = createWebSocketClient({
   url: 'ws://localhost:3000/game',
   clientId: 'player_' + Math.random().toString(36).substr(2, 9),
   autoReconnect: true,
-  pingInterval: 1000, // Частые ping для игр
+  pingInterval: 1000, // Frequent pings for games
   
   onConnect: () => {
-    console.log('Подключен к игровому серверу');
+    console.log('Connected to game server');
   },
   
   onMessage: (event) => {
@@ -207,11 +207,11 @@ const gameClient = createWebSocketClient({
   }
 });
 
-// Подключение к игровой комнате
+// Connect to game room
 await gameClient.connect();
 gameClient.joinRoom('game_room_1');
 
-// Отправка движения игрока
+// Send player movement
 function sendPlayerMove(position: { x: number, y: number }) {
   gameClient.send({
     type: 'player_move',
@@ -221,18 +221,18 @@ function sendPlayerMove(position: { x: number, y: number }) {
 }
 ```
 
-## Сборка
+## Build
 
 ```bash
 npm run build
 ```
 
-## Разработка
+## Development
 
 ```bash
 npm run dev
 ```
 
-## Лицензия
+## License
 
 MIT
