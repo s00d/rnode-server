@@ -125,6 +125,7 @@ jobs:
           tag: ${{ needs.setup.outputs.tag }}
           fileName: "*.tgz"
           out-file-path: ./dist
+
       - name: Publish Main Package
         shell: bash
         env:
@@ -134,6 +135,32 @@ jobs:
           for p in ./dist/*.tgz ; do
             npm publish --access public --no-git-checks $p
           done
+
+      - name: Update Package Versions
+        shell: bash
+        run: |
+          echo "Updating package versions..."
+          VERSION='${{ (inputs.version == 'custom' && inputs.custom) || inputs.version }}'
+
+          # Update versions in all packages
+          for pkg in packages/*/; do
+            if [ -f "$pkg/package.json" ]; then
+              PKG_PATH="${pkg%/}"
+              PKG_NAME=$(basename "$PKG_PATH")
+
+              echo "📦 Updating version for package: $PKG_NAME"
+              cd "$PKG_PATH"
+
+              # Update version in package.json
+              npm version --no-git-tag-version "$VERSION"
+
+              echo "✅ Updated $PKG_NAME to version $VERSION"
+              cd - > /dev/null
+            fi
+          done
+
+          echo "🎉 All package versions updated successfully!"
+
       - name: Publish Packages
         shell: bash
         env:
@@ -141,30 +168,32 @@ jobs:
         run: |
           echo "Publishing packages..."
           
-          # Проходим по всем пакетам
+          # Process all packages
           for pkg in packages/*/; do
             if [ -f "$pkg/package.json" ]; then
-              # Убираем завершающий слеш из пути
+              # Remove trailing slash from path
               PKG_PATH="${pkg%/}"
               PKG_NAME=$(basename "$PKG_PATH")
               
               echo "📦 Processing package: $PKG_NAME"
               echo "📁 Package path: $PKG_PATH"
               
-              # Переходим в директорию пакета
+              # Change to package directory
               cd "$PKG_PATH"
               
-              # Собираем пакет
+              # Build package
               echo "🔨 Building $PKG_NAME..."
               npm run build
               
-              # Публикуем пакет
+              # Publish package
               echo "🚀 Publishing $PKG_NAME..."
-              npm publish --access public --no-git-checks
+              if npm publish --access public --no-git-checks 2>&1 | grep -q "You cannot publish over the previously published versions"; then
+                echo "⚠️  Version already exists, skipping publication for $PKG_NAME"
+              else
+                echo "✅ Successfully published $PKG_NAME"
+              fi
               
-              echo "✅ Successfully published $PKG_NAME"
-              
-              # Возвращаемся в корневую директорию
+              # Return to root directory
               cd - > /dev/null
             fi
           done
