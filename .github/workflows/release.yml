@@ -125,11 +125,6 @@ jobs:
           tag: ${{ needs.setup.outputs.tag }}
           fileName: "*.tgz"
           out-file-path: ./dist
-      - name: Download Package Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: packages
-          path: ./dist-packages
       - name: Publish Main Package
         shell: bash
         env:
