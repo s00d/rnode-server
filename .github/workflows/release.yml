@@ -156,7 +156,7 @@ jobs:
               echo "Packing $pkg"
               # Убираем завершающий слеш из пути
               PKG_PATH="${pkg%/}"
-              npm pack "$PKG_PATH" --silent --pack-destination=./dist-packages
+              npm pack "$PKG_PATH" --silent --pack-destination=./dist-packages --no-git-checks
             fi
           done
       - name: Validate Packages
@@ -166,11 +166,11 @@ jobs:
             if [ -f "$pkg/package.json" ]; then
               echo "Validating $pkg"
               # Проверяем, что пакет готов к публикации
-              npm publish --dry-run --prefix "$pkg"
+              PKG_PATH="${pkg%/}"
+              npm publish --dry-run --prefix "$PKG_PATH" --no-git-checks
               
               # Проверяем, что пакет имеет правильный scope
               # Убираем завершающий слеш из пути
-              PKG_PATH="${pkg%/}"
               PACKAGE_NAME=$(node -p "require('$PKG_PATH/package.json').name")
               if [[ $PACKAGE_NAME != @rnode/* ]]; then
                 echo "❌ Error: Package $PACKAGE_NAME does not use @rnode scope"
