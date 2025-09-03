@@ -12,13 +12,18 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="4d8c55b6-5a63-439f-adcf-d024569129f5" name="Changes" comment="update">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Cargo.lock" beforeDir="false" afterPath="$PROJECT_DIR$/Cargo.lock" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crates/rnode-server/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/Cargo.toml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/websocket/client.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/websocket/client.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/packages/rnode-websocket-client/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/README.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/.npmignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/client.d.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/client.d.ts.map" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/index.d.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/index.d.ts.map" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/logger.d.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/logger.d.ts.map" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/types.d.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/types.d.ts.map" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.github/workflows/release.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/release.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/packages/rnode-websocket-client/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/packages/rnode-websocket-client/tsconfig.json" beforeDir="false" afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/tsconfig.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -134,23 +139,7 @@
       <workItem from="1756577197892" duration="1601000" />
       <workItem from="1756579296550" duration="3976000" />
       <workItem from="1756584051753" duration="1037000" />
-      <workItem from="1756585274949" duration="34004000" />
-    </task>
-    <task id="LOCAL-00032" summary="fix">
-      <option name="closed" value="true" />
-      <created>1756115540002</created>
-      <option name="number" value="00032" />
-      <option name="presentableId" value="LOCAL-00032" />
-      <option name="project" value="LOCAL" />
-      <updated>1756115540002</updated>
-    </task>
-    <task id="LOCAL-00033" summary="fix">
-      <option name="closed" value="true" />
-      <created>1756121889174</created>
-      <option name="number" value="00033" />
-      <option name="presentableId" value="LOCAL-00033" />
-      <option name="project" value="LOCAL" />
-      <updated>1756121889174</updated>
+      <workItem from="1756585274949" duration="34857000" />
     </task>
     <task id="LOCAL-00034" summary="fix">
       <option name="closed" value="true" />
@@ -528,7 +517,23 @@
       <option name="project" value="LOCAL" />
       <updated>1756889606315</updated>
     </task>
-    <option name="localTasksCounter" value="81" />
+    <task id="LOCAL-00081" summary="update">
+      <option name="closed" value="true" />
+      <created>1756890278866</created>
+      <option name="number" value="00081" />
+      <option name="presentableId" value="LOCAL-00081" />
+      <option name="project" value="LOCAL" />
+      <updated>1756890278866</updated>
+    </task>
+    <task id="LOCAL-00082" summary="update">
+      <option name="closed" value="true" />
+      <created>1756890402197</created>
+      <option name="number" value="00082" />
+      <option name="presentableId" value="LOCAL-00082" />
+      <option name="project" value="LOCAL" />
+      <updated>1756890402197</updated>
+    </task>
+    <option name="localTasksCounter" value="83" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

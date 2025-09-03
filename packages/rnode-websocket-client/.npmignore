@@ -1,0 +1,20 @@
+# Development files
+tsconfig.json
+vite.config.ts
+node_modules/
+.git/
+.gitignore
+
+# Build artifacts
+*.log
+*.tsbuildinfo
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db

@@ -103,84 +103,10 @@ jobs:
       version: ${{ (inputs.version == 'custom' && inputs.custom) || inputs.version }}
       github-release: ${{ !!needs.setup.outputs.publish }}
 
-  build-packages:
-    name: Build Packages
-    if: ${{ needs.setup.outputs.publish }}
-    needs: [setup]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-        with:
-          ref: ${{ needs.setup.outputs.ref }}
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-      - name: Install Dependencies
-        run: |
-          npm ci
-      - name: Update Package Versions
-        run: |
-          # Получаем новую версию из основного package.json
-          NEW_VERSION=$(node -p "require('./package.json').version")
-          echo "Updating all packages to version: $NEW_VERSION"
-          
-          # Обновляем версии всех пакетов
-          for pkg in packages/*/; do
-            if [ -f "$pkg/package.json" ]; then
-              echo "Updating version in $pkg"
-              # Убираем завершающий слеш из пути
-              PKG_PATH="${pkg%/}"
-              npm version $NEW_VERSION --prefix "$PKG_PATH" --no-git-tag-version
-            fi
-          done
-      - name: Build Packages
-        run: |
-          # Собираем каждый пакет
-          for pkg in packages/*/; do
-            if [ -f "$pkg/package.json" ]; then
-              echo "Building $pkg"
-              # Убираем завершающий слеш из пути
-              PKG_PATH="${pkg%/}"
-              npm run build --prefix "$PKG_PATH"
-            fi
-          done
-      - name: Pack Packages
-        run: |
-          mkdir -p dist-packages
-          # Упаковываем каждый пакет
-          for pkg in packages/*/; do
-            if [ -f "$pkg/package.json" ]; then
-              echo "Packing $pkg"
-              # Убираем завершающий слеш из пути
-              PKG_PATH="${pkg%/}"
-              echo "Package path: $PKG_PATH"
-              echo "Current directory: $(pwd)"
-              echo "Package.json exists: $(test -f "$PKG_PATH/package.json" && echo "yes" || echo "no")"
-          
-              # Попробуем упаковать с дополнительными флагами
-              npm pack "$PKG_PATH" --silent --pack-destination=./dist-packages --no-git-checks --ignore-scripts || {
-                echo "Failed to pack with npm pack, trying alternative approach..."
-                # Альтернативный способ - создаем архив вручную
-                cd "$PKG_PATH"
-                tar -czf "../../dist-packages/$(basename "$PKG_PATH").tgz" --exclude=node_modules --exclude=.git .
-                cd - > /dev/null
-              }
-            fi
-          done
-      - name: Upload Package Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: packages
-          path: dist-packages/
-          retention-days: 1
-
   publish:
     name: Publish
     if: ${{ needs.setup.outputs.publish }}
-    needs: [setup, build, build-packages]
+    needs: [setup, build]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -219,11 +145,33 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           echo "Publishing packages..."
-          for p in ./dist-packages/*.tgz ; do
-            echo "Publishing $p"
-            PACKAGE_NAME=$(basename "$p" .tgz)
-            echo "Package: $PACKAGE_NAME"
-            npm publish --access public --no-git-checks "$p"
-            echo "✅ Successfully published $PACKAGE_NAME"
+          
+          # Проходим по всем пакетам
+          for pkg in packages/*/; do
+            if [ -f "$pkg/package.json" ]; then
+              # Убираем завершающий слеш из пути
+              PKG_PATH="${pkg%/}"
+              PKG_NAME=$(basename "$PKG_PATH")
+              
+              echo "📦 Processing package: $PKG_NAME"
+              echo "📁 Package path: $PKG_PATH"
+              
+              # Переходим в директорию пакета
+              cd "$PKG_PATH"
+              
+              # Собираем пакет
+              echo "🔨 Building $PKG_NAME..."
+              npm run build
+              
+              # Публикуем пакет
+              echo "🚀 Publishing $PKG_NAME..."
+              npm publish --access public --no-git-checks
+              
+              echo "✅ Successfully published $PKG_NAME"
+              
+              # Возвращаемся в корневую директорию
+              cd - > /dev/null
+            fi
           done
+          
           echo "🎉 All packages published successfully!"
