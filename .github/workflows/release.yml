@@ -103,109 +103,84 @@ jobs:
       version: ${{ (inputs.version == 'custom' && inputs.custom) || inputs.version }}
       github-release: ${{ !!needs.setup.outputs.publish }}
 
-  # build-packages:
-  #   name: Build Packages
-  #   if: ${{ needs.setup.outputs.publish }}
-  #   needs: [setup]
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout Code
-  #       uses: actions/checkout@v3
-  #       with:
-  #         ref: ${{ needs.setup.outputs.ref }}
-  #     - name: Setup Node.js
-  #       uses: actions/setup-node@v4
-  #       with:
-  #         node-version: '20'
-  #         cache: 'npm'
-  #     - name: Install Dependencies
-  #       run: |
-  #         npm ci
-  #     - name: Update Package Versions
-  #       run: |
-  #         # Получаем новую версию из основного package.json
-  #         NEW_VERSION=$(node -p "require('./package.json').version")
-  #         echo "Updating all packages to version: $NEW_VERSION"
+  build-packages:
+    name: Build Packages
+    if: ${{ needs.setup.outputs.publish }}
+    needs: [setup]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ needs.setup.outputs.ref }}
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install Dependencies
+        run: |
+          npm ci
+      - name: Update Package Versions
+        run: |
+          # Получаем новую версию из основного package.json
+          NEW_VERSION=$(node -p "require('./package.json').version")
+          echo "Updating all packages to version: $NEW_VERSION"
           
-  #         # Обновляем версии всех пакетов
-  #         for pkg in packages/*/; do
-  #           if [ -f "$pkg/package.json" ]; then
-  #             echo "Updating version in $pkg"
-  #             # Убираем завершающий слеш из пути
-  #             PKG_PATH="${pkg%/}"
-  #             npm version $NEW_VERSION --prefix "$PKG_PATH" --no-git-tag-version
-  #           fi
-  #         done
-  #     - name: Build Packages
-  #       run: |
-  #         # Собираем каждый пакет
-  #         for pkg in packages/*/; do
-  #           if [ -f "$pkg/package.json" ]; then
-  #             echo "Building $pkg"
-  #             # Убираем завершающий слеш из пути
-  #             PKG_PATH="${pkg%/}"
-  #             npm run build --prefix "$PKG_PATH"
-  #           fi
-  #         done
-  #     - name: Pack Packages
-  #       run: |
-  #         mkdir -p dist-packages
-  #         # Упаковываем каждый пакет
-  #         for pkg in packages/*/; do
-  #           if [ -f "$pkg/package.json" ]; then
-  #             echo "Packing $pkg"
-  #             # Убираем завершающий слеш из пути
-  #             PKG_PATH="${pkg%/}"
-  #             echo "Package path: $PKG_PATH"
-  #             echo "Current directory: $(pwd)"
-  #             echo "Package.json exists: $(test -f "$PKG_PATH/package.json" && echo "yes" || echo "no")"
-              
-  #             # Попробуем упаковать с дополнительными флагами
-  #             npm pack "$PKG_PATH" --silent --pack-destination=./dist-packages --no-git-checks --ignore-scripts || {
-  #               echo "Failed to pack with npm pack, trying alternative approach..."
-  #               # Альтернативный способ - создаем архив вручную
-  #               cd "$PKG_PATH"
-  #               tar -czf "../../dist-packages/$(basename "$PKG_PATH").tgz" --exclude=node_modules --exclude=.git .
-  #               cd - > /dev/null
-  #             }
-  #           fi
-  #         done
-  #     - name: Validate Packages
-  #       run: |
-  #         echo "Validating packages for publication..."
-  #         for pkg in packages/*/; do
-  #           if [ -f "$pkg/package.json" ]; then
-  #             echo "Validating $pkg"
-  #             # Убираем завершающий слеш из пути
-  #             PKG_PATH="${pkg%/}"
-  #             echo "Package path for validation: $PKG_PATH"
-              
-  #             # Проверяем, что пакет готов к публикации
-  #             npm publish --dry-run --prefix "$PKG_PATH" --no-git-checks --ignore-scripts || {
-  #               echo "Validation failed, but continuing..."
-  #             }
-              
-  #             # Проверяем, что пакет имеет правильный scope
-  #             PACKAGE_NAME=$(node -p "require('$PKG_PATH/package.json').name")
-  #             echo "Package name: $PACKAGE_NAME"
-  #             if [[ $PACKAGE_NAME != @rnode/* ]]; then
-  #               echo "❌ Error: Package $PACKAGE_NAME does not use @rnode scope"
-  #               exit 1
-  #             fi
-  #             echo "✅ Package $PACKAGE_NAME has correct scope"
-  #           fi
-  #         done
-  #     - name: Upload Package Artifacts
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: packages
-  #         path: dist-packages/
-  #         retention-days: 1
+          # Обновляем версии всех пакетов
+          for pkg in packages/*/; do
+            if [ -f "$pkg/package.json" ]; then
+              echo "Updating version in $pkg"
+              # Убираем завершающий слеш из пути
+              PKG_PATH="${pkg%/}"
+              npm version $NEW_VERSION --prefix "$PKG_PATH" --no-git-tag-version
+            fi
+          done
+      - name: Build Packages
+        run: |
+          # Собираем каждый пакет
+          for pkg in packages/*/; do
+            if [ -f "$pkg/package.json" ]; then
+              echo "Building $pkg"
+              # Убираем завершающий слеш из пути
+              PKG_PATH="${pkg%/}"
+              npm run build --prefix "$PKG_PATH"
+            fi
+          done
+      - name: Pack Packages
+        run: |
+          mkdir -p dist-packages
+          # Упаковываем каждый пакет
+          for pkg in packages/*/; do
+            if [ -f "$pkg/package.json" ]; then
+              echo "Packing $pkg"
+              # Убираем завершающий слеш из пути
+              PKG_PATH="${pkg%/}"
+              echo "Package path: $PKG_PATH"
+              echo "Current directory: $(pwd)"
+              echo "Package.json exists: $(test -f "$PKG_PATH/package.json" && echo "yes" || echo "no")"
+          
+              # Попробуем упаковать с дополнительными флагами
+              npm pack "$PKG_PATH" --silent --pack-destination=./dist-packages --no-git-checks --ignore-scripts || {
+                echo "Failed to pack with npm pack, trying alternative approach..."
+                # Альтернативный способ - создаем архив вручную
+                cd "$PKG_PATH"
+                tar -czf "../../dist-packages/$(basename "$PKG_PATH").tgz" --exclude=node_modules --exclude=.git .
+                cd - > /dev/null
+              }
+            fi
+          done
+      - name: Upload Package Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: dist-packages/
+          retention-days: 1
 
   publish:
     name: Publish
     if: ${{ needs.setup.outputs.publish }}
-    needs: [setup, build]
+    needs: [setup, build, build-packages]
     runs-on: ubuntu-latest
     permissions:
       contents: write
