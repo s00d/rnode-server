@@ -126,23 +126,7 @@
       <workItem from="1756577197892" duration="1601000" />
       <workItem from="1756579296550" duration="3976000" />
       <workItem from="1756584051753" duration="1037000" />
-      <workItem from="1756585274949" duration="32121000" />
-    </task>
-    <task id="LOCAL-00026" summary="init">
-      <option name="closed" value="true" />
-      <created>1756113184247</created>
-      <option name="number" value="00026" />
-      <option name="presentableId" value="LOCAL-00026" />
-      <option name="project" value="LOCAL" />
-      <updated>1756113184247</updated>
-    </task>
-    <task id="LOCAL-00027" summary="init">
-      <option name="closed" value="true" />
-      <created>1756113328753</created>
-      <option name="number" value="00027" />
-      <option name="presentableId" value="LOCAL-00027" />
-      <option name="project" value="LOCAL" />
-      <updated>1756113328753</updated>
+      <workItem from="1756585274949" duration="32475000" />
     </task>
     <task id="LOCAL-00028" summary="fix">
       <option name="closed" value="true" />
@@ -520,7 +504,23 @@
       <option name="project" value="LOCAL" />
       <updated>1756888341961</updated>
     </task>
-    <option name="localTasksCounter" value="75" />
+    <task id="LOCAL-00075" summary="update">
+      <option name="closed" value="true" />
+      <created>1756888531720</created>
+      <option name="number" value="00075" />
+      <option name="presentableId" value="LOCAL-00075" />
+      <option name="project" value="LOCAL" />
+      <updated>1756888531720</updated>
+    </task>
+    <task id="LOCAL-00076" summary="update">
+      <option name="closed" value="true" />
+      <created>1756888670128</created>
+      <option name="number" value="00076" />
+      <option name="presentableId" value="LOCAL-00076" />
+      <option name="project" value="LOCAL" />
+      <updated>1756888670128</updated>
+    </task>
+    <option name="localTasksCounter" value="77" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
