@@ -1,5 +1,5 @@
 {
-  "name": "@rnode/websocket-client",
+  "name": "@rnode-server/websocket-client",
   "version": "0.5.0",
   "description": "WebSocket client for RNode Server with room support and auto-reconnection",
   "type": "module",

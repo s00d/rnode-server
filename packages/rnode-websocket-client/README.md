@@ -1,17 +1,17 @@
-# @rnode/websocket-client
+# @rnode-server/websocket-client
 
 WebSocket client for RNode Server with support for rooms, automatic reconnection, and ping/pong mechanism.
 
 ## Installation
 
 ```bash
-npm install @rnode/websocket-client
+npm install @rnode-server/websocket-client
 ```
 
 ## Quick Start
 
 ```typescript
-import { createWebSocketClient, WebSocketEvent } from '@rnode/websocket-client';
+import { createWebSocketClient, WebSocketEvent } from '@rnode-server/websocket-client';
 
 // Create client
 const client = createWebSocketClient({
@@ -142,7 +142,7 @@ interface WebSocketEvent {
 ### Chat Application
 
 ```typescript
-import { createWebSocketClient } from '@rnode/websocket-client';
+import { createWebSocketClient } from '@rnode-server/websocket-client';
 
 const chatClient = createWebSocketClient({
   url: 'ws://localhost:3000/chat',
@@ -182,7 +182,7 @@ function sendMessage(text: string) {
 ### Game Application
 
 ```typescript
-import { createWebSocketClient } from '@rnode/websocket-client';
+import { createWebSocketClient } from '@rnode-server/websocket-client';
 
 const gameClient = createWebSocketClient({
   url: 'ws://localhost:3000/game',

@@ -17,24 +17,24 @@ RNode WebSocket Client provides a high-performance, feature-rich WebSocket clien
 :::tabs
 == npm
 ```bash
-npm install @rnode/websocket-client
+npm install @rnode-server/websocket-client
 ```
 
 == pnpm
 ```bash
-pnpm add @rnode/websocket-client
+pnpm add @rnode-server/websocket-client
 ```
 
 == yarn
 ```bash
-yarn add @rnode/websocket-client
+yarn add @rnode-server/websocket-client
 ```
 :::
 
 ### CDN (Browser)
 
 ```html
-<script src="https://unpkg.com/@rnode/websocket-client/dist/index.js"></script>
+<script src="https://unpkg.com/@rnode-server/websocket-client/dist/index.js"></script>
 ```
 
 ## Basic Usage
@@ -42,7 +42,7 @@ yarn add @rnode/websocket-client
 ### ES Modules
 
 ```javascript
-import { RNodeWebSocketClient } from '@rnode/websocket-client';
+import { RNodeWebSocketClient } from '@rnode-server/websocket-client';
 
 const client = new RNodeWebSocketClient({
   url: 'ws://localhost:4547/chat',
@@ -321,7 +321,7 @@ const client = new RNodeWebSocketClient({
 ### WebSocketUtils
 
 ```javascript
-import { WebSocketUtils } from '@rnode/websocket-client';
+import { WebSocketUtils } from '@rnode-server/websocket-client';
 
 // Check WebSocket support
 if (WebSocketUtils.isSupported()) {
@@ -344,7 +344,7 @@ console.log('Valid URL:', isValid); // true
 ### Logger
 
 ```javascript
-import { Logger, LogLevel } from '@rnode/websocket-client';
+import { Logger, LogLevel } from '@rnode-server/websocket-client';
 
 const logger = new Logger({
   level: LogLevel.DEBUG,
@@ -505,7 +505,7 @@ async function leaveAllRooms() {
 <html>
 <head>
     <title>WebSocket Client Demo</title>
-    <script src="https://unpkg.com/@rnode/websocket-client/dist/index.js"></script>
+    <script src="https://unpkg.com/@rnode-server/websocket-client/dist/index.js"></script>
     <style>
         .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
         .connected { background: #d4edda; color: #155724; }
@@ -603,7 +603,7 @@ async function leaveAllRooms() {
 ## Node.js Usage
 
 ```javascript
-import { RNodeWebSocketClient } from '@rnode/websocket-client';
+import { RNodeWebSocketClient } from '@rnode-server/websocket-client';
 
 const client = new RNodeWebSocketClient({
   url: 'ws://localhost:4547/chat',
