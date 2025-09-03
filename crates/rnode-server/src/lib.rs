@@ -2,6 +2,7 @@ use neon::prelude::*;
 
 // Import modules
 mod cache;
+mod compression;
 mod file_operations;
 mod handlers;
 mod html_templates;
@@ -18,18 +19,15 @@ mod utils;
 mod websocket;
 
 // Re-export public functions from modules
-use file_operations::{
-    delete_file, download_file, file_exists, get_file_content, list_files, register_download_route,
-    register_upload_route, save_file,
-};
-use handlers::{process_http_request, register_middleware};
+use file_operations::*;
+use handlers::*;
 use routes::*;
-use server::start_listen;
-use static_files::{clear_static_cache, get_static_stats, load_static_files};
-use templates::{init_templates_wrapper, render_template_wrapper};
+use static_files::*;
+use templates::*;
 use utils::*;
-use cache::neon::*;
-use crate::http_utils::{http_batch, http_request};
+use cache::neon_wrappers::*;
+use http_utils::*;
+use server::start_listen;
 
 #[neon::main]
 fn main(mut cx: ModuleContext) -> NeonResult<()> {

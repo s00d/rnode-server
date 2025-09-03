@@ -131,6 +131,8 @@ export function loadStaticFiles(pathOrPaths: string | string[], options?: Static
     lastModified: options?.lastModified ?? true,
     gzip: options?.gzip ?? true,
     brotli: options?.brotli ?? false,
+    zstd: options?.zstd ?? false,
+    lz4: options?.lz4 ?? false,
     allowHiddenFiles: options?.allowHiddenFiles ?? false,
     allowSystemFiles: options?.allowSystemFiles ?? false,
     allowedExtensions: options?.allowedExtensions ?? ['html', 'css', 'js', 'json', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'ico', 'woff', 'woff2', 'ttf', 'eot'],

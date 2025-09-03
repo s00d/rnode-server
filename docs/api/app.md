@@ -91,7 +91,9 @@ app.static('./public', {
   maxAge: 3600,           // 1 hour
   maxFileSize: 10 * 1024 * 1024, // 10MB
   gzip: true,
-  brotli: false,
+  brotli: false, 
+  zstd: false,
+  lz4: false,
   allowHiddenFiles: false,
   blockedPaths: ['.git', '.env']
 });

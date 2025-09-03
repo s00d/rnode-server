@@ -3,7 +3,7 @@ pub mod memory_sync;
 pub mod redis_sync;
 pub mod file_sync;
 pub mod manager_sync;
-pub mod neon;
+pub mod neon_wrappers;
 
 use std::sync::OnceLock;
 use std::time::Instant;

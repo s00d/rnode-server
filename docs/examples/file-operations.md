@@ -232,7 +232,9 @@ app.static(['./images', './icons'], {
   maxAge: 86400,         // 24 hours
   maxFileSize: 10 * 1024 * 1024, // 10MB
   gzip: false,           // Images are already compressed
-  brotli: false
+  brotli: false,
+  zstd: false,
+  lz4: false,
 });
 
 app.static('./admin', {
@@ -243,6 +245,8 @@ app.static('./admin', {
   lastModified: true,
   gzip: true,
   brotli: true,
+  zstd: true,
+  lz4: true,
   allowHiddenFiles: false,
   allowSystemFiles: false,
   allowedExtensions: ['html', 'css', 'js'],

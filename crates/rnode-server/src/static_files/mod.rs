@@ -1,7 +1,6 @@
 pub mod types;
 pub mod options;
 pub mod cache;
-pub mod compression;
 pub mod security;
 pub mod handlers;
 pub mod fallback;
@@ -18,7 +17,7 @@ use self::types::{StaticFile, StaticFileHeaders, StaticFolder, StaticOptions};
 use self::cache::get_static_files_cache;
 use self::options::parse_static_options;
 use self::security::is_file_safe;
-use self::compression::{compress_gzip, compress_brotli};
+use crate::compression::{compress_gzip, compress_brotli, compress_zstd, compress_lz4};
 use self::handlers::build_static_response;
 
 // Global storage for multiple folders
@@ -62,11 +61,13 @@ pub fn load_static_files(mut cx: FunctionContext) -> JsResult<JsUndefined> {
         if let Ok(options_obj) = cx.argument::<JsObject>(1) {
             let parsed_options = parse_static_options(&mut cx, options_obj);
             debug!(
-                "🔧 Parsed static options: cache={}, maxAge={:?}, gzip={}, brotli={}",
+                "🔧 Parsed static options: cache={}, maxAge={:?}, gzip={}, brotli={}, zstd={}, lz4={}",
                 parsed_options.cache,
                 parsed_options.max_age,
                 parsed_options.gzip,
-                parsed_options.brotli
+                parsed_options.brotli,
+                parsed_options.zstd,
+                parsed_options.lz4
             );
             parsed_options
         } else {
@@ -221,6 +222,40 @@ fn process_file_for_response(
             }
             None => {
                 warn!("⚠️  Brotli compression failed");
+            }
+        }
+    }
+
+    if folder_options.zstd {
+        match compress_zstd(&static_file.content) {
+            Some(compressed) => {
+                debug!(
+                    "🗜️  Zstandard compression: {} -> {} bytes (ratio: {:.1}%)",
+                    static_file.size,
+                    compressed.len(),
+                    (compressed.len() as f64 / static_file.size as f64) * 100.0
+                );
+                static_file.zstd_content = Some(compressed);
+            }
+            None => {
+                warn!("⚠️  Zstandard compression failed");
+            }
+        }
+    }
+
+    if folder_options.lz4 {
+        match compress_lz4(&static_file.content) {
+            Some(compressed) => {
+                debug!(
+                    "🗜️  LZ4 compression: {} -> {} bytes (ratio: {:.1}%)",
+                    static_file.size,
+                    compressed.len(),
+                    (compressed.len() as f64 / static_file.size as f64) * 100.0
+                );
+                static_file.lz4_content = Some(compressed);
+            }
+            None => {
+                warn!("⚠️  LZ4 compression failed");
             }
         }
     }
@@ -388,6 +423,8 @@ async fn load_file_to_cache(
         content_type_header: String::new(),
         gzip_content: None,
         brotli_content: None,
+        zstd_content: None,
+        lz4_content: None,
         headers: StaticFileHeaders {
             etag: String::new(),
             last_modified: String::new(),

@@ -28,7 +28,15 @@ httpApp.useRouter('/templates', templatesRouter);
 httpApp.useRouter('/static', staticRouter);
 httpApp.useRouter('/multipart', multipartRouter);
 httpApp.useRouter('/cors', corsRouter);
-httpApp.static('./public');
+httpApp.static('./public', {
+  cache: true,
+  maxAge: 86400,         // 24 hours
+  maxFileSize: 10 * 1024 * 1024, // 10MB
+  gzip: false,           // Images are already compressed
+  brotli: true,
+  zstd: false,
+  lz4: false,
+});
 
 httpApp.use((req, res, next) => {
   console.log('🔐 Router Middleware:', req.method, req.url);

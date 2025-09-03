@@ -40,6 +40,16 @@ pub fn parse_static_options(cx: &mut FunctionContext, options_obj: Handle<JsObje
         options.brotli = brotli.value(cx);
     }
 
+    // Parse zstd
+    if let Ok(zstd) = options_obj.get::<JsBoolean, _, _>(cx, "zstd") {
+        options.zstd = zstd.value(cx);
+    }
+
+    // Parse lz4
+    if let Ok(lz4) = options_obj.get::<JsBoolean, _, _>(cx, "lz4") {
+        options.lz4 = lz4.value(cx);
+    }
+
     // Parse security options directly
     if let Ok(allow_hidden) = options_obj.get::<JsBoolean, _, _>(cx, "allowHiddenFiles") {
         options.allow_hidden_files = allow_hidden.value(cx);

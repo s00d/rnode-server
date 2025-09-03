@@ -8,6 +8,8 @@ pub struct StaticOptions {
     pub last_modified: bool,
     pub gzip: bool,
     pub brotli: bool,
+    pub zstd: bool,
+    pub lz4: bool,
     pub allow_hidden_files: bool,
     pub allow_system_files: bool,
     pub allowed_extensions: Vec<String>,
@@ -24,6 +26,8 @@ impl Default for StaticOptions {
             last_modified: true,
             gzip: true,
             brotli: false,
+            zstd: false,
+            lz4: false,
             allow_hidden_files: false,
             allow_system_files: false,
             allowed_extensions: vec![
@@ -67,6 +71,8 @@ pub struct StaticFile {
     // Ready compressed versions (if enabled)
     pub gzip_content: Option<Vec<u8>>,
     pub brotli_content: Option<Vec<u8>>,
+    pub zstd_content: Option<Vec<u8>>,
+    pub lz4_content: Option<Vec<u8>>,
 
     // Ready headers for different response types
     pub headers: StaticFileHeaders,

@@ -74,6 +74,8 @@ export interface StaticOptions {
   lastModified?: boolean;
   gzip?: boolean;
   brotli?: boolean;
+  zstd?: boolean;
+  lz4?: boolean;
   allowHiddenFiles?: boolean;
   allowSystemFiles?: boolean;
   allowedExtensions?: string[];
