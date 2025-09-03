@@ -1,7 +1,7 @@
 {
   "name": "@rnode-server/linux-x64-musl",
   "description": "Prebuilt binary package for `rnode-server` on `linux-x64-musl`.",
-  "version": "0.7.10",
+  "version": "0.7.11",
   "os": [
     "linux"
   ],
