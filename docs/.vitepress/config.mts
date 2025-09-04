@@ -8,6 +8,10 @@ export default withMermaid({
   lastUpdated: true,
   cleanUrls: true,
   base: process.env.NODE_ENV === 'production' ? '/rnode-server/' : '/',
+  ignoreDeadLinks: [
+    /^http:\/\/localhost:\d+/,
+    /^https:\/\/localhost:\d+/
+  ],
   markdown: {
     config(md) {
       md.use(tabsMarkdownPlugin)
