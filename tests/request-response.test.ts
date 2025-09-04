@@ -123,10 +123,10 @@ describe('Request/Response Tests', () => {
             
             expect(response.statusCode).toBe(200);
             // Body might be stringified, so check if it contains expected data
-            expect(typeof response.body.receivedBody).toBe('string');
-            expect(response.body.receivedBody).toContain('John');
-            expect(response.body.receivedBody).toContain('25');
-            expect(response.body.receivedBody).toContain('true');
+            expect(typeof response.body.receivedBody).toBe('object');
+            expect(JSON.stringify(response.body.receivedBody)).toContain('John');
+            expect(JSON.stringify(response.body.receivedBody)).toContain('25');
+            expect(JSON.stringify(response.body.receivedBody)).toContain('true');
             resolve();
           } catch (error) {
             reject(error);

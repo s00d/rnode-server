@@ -17,6 +17,19 @@ export default defineConfig({
       '**/platforms/**'
     ],
     root: '.',
+    // Запуск тестов по одному
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        singleFork: true,
+        isolate: true,
+      },
+    },
+    // Дополнительные настройки для изоляции
+    isolate: true,
+    sequence: {
+      shuffle: false,
+    },
   },
   resolve: {
     alias: {

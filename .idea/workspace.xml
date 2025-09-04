@@ -13,8 +13,11 @@
   <component name="ChangeListManager">
     <list default="true" id="4d8c55b6-5a63-439f-adcf-d024569129f5" name="Changes" comment="update">
       <change beforePath="$PROJECT_DIR$/.github/actions/setup/action.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/actions/setup/action.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.github/workflows/release.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/release.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/logger.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/logger.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/request-response.test.ts" beforeDir="false" afterPath="$PROJECT_DIR$/tests/request-response.test.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/templates.test.ts" beforeDir="false" afterPath="$PROJECT_DIR$/tests/templates.test.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/vitest.config.mts" beforeDir="false" afterPath="$PROJECT_DIR$/vitest.config.mts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -130,15 +133,7 @@
       <workItem from="1756577197892" duration="1601000" />
       <workItem from="1756579296550" duration="3976000" />
       <workItem from="1756584051753" duration="1037000" />
-      <workItem from="1756585274949" duration="47471000" />
-    </task>
-    <task id="LOCAL-00040" summary="fix">
-      <option name="closed" value="true" />
-      <created>1756125618872</created>
-      <option name="number" value="00040" />
-      <option name="presentableId" value="LOCAL-00040" />
-      <option name="project" value="LOCAL" />
-      <updated>1756125618872</updated>
+      <workItem from="1756585274949" duration="51570000" />
     </task>
     <task id="LOCAL-00041" summary="fix">
       <option name="closed" value="true" />
@@ -524,45 +519,23 @@
       <option name="project" value="LOCAL" />
       <updated>1756974039969</updated>
     </task>
-    <option name="localTasksCounter" value="89" />
+    <task id="LOCAL-00089" summary="update">
+      <option name="closed" value="true" />
+      <created>1756974870133</created>
+      <option name="number" value="00089" />
+      <option name="presentableId" value="LOCAL-00089" />
+      <option name="project" value="LOCAL" />
+      <updated>1756974870133</updated>
+    </task>
+    <option name="localTasksCounter" value="90" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
-    <option name="OPEN_GENERIC_TABS">
-      <map>
-        <entry key="7b9b1b32-a2d6-482f-a59d-68361712c906" value="TOOL_WINDOW" />
-      </map>
-    </option>
     <option name="TAB_STATES">
       <map>
-        <entry key="7b9b1b32-a2d6-482f-a59d-68361712c906">
-          <value>
-            <State>
-              <option name="FILTERS">
-                <map>
-                  <entry key="branch">
-                    <value>
-                      <list>
-                        <option value="HEAD" />
-                      </list>
-                    </value>
-                  </entry>
-                  <entry key="structure">
-                    <value>
-                      <list>
-                        <option value="dir:/Users/s00d/Downloads/rnode-server/platforms" />
-                      </list>
-                    </value>
-                  </entry>
-                </map>
-              </option>
-              <option name="SHOW_ONLY_AFFECTED_CHANGES" value="true" />
-            </State>
-          </value>
-        </entry>
         <entry key="MAIN">
           <value>
             <State />

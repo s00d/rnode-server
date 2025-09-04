@@ -41,7 +41,7 @@ export class Logger {
     return String(message);
   }
 
-  log(level: string, message: any, module?: string): void {
+  log(level: string, ...args: any[]): void {
     if (!this.shouldLog(level)) return;
 
     // Format timestamp without milliseconds (like backend: 2025-08-25T06:39:50Z)
@@ -54,7 +54,6 @@ export class Logger {
                      String(now.getSeconds()).padStart(2, '0') + 'Z';
     
     const levelUpper = level.toUpperCase();
-    const formattedMessage = this.formatMessage(message);
     
     // ANSI color codes
     const colors = {
@@ -67,29 +66,31 @@ export class Logger {
     };
     
     const color = colors[level as keyof typeof colors] || colors.reset;
-    const moduleStr = module ? ` ${module}` : '';
     
-    console.log(`[${timestamp} ${color}${levelUpper.padEnd(5)}\x1b[0m${moduleStr}] ${formattedMessage}`);
+    // Format all arguments
+    const formattedArgs = args.map(arg => this.formatMessage(arg)).join(' ');
+    
+    console.log(`[${timestamp} ${color}${levelUpper.padEnd(5)}\x1b[0m] ${formattedArgs}`);
   }
 
-  trace(message: any, module?: string): void {
-    this.log('trace', message, module);
+  trace(...args: any[]): void {
+    this.log('trace', ...args);
   }
 
-  debug(message: any, module?: string): void {
-    this.log('debug', message, module);
+  debug(...args: any[]): void {
+    this.log('debug', ...args);
   }
 
-  info(message: any, module?: string): void {
-    this.log('info', message, module);
+  info(...args: any[]): void {
+    this.log('info', ...args);
   }
 
-  warn(message: any, module?: string): void {
-    this.log('warn', message, module);
+  warn(...args: any[]): void {
+    this.log('warn', ...args);
   }
 
-  error(message: any, module?: string): void {
-    this.log('error', message, module);
+  error(...args: any[]): void {
+    this.log('error', ...args);
   }
 }
 
