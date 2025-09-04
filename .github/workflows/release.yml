@@ -110,6 +110,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      packages: write
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -141,6 +142,11 @@ jobs:
         run: |
           echo "Updating package versions..."
           VERSION='${{ (inputs.version == 'custom' && inputs.custom) || inputs.version }}'
+
+          # Update main package version
+          echo "📦 Updating main package version"
+          npm version --no-git-tag-version "$VERSION"
+          echo "✅ Updated main package to version $VERSION"
 
           # Update versions in all packages
           for pkg in packages/*/; do
@@ -199,3 +205,38 @@ jobs:
           done
           
           echo "🎉 All packages published successfully!"
+
+      - name: Commit and Push Version Updates
+        shell: bash
+        run: |
+          echo "Committing and pushing version updates..."
+          
+          # Configure git
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Show current status
+          echo "📊 Current git status:"
+          git status --porcelain
+          
+          # Add all changes
+          echo "📝 Adding all changes..."
+          git add .
+          
+          # Check if there are changes to commit
+          if git diff --cached --quiet; then
+            echo "ℹ️  No changes to commit"
+          else
+            # Show what will be committed
+            echo "📋 Changes to be committed:"
+            git diff --cached --name-only
+            
+            # Commit changes
+            echo "💾 Committing changes..."
+            git commit -m "chore: update package versions to ${{ (inputs.version == 'custom' && inputs.custom) || inputs.version }}"
+            
+            # Push changes
+            echo "🚀 Pushing changes to ${{ needs.setup.outputs.ref }}..."
+            git push origin ${{ needs.setup.outputs.ref }}
+            echo "✅ Version updates committed and pushed successfully!"
+          fi
