@@ -42,9 +42,46 @@ runs:
         node-version: ${{ env.NODE_VERSION }}
         registry-url: ${{ env.NPM_REGISTRY }}
         cache: 'npm'
+    # Cache Rust dependencies to speed up builds
+    - name: Cache Rust Dependencies
+      if: ${{ inputs['use-rust'] == 'true' }}
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
+    # Cache platform-specific dependencies for cross-compilation
+    - name: Cache Platform-Specific Dependencies
+      if: ${{ inputs['use-rust'] == 'true' && inputs.platform != '' }}
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ inputs.platform }}-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-${{ inputs.platform }}-
+          ${{ runner.os }}-cargo-
     - name: Install Dependencies
       shell: bash  
       run: npm ci
+    # Cache Neon build artifacts to avoid rebuilding
+    - name: Cache Neon Build Artifacts
+      if: ${{ inputs['use-rust'] == 'true' }}
+      uses: actions/cache@v3
+      with:
+        path: |
+          index.node
+          lib/
+          platforms/
+        key: ${{ runner.os }}-neon-${{ hashFiles('**/Cargo.lock', '**/package.json') }}
+        restore-keys: |
+          ${{ runner.os }}-neon-
     - name: Compute Rust Target
       if: ${{ inputs['use-rust'] == 'true' }}
       id: target
@@ -63,6 +100,18 @@ runs:
       uses: baptiste0928/cargo-install@v2
       with:
         crate: cross
+    # Cache cross-rs dependencies for cross-compilation
+    - name: Cache Cross Dependencies
+      if: ${{ inputs['use-cross'] == 'true' }}
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/bin/cross
+          ~/.cargo/registry
+          ~/.cargo/git
+        key: ${{ runner.os }}-cross-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cross-
     - name: Node Version
       id: node
       shell: bash

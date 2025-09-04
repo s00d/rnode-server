@@ -143,11 +143,6 @@ jobs:
           echo "Updating package versions..."
           VERSION='${{ (inputs.version == 'custom' && inputs.custom) || inputs.version }}'
 
-          # Update main package version
-          echo "📦 Updating main package version"
-          npm version --no-git-tag-version "$VERSION"
-          echo "✅ Updated main package to version $VERSION"
-
           # Update versions in all packages
           for pkg in packages/*/; do
             if [ -f "$pkg/package.json" ]; then

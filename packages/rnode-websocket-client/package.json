@@ -1,6 +1,6 @@
 {
   "name": "@rnode-server/websocket-client",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "WebSocket client for RNode Server with room support and auto-reconnection",
   "type": "module",
   "main": "./dist/rnode-websocket-client.umd.js",
