@@ -38,7 +38,7 @@ pub async fn add_connection(connection_id: Uuid, connection: WebSocketConnection
     log::debug!("✅ Connection {} added (total connections: {})", connection_id, connections.len());
     
     // Record WebSocket connection metrics
-    crate::metrics::record_websocket_connection_start(&connection_id, &path, room_id.as_deref());
+            crate::metrics::websocket::record_connection_start(&connection_id, &path, room_id.as_deref());
 }
 
 pub async fn remove_connection(connection_id: &Uuid) {
@@ -63,7 +63,7 @@ pub async fn remove_connection(connection_id: &Uuid) {
     log::debug!("🗑️ Connection {} removed (remaining connections: {})", connection_id, connections.len());
     
     // Record WebSocket disconnection metrics
-    crate::metrics::record_websocket_connection_end(connection_id, &path, room_id.as_deref());
+            crate::metrics::websocket::record_connection_end(connection_id, &path, room_id.as_deref());
 }
 
 pub async fn get_connection_info(connection_id: &Uuid) -> Option<WebSocketConnection> {

@@ -5,7 +5,7 @@ pub mod security;
 pub mod handlers;
 pub mod fallback;
 
-use crate::metrics::{record_cache_hit, record_cache_miss};
+use crate::metrics::{business::record_cache_hit, business::record_cache_miss};
 use log::{debug, error, info, warn};
 use neon::prelude::*;
 

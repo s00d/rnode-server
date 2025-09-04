@@ -1,6 +1,6 @@
 use crate::handlers::dynamic_handler;
 
-use crate::metrics::{init_metrics, render_metrics, track_metrics, update_system_metrics};
+use crate::metrics::{init_metrics, render_metrics, http::track_metrics, websocket::update_websocket_metrics, system::update_system_metrics};
 use crate::request::Request;
 use crate::static_files::fallback::handle_static_fallback;
 use crate::file_operations::handlers::{download_handler_impl, upload_handler_impl};
@@ -309,7 +309,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                     loop {
                         interval.tick().await;
                         update_system_metrics();
-                        crate::metrics::update_websocket_metrics();
+                        update_websocket_metrics();
                     }
                 });
 

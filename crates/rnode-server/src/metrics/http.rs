@@ -129,10 +129,10 @@ pub async fn track_metrics(req: Request<Body>, next: Next) -> impl IntoResponse 
     let method = req.method().clone();
 
     // Track new connection
-    crate::metrics::increment_total_connections();
+    crate::metrics::http::increment_total_connections();
 
     // Increment pending requests counter
-    crate::metrics::update_pending_requests(1);
+    crate::metrics::http::update_pending_requests(1);
 
     let response = next.run(req).await;
 
@@ -140,10 +140,10 @@ pub async fn track_metrics(req: Request<Body>, next: Next) -> impl IntoResponse 
     let status = response.status().as_u16().to_string();
 
     // Decrement pending requests counter
-    crate::metrics::update_pending_requests(-1);
+    crate::metrics::http::update_pending_requests(-1);
 
     // Update Prometheus metrics
-    crate::metrics::record_http_request(&method.to_string(), &path, &status, latency);
+    crate::metrics::http::record_http_request(&method.to_string(), &path, &status, latency);
 
     response
 }
