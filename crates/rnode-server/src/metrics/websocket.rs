@@ -244,6 +244,15 @@ pub fn record_error(error_type: &str, path: &str, room_id: Option<&str>) {
 
 // Update WebSocket metrics from current state
 pub fn update_websocket_metrics() {
+    // Check if WebSocket routes are registered
+    let routes = crate::websocket::get_websocket_routes();
+    if let Ok(routes) = routes.try_read() {
+        if routes.is_empty() {
+            // No WebSocket routes registered, skip metrics update
+            return;
+        }
+    }
+
     // Update active connections count
     if let Some(gauge) = WEBSOCKET_CONNECTIONS_ACTIVE.get() {
         let connections = crate::websocket::rooms::get_websocket_connections();

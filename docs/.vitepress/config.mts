@@ -59,6 +59,7 @@ export default withMermaid({
           { text: 'Router', link: '/api/router' },
           { text: 'Request', link: '/api/request' },
           { text: 'Response', link: '/api/response' },
+          { text: 'OpenAPI', link: '/api/openapi' },
           { text: 'HTTP Utilities', link: '/api/http-utilities' },
           { text: 'Error Codes', link: '/api/error-codes' }
         ]
@@ -79,6 +80,7 @@ export default withMermaid({
           { text: 'Middleware', link: '/examples/middleware' },
           { text: 'File Operations', link: '/examples/file-operations' },
           { text: 'Advanced Usage', link: '/examples/advanced-usage' },
+          { text: 'OpenAPI', link: '/examples/openapi' },
           { text: 'Body Handling', link: '/examples/body-handling' },
           { text: 'Playground', link: '/examples/playground' }
         ]

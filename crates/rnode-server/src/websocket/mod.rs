@@ -70,6 +70,12 @@ pub fn register_websocket(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     
     let routes = get_websocket_routes();
     let mut routes_map = routes.blocking_write();
+    
+    // Initialize WebSocket metrics if this is the first route
+    if routes_map.is_empty() {
+        crate::metrics::init_websocket_metrics_if_needed();
+    }
+    
     routes_map.insert(path.clone(), handler);
     
     log::info!("🔧 WebSocket route registered: {} with enabled events: {:?}", path, enabled_events);

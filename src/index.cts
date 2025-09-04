@@ -136,6 +136,8 @@ import { setupGlobalFunctions } from './utils/global-utils';
 // Import shutdown utilities
 import { setupGracefulShutdown } from './utils/shutdown-utils';
 import { RNodeApp } from "./utils/app";
+// Import OpenAPI utilities
+import { createOpenAPIGenerator, type OpenAPIGenerator, type OpenAPIConfig } from './utils/openapi';
 
 
 // Setup global functions first
@@ -159,6 +161,9 @@ export function greeting(name: string): { message: string } {
   return greetingUtil(name);
 }
 
+// OpenAPI utilities
+export { createOpenAPIGenerator } from './utils/openapi';
+
 // Default export for ES modules compatibility
 export default {
   createApp,
@@ -170,5 +175,6 @@ export default {
 export type { StaticOptions, TemplateOptions, AppOptions, DownloadOptions, UploadOptions, SslConfig } from './types/app-router';
 export type { Request } from './utils/request';
 export type { Response } from './utils/response';
+export type { OpenAPIGenerator, OpenAPIConfig } from './utils/openapi';
 
 

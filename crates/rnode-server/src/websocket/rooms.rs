@@ -20,13 +20,9 @@ pub fn get_websocket_rooms() -> &'static RwLock<HashMap<String, Room>> {
 }
 
 pub fn get_websocket_connections() -> &'static RwLock<HashMap<Uuid, WebSocketConnection>> {
-    log::debug!("🔍 get_websocket_connections called");
-    let result = WEBSOCKET_CONNECTIONS.get_or_init(|| {
-        log::debug!("🆕 Initializing WEBSOCKET_CONNECTIONS");
+    WEBSOCKET_CONNECTIONS.get_or_init(|| {
         RwLock::new(HashMap::new())
-    });
-    log::debug!("✅ get_websocket_connections returned");
-    result
+    })
 }
 
 // Функции для работы с комнатами

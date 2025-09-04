@@ -26,6 +26,7 @@ Practical examples and use cases for RNode Server.
 - **[Middleware](./middleware.md)** - Middleware patterns and examples
 - **[File Operations](./file-operations.md)** - File upload, download, and management
 - **[Advanced Usage](./advanced-usage.md)** - Advanced patterns and techniques
+- **[OpenAPI](./openapi.md)** - API documentation generation example
 
 ## Quick Examples
 
@@ -92,6 +93,33 @@ app.post('/upload', (req, res) => {
   } else {
     res.status(400).json({ error: 'No file uploaded' });
   }
+});
+```
+
+### OpenAPI Documentation
+```javascript
+app.openapi({
+  title: 'My API',
+  version: '1.0.0',
+  description: 'High-performance API',
+  servers: [
+    { url: 'http://localhost:3000', description: 'Development' }
+  ],
+  apis: ['./src/**/*.ts']
+});
+
+/**
+ * @swagger
+ * /api/users:
+ *   get:
+ *     summary: Get users
+ *     tags: [Users]
+ *     responses:
+ *       200:
+ *         description: List of users
+ */
+app.get('/api/users', (req, res) => {
+  res.json({ users: [] });
 });
 ```
 

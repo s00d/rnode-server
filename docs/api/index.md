@@ -9,6 +9,7 @@ Complete API reference for RNode Server with examples and usage patterns.
 - [Router](./router.md) - Modular routing system
 - [Request](./request.md) - HTTP request handling
 - [Response](./response.md) - HTTP response methods
+- [OpenAPI](./openapi.md) - API documentation generation
 
 **Quick Method Reference:**
 - HTTP methods (GET, POST, PUT, DELETE)
@@ -27,6 +28,7 @@ Complete API reference for RNode Server with examples and usage patterns.
 - **[Router](./router.md)** - Router creation and management
 - **[Request](./request.md)** - Request object properties and methods
 - **[Response](./response.md)** - Response object methods and options
+- **[OpenAPI](./openapi.md)** - Automatic API documentation generation
 
 ## Quick Reference
 
@@ -56,6 +58,9 @@ app.download(path, options)
 // Templates
 app.initTemplates(pattern, options)
 app.renderTemplate(name, context)
+
+// OpenAPI Documentation
+app.openapi(config)
 
 // HTTP Utilities
 app.httpRequest(method, url, headers, body, timeout)

@@ -24,8 +24,20 @@ pub fn init_metrics() {
     http::init_http_metrics();
     system::init_system_metrics();
     business::init_business_metrics();
-    websocket::init_websocket_metrics();
     cache::init_cache_metrics();
+    
+    // Only initialize WebSocket metrics if WebSocket routes are registered
+    let routes = crate::websocket::get_websocket_routes();
+    if let Ok(routes) = routes.try_read() {
+        if !routes.is_empty() {
+            websocket::init_websocket_metrics();
+        }
+    }
+}
+
+// Function to initialize WebSocket metrics when WebSocket routes are registered
+pub fn init_websocket_metrics_if_needed() {
+    websocket::init_websocket_metrics();
 }
 
 pub fn render_metrics() -> String {

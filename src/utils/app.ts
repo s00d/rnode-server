@@ -10,6 +10,7 @@ import * as addon from '../load.cjs';
 import { DownloadOptions, UploadOptions } from "../types/app-router";
 import { handlers, middlewares, websocketCallbacks } from './global-utils';
 import { WebSocketOptions, WebSocketRoom } from '../types/websocket';
+import { createOpenAPIGenerator, type OpenAPIGenerator, type OpenAPIConfig } from './openapi';
 
 export class RNodeApp extends Router {
   // Properties
@@ -18,6 +19,7 @@ export class RNodeApp extends Router {
   private timeout: number = 30000;
   private devMode: boolean = false;
   private sslConfig: SslConfig | undefined = undefined;
+  private openAPIGenerator: OpenAPIGenerator | undefined = undefined;
 
   constructor() {
     super();
@@ -99,6 +101,45 @@ export class RNodeApp extends Router {
 
   getSslConfig(): SslConfig | undefined {
     return this.sslConfig;
+  }
+
+  // OpenAPI methods
+  openapi(config: OpenAPIConfig): RNodeApp {
+    this.openAPIGenerator = createOpenAPIGenerator(config);
+    
+    // Add OpenAPI routes automatically
+    this.get('/api/openapi.json', (req: Request, res: Response) => {
+      if (this.openAPIGenerator) {
+        res.json(this.openAPIGenerator.getSpec());
+      } else {
+        res.status(500).json({ error: 'OpenAPI generator not initialized' });
+      }
+    });
+
+    this.get('/api/docs', (req: Request, res: Response) => {
+      if (this.openAPIGenerator) {
+        const html = this.openAPIGenerator.generateSwaggerUI();
+        res.html(html);
+      } else {
+        res.status(500).json({ error: 'OpenAPI generator not initialized' });
+      }
+    });
+
+    this.get('/api/docs/redoc', (req: Request, res: Response) => {
+      if (this.openAPIGenerator) {
+        const html = this.openAPIGenerator.generateReDoc();
+        res.html(html);
+      } else {
+        res.status(500).json({ error: 'OpenAPI generator not initialized' });
+      }
+    });
+
+    logger.info('📚 OpenAPI documentation initialized', 'rnode_server::openapi');
+    return this;
+  }
+
+  getOpenAPIGenerator(): OpenAPIGenerator | undefined {
+    return this.openAPIGenerator;
   }
 
   // Override static method to add app-specific functionality

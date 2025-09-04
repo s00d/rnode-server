@@ -1,10 +1,25 @@
+# OpenAPI Documentation Example
+
+## Overview
+
+This example demonstrates how to use RNode Server's built-in OpenAPI integration to automatically generate API documentation.
+
+## Complete Example
+
+```typescript
 import { createApp, Router } from 'rnode-server';
 import path from "path";
 
-const app = createApp({ logLevel: "debug", metrics: true, timeout: 3000, devMode: false });
+const app = createApp({ 
+  logLevel: "debug", 
+  metrics: true, 
+  timeout: 3000, 
+  devMode: false 
+});
+
 const port = 4546;
 
-// OpenAPI Configuration
+// Initialize OpenAPI documentation
 app.openapi({
   title: 'RNode Server API',
   version: '1.0.0',
@@ -37,6 +52,8 @@ app.use((req, res, next) => {
   next();
 });
 
+// API Routes with JSDoc documentation
+
 /**
  * @swagger
  * /hello:
@@ -55,26 +72,6 @@ app.use((req, res, next) => {
  */
 app.get('/hello', (req, res) => {
   res.send('Hello World!');
-});
-
-/**
- * @swagger
- * /hello1:
- *   get:
- *     summary: Error hello endpoint
- *     description: Returns hello message with 500 status for testing
- *     tags: [Basic]
- *     responses:
- *       500:
- *         description: Error response
- *         content:
- *           text/plain:
- *             schema:
- *               type: string
- *               example: "Hello World!"
- */
-app.get('/hello1', (req, res) => {
-  res.status(500).send('Hello World!');
 });
 
 /**
@@ -129,32 +126,6 @@ app.post('/api/users', (req, res) => {
 
 /**
  * @swagger
- * /api/sub_users/{id}:
- *   post:
- *     summary: Create a sub-user
- *     description: Creates a sub-user with specific ID
- *     tags: [Users]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: Sub-user ID
- *     responses:
- *       200:
- *         description: Sub-user created successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/SuccessResponse'
- */
-app.post('/api/sub_users/{id}', (req, res) => {
-  res.json({ message: 'User created successfully' });
-});
-
-/**
- * @swagger
  * /api/users/{id}:
  *   get:
  *     summary: Get user by ID
@@ -167,15 +138,6 @@ app.post('/api/sub_users/{id}', (req, res) => {
  *         schema:
  *           type: string
  *         description: User unique identifier
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               name:
- *                 type: string
- *                 description: User's name
  *     responses:
  *       200:
  *         description: User found successfully
@@ -235,25 +197,7 @@ app.post('/api/sub_users/{id}', (req, res) => {
  */
 app.any('/api/users/{id}', (req, res) => {
   const userId = req.params.id;
-  const para = req.getParam('awfawfa')
-
-  const formData = req.getBodyAsForm();
-  if (formData) {
-    console.log('Form data:', formData);
-    const name = formData.name || '';
-    console.log('Name:', name);
-  } else {
-    console.log('No form data found');
-  }
-
-  const jsonData = req.getBodyAsJson();
-  if (jsonData) {
-    console.log('JSON data:', jsonData);
-    const name = jsonData.name || '';
-    console.log('Name:', name);
-  }
-
-  res.json({ para, userId, message: 'User found' });
+  res.json({ userId, message: 'User found' });
 });
 
 /**
@@ -307,27 +251,21 @@ app.any('/api/users/{id}', (req, res) => {
  *               $ref: '#/components/schemas/Error'
  */
 app.get('/api/slow', async (req, res) => {
-  const delay = parseInt(req.query.delay as string) || 2000; // Default 2 seconds
-  const startTime = Date.now(); // Start timing
-  
-  console.log(`🐌 Starting slow request with ${delay}ms delay...`);
-  console.log(`📝 Request object:`, { method: req.method, url: req.url, params: req.params });
+  const delay = parseInt(req.query.delay as string) || 2000;
+  const startTime = Date.now();
   
   try {
-    // Simulate slow processing
-    await req.sleep(delay)
+    await req.sleep(delay);
+    const executionTime = Date.now() - startTime;
     
-    const executionTime = Date.now() - startTime; // Calculate execution time
-    console.log(`✅ Slow request completed after ${delay}ms (execution: ${executionTime}ms)`);
     res.json({
-      message: 'Slow request completed', 
+      message: 'Slow request completed',
       delay: delay,
       executionTime: executionTime,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    const executionTime = Date.now() - startTime; // Calculate execution time even on error
-    console.error(`❌ Slow request failed after ${executionTime}ms:`, error);
+    const executionTime = Date.now() - startTime;
     res.status(500).json({
       error: 'Slow request failed',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -338,107 +276,42 @@ app.get('/api/slow', async (req, res) => {
 
 /**
  * @swagger
- * /test-http:
+ * /api/health:
  *   get:
- *     summary: Test HTTP utilities
- *     description: Tests the built-in HTTP request utilities
- *     tags: [Testing]
+ *     summary: Health check endpoint
+ *     description: Returns the health status of the server
+ *     tags: [System]
  *     responses:
  *       200:
- *         description: HTTP utilities test completed
+ *         description: Server is healthy
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
+ *                 status:
  *                   type: string
- *                   example: "HTTP utilities test completed"
- *                 singleRequest:
- *                   type: object
- *                   description: Result of single HTTP request
- *                 batchRequests:
- *                   type: object
- *                   description: Result of batch HTTP requests
- *                 processedResults:
- *                   type: array
- *                   items:
- *                     type: object
- *                     description: Processed batch request results
+ *                   example: "healthy"
  *                 timestamp:
  *                   type: string
  *                   format: date-time
- *       500:
- *         description: HTTP utilities test failed
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
+ *                 uptime:
+ *                   type: number
+ *                   description: Server uptime in seconds
+ *                 version:
+ *                   type: string
+ *                   example: "1.0.0"
  */
-app.get('/test-http', async (req, res) => {
-  try {
-    console.log('🌐 Testing HTTP utilities...');
-
-    // Test single HTTP request
-    const singleResponse = await app.httpRequest('GET', 'https://jsonplaceholder.typicode.com/posts/1', {
-      'User-Agent': 'RNode-Server/1.0'
-    }, '', 5000);
-
-    console.log('✅ Single HTTP request result:', singleResponse);
-
-        // Test batch HTTP requests
-    const batchRequests: Array<{method: string, url: string, headers?: Record<string, string>, body?: string}> = [
-      { method: 'GET', url: 'https://jsonplaceholder.typicode.com/posts/1', headers: { 'X-Test': '1' } },
-      { method: 'POST', url: 'https://jsonplaceholder.typicode.com/posts', body: '{"title": "Test Post", "body": "Test body", "userId": 1}', headers: { 'Content-Type': 'application/json' } },
-      { method: 'GET', url: 'https://jsonplaceholder.typicode.com/users/1', headers: {} }
-    ];
-    
-    const batchResponse = await app.httpBatch(batchRequests, 10000);
-    console.log('✅ Batch HTTP requests result:', batchResponse);
-    
-    // Process batch results to show request-response association
-    const processedResults = batchResponse.results.map((resultStr: string, index: number) => {
-      try {
-        const result = JSON.parse(resultStr);
-        return {
-          requestIndex: result.requestIndex,
-          originalRequest: batchRequests[index],
-          response: {
-            status: result.status,
-            body: result.body, // Now parsed JSON
-            bodyRaw: result.bodyRaw, // Original raw response
-            headers: result.headers,
-            url: result.url,
-            method: result.method
-          }
-        };
-      } catch (e) {
-        return { requestIndex: index, error: 'Failed to parse response', originalRequest: batchRequests[index] };
-      }
-    });
-    
-    res.json({
-      success: true,
-      message: 'HTTP utilities test completed',
-      singleRequest: singleResponse,
-      batchRequests: batchResponse,
-      processedResults: processedResults,
-      timestamp: new Date().toISOString()
-    });
-
-  } catch (error) {
-    console.error('❌ HTTP utilities test failed:', error);
-    res.status(500).json({
-      success: false,
-      error: 'HTTP utilities test failed',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    });
-  }
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    version: '1.0.0'
+  });
 });
 
+// Custom router example
 const apiRouter = Router();
 
 /**
@@ -480,43 +353,6 @@ apiRouter.get('/data', (req, res) => {
 
 app.useRouter('/custom', apiRouter);
 
-/**
- * @swagger
- * /api/health:
- *   get:
- *     summary: Health check endpoint
- *     description: Returns the health status of the server
- *     tags: [System]
- *     responses:
- *       200:
- *         description: Server is healthy
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: string
- *                   example: "healthy"
- *                 timestamp:
- *                   type: string
- *                   format: date-time
- *                 uptime:
- *                   type: number
- *                   description: Server uptime in seconds
- *                 version:
- *                   type: string
- *                   example: "1.0.0"
- */
-app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    version: '1.0.0'
-  });
-});
-
 // Start server
 app.listen(port, () => {
   console.log(`🚀 RNode Server listening on port ${port}`);
@@ -527,12 +363,9 @@ app.listen(port, () => {
   console.log(`💚 Health check available at: http://localhost:${port}/api/health`);
   console.log(`\n📋 Available routes:`);
   console.log(`  GET  /hello                    - Simple hello endpoint`);
-  console.log(`  GET  /hello1                   - Error hello endpoint (500)`);
   console.log(`  POST /api/users               - Create user`);
-  console.log(`  POST /api/sub_users/{id}      - Create sub-user`);
   console.log(`  ANY  /api/users/{id}          - User operations (GET/PUT/DELETE)`);
   console.log(`  GET  /api/slow?delay=2000     - Test slow requests`);
-  console.log(`  GET  /test-http               - Test HTTP utilities`);
   console.log(`  GET  /custom/data             - Custom router data`);
   console.log(`  GET  /api/docs                - Interactive API documentation (Swagger UI)`);
   console.log(`  GET  /api/docs/redoc         - Alternative API documentation (ReDoc)`);
@@ -541,24 +374,174 @@ app.listen(port, () => {
   console.log(`  GET  /                        - Static index.html`);
   console.log(`  GET  /style.css               - Static CSS`);
 });
+```
 
-//
-// const sslConfig = {
-//   certPath: path.join(__dirname, '../ssl/server.crt'),
-//   keyPath: path.join(__dirname, '../ssl/server.key')
-// };
-// let httpsApp = createApp({ ssl: sslConfig, logLevel: "info", metrics: true });
-// httpsApp.get('/hello', (req, res) => {
-//   res.send('Hello World!');
-// });
-//
-// httpsApp.listen(4547, () => {
-//   console.log(`Express app listening on port ${port}`);
-//   console.log(`Static files served from: ${path.join(__dirname, 'public')}`);
-//   console.log(`Available routes:`);
-//   console.log(`  GET /hello`);
-//   console.log(`  POST /api/users`);
-//   console.log(`  GET /api/users/{id}`);
-//   console.log(`  GET / (static index.html)`);
-//   console.log(`  GET /style.css (static CSS)`);
-// });
+## Key Features Demonstrated
+
+### 1. OpenAPI Initialization
+```typescript
+app.openapi({
+  title: 'RNode Server API',
+  version: '1.0.0',
+  description: 'High-performance API built with RNode Server',
+  contact: {
+    name: 'API Support',
+    email: 'support@rnode-server.com'
+  },
+  servers: [
+    {
+      url: `http://localhost:${port}`,
+      description: 'Development server'
+    },
+    {
+      url: 'https://api.example.com',
+      description: 'Production server'
+    }
+  ],
+  apis: ['./src/example_m.ts']
+});
+```
+
+### 2. JSDoc Documentation
+Each endpoint is documented with JSDoc comments using `@swagger` tags:
+
+```typescript
+/**
+ * @swagger
+ * /api/users:
+ *   post:
+ *     summary: Create a new user
+ *     description: Creates a new user in the system
+ *     tags: [Users]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: User's full name
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: User's email address
+ *             required: [name, email]
+ *     responses:
+ *       200:
+ *         description: User created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ */
+app.post('/api/users', (req, res) => {
+  res.json({ message: 'User created successfully' });
+});
+```
+
+### 3. Automatic Route Generation
+When you call `app.openapi()`, the following routes are automatically added:
+
+- **GET /api/openapi.json** - OpenAPI specification in JSON format
+- **GET /api/docs** - Interactive Swagger UI documentation
+- **GET /api/docs/redoc** - Alternative ReDoc documentation
+
+### 4. Predefined Schemas
+The example uses predefined schemas like `SuccessResponse` and `Error`:
+
+```yaml
+SuccessResponse:
+  type: object
+  properties:
+    success:
+      type: boolean
+      example: true
+    message:
+      type: string
+      description: Success message
+    data:
+      type: object
+      description: Response data
+```
+
+### 5. Parameter Documentation
+Path parameters, query parameters, and request bodies are all documented:
+
+```typescript
+/**
+ * @swagger
+ * /api/users/{id}:
+ *   get:
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: User unique identifier
+ */
+```
+
+## Running the Example
+
+1. **Install dependencies:**
+```bash
+cd playground
+npm install
+```
+
+2. **Run the server:**
+```bash
+npm run dev:mini
+```
+
+3. **Access the documentation:**
+- Swagger UI: http://localhost:4546/api/docs
+- ReDoc: http://localhost:4546/api/docs/redoc
+- OpenAPI JSON: http://localhost:4546/api/openapi.json
+
+## Testing the API
+
+### Using curl
+```bash
+# Get hello message
+curl http://localhost:4546/hello
+
+# Create a user
+curl -X POST http://localhost:4546/api/users \
+  -H "Content-Type: application/json" \
+  -d '{"name": "John Doe", "email": "john@example.com"}'
+
+# Get user by ID
+curl http://localhost:4546/api/users/123
+
+# Test slow request
+curl "http://localhost:4546/api/slow?delay=3000"
+
+# Health check
+curl http://localhost:4546/api/health
+```
+
+### Using Swagger UI
+1. Open http://localhost:4546/api/docs
+2. Click on any endpoint to expand it
+3. Click "Try it out" to test the endpoint
+4. Fill in the parameters and click "Execute"
+
+## Best Practices
+
+1. **Document all endpoints** - Use JSDoc comments for every API endpoint
+2. **Use predefined schemas** - Reference built-in schemas when possible
+3. **Group by tags** - Use tags like `[Users]`, `[System]`, `[Testing]` to organize endpoints
+4. **Provide examples** - Include example values in your documentation
+5. **Validate responses** - Document all possible response codes (200, 400, 404, 500, etc.)
+6. **Keep documentation updated** - Update JSDoc comments when API changes
+
+## Next Steps
+
+- [OpenAPI API Reference](../api/openapi.md) - Complete OpenAPI documentation
+- [Middleware Examples](./middleware.md) - Middleware documentation
+- [Error Handling](../api/error-codes.md) - Error handling patterns
+- [Advanced Usage](./advanced-usage.md) - Advanced patterns and techniques

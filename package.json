@@ -24,6 +24,7 @@
     "dryrun": "gh workflow run publish.yml -f dryrun=true",
     "playground:start": "npm --workspace playground run start",
     "playground:dev": "npm --workspace playground run dev",
+    "playground:dev:mini": "npm --workspace playground run dev:mini",
     "playground:build": "npm --workspace playground run build",
     "playground:build:watch": "npm --workspace playground run build:watch",
     "test:ui": "vitest --ui",
@@ -68,12 +69,14 @@
     "vitepress": "^1.6.4",
     "vitepress-plugin-mermaid": "^2.0.17",
     "vitepress-plugin-tabs": "^0.7.1",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "@types/swagger-jsdoc": "^6.0.4"
   },
   "dependencies": {
     "@esfx/cancelable": "^1.0.0",
     "@esfx/canceltoken": "^1.0.0",
     "@neon-rs/load": "^0.1.82",
+    "swagger-jsdoc": "^6.2.8",
     "micromatch": "^4.0.8"
   },
   "engines": {
