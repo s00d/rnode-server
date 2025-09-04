@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>User Profile</title>
+</head>
+<body>
+    <h1>{{ user.name }}</h1>
+    <p>Email: {{ user.email }}</p>
+    <p>Role: {{ user.role }}</p>
+    {% if user.avatar %}
+    <img src="{{ user.avatar }}" alt="User Avatar">
+    {% endif %}
+</body>
+</html>

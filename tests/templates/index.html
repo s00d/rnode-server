@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ title | default(value="Test Template") }}</title>
+</head>
+<body>
+    <h1>{{ title | default(value="Test Template") }}</h1>
+    <p>{{ message | default(value="Template rendering works!") }}</p>
+    {% if user %}
+    <div class="user-info">
+        <h2>User: {{ user.name }}</h2>
+        <p>Email: {{ user.email }}</p>
+        <p>Role: {{ user.role }}</p>
+    </div>
+    {% endif %}
+    {% if items %}
+    <ul>
+        {% for item in items %}
+        <li>{{ item.name }}: {{ item.value }}</li>
+        {% endfor %}
+    </ul>
+    <p>Count: {{ items | length }}</p>
+    {% endif %}
+</body>
+</html>
