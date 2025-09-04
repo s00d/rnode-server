@@ -1,104 +1,77 @@
-import { WebSocketOptions } from './types';
-export declare class RNodeWebSocketClient {
-    private ws;
+import { WebSocketOptions, ConnectionState, ConnectionStatus } from './core/types';
+import { EventEmitter } from './core/events';
+export declare class RNodeWebSocketClient extends EventEmitter {
     private options;
-    private reconnectConfig;
-    private pingPongConfig;
-    private reconnectTimer;
-    private pingTimer;
-    private pongTimer;
-    private isConnecting;
-    private isReconnecting;
-    private currentRoom;
-    private eventListeners;
+    private connectionManager;
+    private roomManager;
+    private messageManager;
+    private pingPongManager;
+    private reconnectionManager;
     constructor(options: WebSocketOptions);
     /**
-     * Подписка на события
-     */
-    on(event: string, listener: Function): void;
-    /**
-     * Отписка от событий
-     */
-    off(event: string, listener: Function): void;
-    /**
-     * Генерация событий
-     */
-    private emit;
-    /**
-     * Подключение к WebSocket серверу
-     */
-    connect(): Promise<void>;
-    /**
-     * Настройка обработчиков событий WebSocket
+     * Setup event handlers from managers
      */
     private setupEventHandlers;
     /**
-     * Отправка сообщения
+     * Connect to WebSocket server
      */
-    send(data: any, roomId?: string): boolean;
+    connect(): Promise<void>;
     /**
-     * Подключение к комнате
-     */
-    joinRoom(roomId: string): boolean;
-    /**
-     * Выход из комнаты
-     */
-    leaveRoom(roomId?: string): boolean;
-    /**
-     * Отключение от сервера
+     * Disconnect from server
      */
     disconnect(): void;
     /**
-     * Получение текущего состояния подключения
+     * Send message
      */
-    getState(): number;
+    send(data: unknown, roomId?: string): boolean;
     /**
-     * Проверка подключения
+     * Send message to room
+     */
+    sendToRoom(roomId: string, message: unknown): boolean;
+    /**
+     * Send direct message to client by ID
+     */
+    sendDirectMessage(clientId: string, message: unknown): boolean;
+    /**
+     * Join room
+     */
+    joinRoom(roomId: string): boolean;
+    /**
+     * Leave room
+     */
+    leaveRoom(roomId?: string): boolean;
+    /**
+     * Get current connection state
+     */
+    getState(): ConnectionState;
+    /**
+     * Check connection
      */
     isConnected(): boolean;
     /**
-     * Получение текущей комнаты
+     * Get current room
      */
     getCurrentRoom(): string | null;
     /**
-     * Запуск ping/pong механизма
+     * Get connection status
      */
-    private startPingPong;
+    getConnectionStatus(): ConnectionStatus;
     /**
-     * Остановка ping/pong механизма
+     * Get ping/pong latency
      */
-    private stopPingPong;
+    getLatency(): number;
     /**
-     * Отправка ping
-     */
-    private sendPing;
-    /**
-     * Отправка pong в ответ на ping от сервера
-     */
-    private sendPong;
-    /**
-     * Обработка pong
-     */
-    private handlePong;
-    /**
-     * Планирование переподключения
-     */
-    private scheduleReconnect;
-    /**
-     * Отмена переподключения
-     */
-    private cancelReconnect;
-    /**
-     * Обновление конфигурации
+     * Update configuration
      */
     updateOptions(newOptions: Partial<WebSocketOptions>): void;
     /**
-     * Отправка сообщения в комнату
+     * Get statistics
      */
-    sendToRoom(roomId: string, message: any): boolean;
-    /**
-     * Отправка прямого сообщения клиенту по ID
-     */
-    sendDirectMessage(clientId: string, message: any): boolean;
+    getStats(): {
+        connection: ConnectionStatus;
+        latency: number;
+        reconnectionAttempts: number;
+        maxReconnectionAttempts: number;
+    };
 }
 //# sourceMappingURL=client.d.ts.map

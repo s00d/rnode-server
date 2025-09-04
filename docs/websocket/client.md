@@ -11,6 +11,7 @@ RNode WebSocket Client provides a high-performance, feature-rich WebSocket clien
 - Event-driven architecture
 - TypeScript support
 - Browser and Node.js compatibility
+- Message blocking and filtering support
 
 ## Installation
 
@@ -129,6 +130,7 @@ interface WebSocketOptions {
   // Event handlers
   onConnect?: (event: WebSocketEvent) => void;
   onMessage?: (event: WebSocketEvent) => void;
+  onBinaryMessage?: (event: WebSocketEvent) => void;
   onDisconnect?: (event: WebSocketEvent) => void;
   onError?: (event: WebSocketEvent) => void;
   onWelcome?: (message: WelcomeMessage) => void;
@@ -140,6 +142,8 @@ interface WebSocketOptions {
   onMessageAck?: (data: MessageAckEvent) => void;
   onRoomMessage?: (data: RoomMessageEvent) => void;
   onDirectMessage?: (data: DirectMessageEvent) => void;
+  onServerError?: (data: ServerErrorEvent) => void;
+  onMessageBlocked?: (data: MessageBlockedEvent) => void;
 }
 ```
 
@@ -171,6 +175,9 @@ const isConnected = client.isConnected();
 
 // Get connection state
 const state = client.getState();
+
+// Get connection status
+const status = client.getConnectionStatus();
 ```
 
 ### Message Sending
@@ -216,6 +223,20 @@ await client.sendDirectMessage('client-id', 'Private message');
 const clientId = client.getClientId();
 ```
 
+### Statistics and Monitoring
+
+```javascript
+// Get connection statistics
+const stats = client.getStats();
+console.log('Connection status:', stats.connection);
+console.log('Latency:', stats.latency);
+console.log('Reconnection attempts:', stats.reconnectionAttempts);
+
+// Get ping/pong latency
+const latency = client.getLatency();
+console.log('Current latency:', latency, 'ms');
+```
+
 ## Event Handling
 
 ### Connection Events
@@ -238,6 +259,10 @@ const client = new RNodeWebSocketClient({
   
   onError: (event) => {
     console.error('WebSocket error:', event.data.error);
+  },
+  
+  onServerError: (event) => {
+    console.error('Server error:', event.error);
   }
 });
 ```
@@ -265,6 +290,15 @@ const client = new RNodeWebSocketClient({
   
   onMessageAck: (event) => {
     console.log('Message acknowledged:', event.message);
+  },
+  
+  onBinaryMessage: (event) => {
+    console.log('Binary message received:', event.data);
+  },
+  
+  onMessageBlocked: (event) => {
+    console.log('Message was blocked:', event.reason);
+    console.log('Original message:', event.originalMessage);
   }
 });
 ```
@@ -312,6 +346,21 @@ const client = new RNodeWebSocketClient({
   onReconnect: (event) => {
     console.log(`Reconnecting... Attempt ${event.attempt}/${event.maxAttempts}`);
     console.log('Delay:', event.delay, 'ms');
+  }
+});
+```
+
+### Welcome Events
+
+```javascript
+const client = new RNodeWebSocketClient({
+  url: 'ws://localhost:4547/chat',
+  
+  onWelcome: (message) => {
+    console.log('Welcome message received');
+    console.log('Connection ID:', message.connection_id);
+    console.log('Client ID:', message.client_id);
+    console.log('Path:', message.path);
   }
 });
 ```
@@ -418,6 +467,25 @@ const client = new RNodeWebSocketClient({
     }
   },
   
+  onServerError: (event) => {
+    console.error('Server error:', event.error);
+    
+    // Handle server-specific errors
+    switch (event.error_type) {
+      case 'validation_error':
+        console.log('Message validation failed');
+        break;
+      case 'room_full':
+        console.log('Room is full');
+        break;
+      case 'unauthorized':
+        console.log('Unauthorized access');
+        break;
+      default:
+        console.log('Unknown server error');
+    }
+  },
+  
   onDisconnect: (event) => {
     if (event.data.code === 1006) {
       console.log('Connection lost unexpectedly');
@@ -496,6 +564,35 @@ async function leaveAllRooms() {
 }
 ```
 
+### Message Blocking and Filtering
+
+```javascript
+const client = new RNodeWebSocketClient({
+  url: 'ws://localhost:4547/chat',
+  
+  onMessageBlocked: (event) => {
+    console.log('Message was blocked by server');
+    console.log('Reason:', event.reason);
+    console.log('Original message:', event.originalMessage);
+    console.log('Blocked at:', event.timestamp);
+    
+    // Show user notification
+    showNotification('Message blocked: ' + event.reason);
+  },
+  
+  onMessage: (event) => {
+    // Check if message was blocked
+    if (event.data && event.data.blocked) {
+      console.log('Message blocked by client-side filter');
+      return;
+    }
+    
+    // Process normal message
+    console.log('Message received:', event.data);
+  }
+});
+```
+
 ## Browser Integration
 
 ### HTML Demo
@@ -560,6 +657,14 @@ async function leaveAllRooms() {
             
             onLeaveRoom: (event) => {
                 addMessage(`System: Left room ${event.roomId}`);
+            },
+            
+            onWelcome: (message) => {
+                addMessage(`System: Welcome! Client ID: ${message.client_id}`);
+            },
+            
+            onMessageBlocked: (event) => {
+                addMessage(`System: Message blocked - ${event.reason}`);
             }
         });
         
@@ -615,6 +720,10 @@ const client = new RNodeWebSocketClient({
   
   onMessage: (event) => {
     console.log('Received:', event.data);
+  },
+  
+  onWelcome: (message) => {
+    console.log('Welcome! Connection ID:', message.connection_id);
   }
 });
 
@@ -634,11 +743,86 @@ async function main() {
 main().catch(console.error);
 ```
 
+## Type Definitions
+
+### Event Types
+
+```typescript
+interface WebSocketEvent {
+  type: string;
+  data?: unknown;
+  timestamp: number;
+}
+
+interface WelcomeMessage {
+  type: 'welcome';
+  connection_id: string;
+  client_id: string;
+  path: string;
+  timestamp: string;
+}
+
+interface ReconnectEvent {
+  attempt: number;
+  maxAttempts: number;
+  delay: number;
+  timestamp: number;
+}
+
+interface RoomEvent {
+  roomId: string;
+  timestamp: number;
+}
+
+interface PingEvent {
+  timestamp: number;
+}
+
+interface PongEvent {
+  latency: number;
+  timestamp: number;
+}
+
+interface MessageAckEvent {
+  message: string;
+  timestamp: string;
+  type: string;
+}
+
+interface RoomMessageEvent {
+  message: string;
+  room_id: string;
+  timestamp: string;
+  type: string;
+}
+
+interface DirectMessageEvent {
+  message: string;
+  from_client_id: string;
+  timestamp: string;
+  type: string;
+}
+
+interface ServerErrorEvent {
+  error: string;
+  error_type: string;
+  timestamp: string;
+  type: string;
+}
+
+interface MessageBlockedEvent {
+  originalMessage: string;
+  reason: string;
+  timestamp: string;
+  type: string;
+}
+```
+
 ## Best Practices
 
 ### Error Handling
 
-1. **Always handle errors**: Implement `onError` callback
+1. **Always handle errors**: Implement `onError` and `onServerError` callbacks
 2. **Validate messages**: Parse and validate incoming messages
 3. **Handle disconnections**: Implement reconnection logic
 4. **Monitor connection state**: Check `isConnected()` before sending
@@ -656,6 +840,13 @@ main().catch(console.error);
 2. **Sanitize messages**: Validate and sanitize user input
 3. **Use WSS**: Use secure WebSocket connections in production
 4. **Implement authentication**: Add authentication to your WebSocket server
+
+### Message Handling
+
+1. **Handle blocked messages**: Implement `onMessageBlocked` callback
+2. **Validate message types**: Check message structure before processing
+3. **Handle binary data**: Implement `onBinaryMessage` for binary data
+4. **Monitor message flow**: Track message acknowledgments
 
 ## Related
 

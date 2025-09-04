@@ -15,13 +15,13 @@ pub async fn handle_static_fallback(
     // Разделяем запрос на части
     let (parts, body) = req.into_parts();
 
-    // Извлекаем тело запроса
+    // Extract request body
     let body_bytes = axum::body::to_bytes(body, usize::MAX).await.ok();
 
-    // Создаем новый запрос из частей
+    // Create new request from parts
     let req = http::Request::from_parts(parts, Body::empty());
 
-    // Получаем готовые Request и Response объекты из extensions
+    // Get ready Request and Response objects from extensions
     let mut request = Request::from_axum_request(&req);
     if let Some(body_bytes) = body_bytes {
         use crate::request_parser::RequestParser;
@@ -49,7 +49,7 @@ pub async fn handle_static_fallback(
         
         debug!("⏱️ Static file middleware - Remaining timeout after execution: {}ms", remaining_timeout);
 
-        // Получаем данные из Response объекта после middleware
+        // Get data from Response object after middleware
         let headers = request.get_headers().clone();
 
         // Добавляем заголовки

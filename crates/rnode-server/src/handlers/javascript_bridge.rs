@@ -13,7 +13,7 @@ impl JavaScriptBridge {
     ) -> Result<String, String> {
         let (tx, rx) = mpsc::channel();
         
-        // Получаем event queue для связи с JavaScript
+        // Get event queue for JavaScript communication
         let event_queue = crate::types::get_event_queue();
         let channel = {
             let event_queue_map = event_queue.read().unwrap();
@@ -35,11 +35,11 @@ impl JavaScriptBridge {
                     .arg(cx.number(timeout as f64))
                     .apply(&mut cx)?;
 
-                // Проверяем, является ли результат Promise
+                // Check if result is Promise
                 if result.is_a::<JsPromise, _>(&mut cx) {
                     let promise: Handle<JsPromise> = result.downcast_or_throw(&mut cx)?;
 
-                    // Конвертируем JavaScript Promise в Rust Future
+                    // Convert JavaScript Promise to Rust Future
                     let promise_future = promise.to_future(&mut cx, |mut cx, result| {
                         let value = result.or_throw(&mut cx)?;
                         let result_string = value
@@ -48,7 +48,7 @@ impl JavaScriptBridge {
                         Ok(result_string.value(&mut cx))
                     })?;
 
-                    // Запускаем асинхронную задачу в отдельном потоке с контролем таймаута
+                    // Run async task in separate thread with timeout control
                     let _channel = cx.channel();
                     let tx_clone = tx.clone();
 
@@ -92,7 +92,7 @@ impl JavaScriptBridge {
                         });
                     });
                 } else {
-                    // Не promise, конвертируем напрямую
+                    // Not promise, convert directly
                     let result_string = result
                         .to_string(&mut cx)
                         .unwrap_or_else(|_| cx.string("Failed to convert result"));
@@ -102,7 +102,7 @@ impl JavaScriptBridge {
                 Ok(())
             });
 
-            // Ждем результат от JavaScript
+            // Wait for result from JavaScript
             match rx.recv() {
                 Ok(result) => Ok(result),
                 Err(_) => {
@@ -120,7 +120,7 @@ impl JavaScriptBridge {
         }
     }
 
-    // Вызов JavaScript функции executeMiddleware
+    // Call JavaScript function executeMiddleware
     pub fn call_execute_middleware(
         request_json: String,
         timeout: u64,

@@ -28,7 +28,7 @@ impl FileCacheSync {
         let cache_dir = PathBuf::from(cache_dir);
         let index_file = cache_dir.join("index.json");
         
-        // Создаем директорию если не существует
+        // Create directory if not exists
         fs::create_dir_all(&cache_dir)
             .map_err(|e| CacheError::FileError(format!("Failed to create cache directory: {}", e)))?;
         
@@ -61,7 +61,7 @@ impl FileCacheSync {
             .map_err(|e| CacheError::FileError(format!("Failed to read index: {}", e)))?;
         
         if let Some(entry) = index_guard.get(key) {
-            // Проверяем срок действия
+            // Check expiration
             if let Some(expires_at) = entry.expires_at {
                 if Utc::now() > expires_at {
                     debug!("🗑️ File cache item expired: {}", key);
@@ -88,7 +88,7 @@ impl FileCacheSync {
                 return Ok(None);
             }
             
-            // Читаем файл
+            // Read file
             let mut file = File::open(&file_path)
                 .map_err(|e| CacheError::FileError(format!("Failed to open cache file: {}", e)))?;
             
@@ -96,7 +96,7 @@ impl FileCacheSync {
             file.read_to_string(&mut content)
                 .map_err(|e| CacheError::FileError(format!("Failed to read cache file: {}", e)))?;
             
-            // Десериализуем данные
+            // Deserialize data
             let item: CacheItem<String> = serde_json::from_str(&content)
                 .map_err(|e| CacheError::DeserializationError(format!("Failed to deserialize cache item: {}", e)))?;
             
@@ -118,11 +118,11 @@ impl FileCacheSync {
             tags: options.tags.clone(),
         };
         
-        // Генерируем имя файла на основе ключа
+        // Generate file name based on key
         let file_name = self.generate_file_name(key);
         let file_path = self.cache_dir.join(&file_name);
         
-        // Сохраняем данные в файл
+        // Save data to file
         let file = OpenOptions::new()
             .write(true)
             .create(true)
@@ -140,7 +140,7 @@ impl FileCacheSync {
         writer.flush()
             .map_err(|e| CacheError::FileError(format!("Failed to flush cache file: {}", e)))?;
         
-        // Обновляем индекс
+        // Update index
         let mut index_guard = self.index.lock()
             .map_err(|e| CacheError::FileError(format!("Failed to write index: {}", e)))?;
         
@@ -153,7 +153,7 @@ impl FileCacheSync {
         
         index_guard.insert(key.to_string(), entry);
         
-        // Сохраняем индекс
+        // Save index
         self.save_index(&index_guard)?;
         
         debug!("💾 File cache set: {}", key);
@@ -173,17 +173,17 @@ impl FileCacheSync {
                 }
             }
             
-            // Удаляем файл
+            // Delete file
             let file_path = self.cache_dir.join(&entry.file_name);
             if file_path.exists() {
                 fs::remove_file(&file_path)
                     .map_err(|e| CacheError::FileError(format!("Failed to delete cache file: {}", e)))?;
             }
             
-            // Удаляем из индекса
+            // Remove from index
             index_guard.remove(key);
             
-            // Сохраняем индекс
+            // Save index
             self.save_index(&index_guard)?;
             
             debug!("🗑️ File cache delete: {}", key);
@@ -213,7 +213,7 @@ impl FileCacheSync {
         let mut index_guard = self.index.lock()
             .map_err(|e| CacheError::FileError(format!("Failed to read index: {}", e)))?;
         
-        // Удаляем все файлы
+        // Delete all files
         for entry in index_guard.values() {
             let file_path = self.cache_dir.join(&entry.file_name);
             if file_path.exists() {
@@ -222,10 +222,10 @@ impl FileCacheSync {
             }
         }
         
-        // Очищаем индекс
+        // Clear index
         index_guard.clear();
         
-        // Сохраняем индекс
+        // Save index
         self.save_index(&index_guard)?;
         
         debug!("🗑️ File cache cleared");

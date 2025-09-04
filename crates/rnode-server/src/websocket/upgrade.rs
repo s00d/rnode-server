@@ -12,14 +12,14 @@ pub async fn websocket_upgrade_handler(
     path: String,
     handler_id: String,
 ) -> axum::response::Response<axum::body::Body> {
-    // Проверяем заголовки WebSocket upgrade
+    // Check WebSocket upgrade headers
     if let Some(upgrade) = req.headers().get("upgrade") {
         if upgrade.to_str().unwrap_or("").to_lowercase() == "websocket" {
             log::info!("🔌 WebSocket upgrade request for path: {}", path);
             
-            // Извлекаем clientId из query параметров
+            // Extract clientId from query parameters
             let client_id = if let Some(uri) = req.uri().query() {
-                // Парсим query параметры
+                // Parse query parameters
                 let query_params: std::collections::HashMap<String, String> = uri
                     .split('&')
                     .filter_map(|pair| {
@@ -39,19 +39,19 @@ pub async fn websocket_upgrade_handler(
             
             log::debug!("🔍 Client ID from query params: {:?}", client_id);
             
-            // Выполняем WebSocket upgrade
+            // Perform WebSocket upgrade
             match WebSocketUpgrade::from_request(req, &mut ()).await {
                 Ok(upgrade) => {
                     log::info!("✅ WebSocket upgrade successful for path: {}", path);
                     
-                    // Возвращаем ответ с on_upgrade
+                    // Return response with on_upgrade
                     return upgrade.on_upgrade(|socket| async move {
                         let path = path.clone();
                         let handler_id = handler_id.clone();
                         let client_id = client_id.clone();
                         
                         log::info!("🔌 WebSocket connection established for path: {}", path);
-                        // Обрабатываем WebSocket соединение
+                        // Handle WebSocket connection
                         if let Err(e) = crate::websocket::router::handle_websocket(socket, path, handler_id, client_id).await.map_err(|e| format!("WebSocket error: {}", e)) {
                             log::error!("WebSocket handler error: {}", e);
                         }
@@ -65,7 +65,7 @@ pub async fn websocket_upgrade_handler(
         }
     }
 
-    // Если это не WebSocket upgrade, возвращаем ошибку
+    // If this is not a WebSocket upgrade, return error
     log::warn!("❌ WebSocket upgrade required for path: {}", path);
     (axum::http::StatusCode::BAD_REQUEST, "WebSocket upgrade required").into_response()
 }

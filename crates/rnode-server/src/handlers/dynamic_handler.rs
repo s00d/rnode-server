@@ -29,7 +29,7 @@ pub async fn dynamic_handler(
     // Start timing the request
     let timeout_manager = TimeoutManager::new(timeout);
     
-    // Получаем готовые Request и Response объекты из extensions
+    // Get ready Request and Response objects from extensions
     let request = req.extensions().get::<Request>().cloned();
 
     if let Some(mut request) = request {
@@ -38,7 +38,7 @@ pub async fn dynamic_handler(
         request.registered_path = registered_path.clone();
         request.method = method.clone();
 
-        // Извлекаем path параметры
+        // Extract path parameters
         extract_path_parameters(&mut request, &actual_path, &registered_path);
 
         // Add query parameters to request
@@ -82,7 +82,7 @@ pub async fn dynamic_handler(
         // Log additional request details
         log_additional_request_details(&request);
 
-        // Создаем request_data для JavaScript handler
+        // Create request_data for JavaScript handler
         let request_data = request.to_json_map();
         let request_json = serde_json::to_string(&request_data).unwrap();
         debug!("📝 Request JSON prepared: {} chars", request_json.len());

@@ -70,41 +70,12 @@
     }
   }
   const logger = new Logger();
-  class RNodeWebSocketClient {
-    constructor(options) {
-      this.ws = null;
-      this.reconnectTimer = null;
-      this.pingTimer = null;
-      this.pongTimer = null;
-      this.isConnecting = false;
-      this.isReconnecting = false;
-      this.currentRoom = null;
+  class EventEmitter {
+    constructor() {
       this.eventListeners = /* @__PURE__ */ new Map();
-      this.options = {
-        autoReconnect: true,
-        reconnectAttempts: 5,
-        reconnectDelay: 1e3,
-        pingInterval: 3e4,
-        pongTimeout: 1e4,
-        ...options
-      };
-      this.reconnectConfig = {
-        enabled: this.options.autoReconnect,
-        interval: this.options.reconnectDelay,
-        maxAttempts: this.options.reconnectAttempts,
-        currentAttempt: 0
-      };
-      this.pingPongConfig = {
-        enabled: true,
-        interval: this.options.pingInterval,
-        timeout: this.options.pongTimeout,
-        lastPing: 0,
-        lastPong: 0
-      };
-      logger.info("🔌 RNode WebSocket Client initialized", "client");
     }
     /**
-     * Подписка на события
+     * Subscribe to events
      */
     on(event, listener) {
       if (!this.eventListeners.has(event)) {
@@ -113,7 +84,7 @@
       this.eventListeners.get(event).push(listener);
     }
     /**
-     * Отписка от событий
+     * Unsubscribe from events
      */
     off(event, listener) {
       if (this.eventListeners.has(event)) {
@@ -125,7 +96,7 @@
       }
     }
     /**
-     * Генерация событий
+     * Emit events
      */
     emit(event, data) {
       if (this.eventListeners.has(event)) {
@@ -134,15 +105,59 @@
           try {
             listener(data);
           } catch (error) {
-            logger.error(`❌ Error in event listener for ${event}: ${error}`, "client");
+            logger.error(`❌ Error in event listener for ${event}: ${error}`, "events");
           }
         });
       }
     }
     /**
-     * Подключение к WebSocket серверу
+     * Clear all event listeners
      */
-    connect() {
+    removeAllListeners(event) {
+      if (event) {
+        this.eventListeners.delete(event);
+      } else {
+        this.eventListeners.clear();
+      }
+    }
+    /**
+     * Get number of listeners for event
+     */
+    listenerCount(event) {
+      var _a;
+      return ((_a = this.eventListeners.get(event)) == null ? void 0 : _a.length) || 0;
+    }
+    /**
+     * Get list of all events
+     */
+    eventNames() {
+      return Array.from(this.eventListeners.keys());
+    }
+  }
+  var ConnectionState = ((ConnectionState2) => {
+    ConnectionState2[ConnectionState2["CONNECTING"] = WebSocket.CONNECTING] = "CONNECTING";
+    ConnectionState2[ConnectionState2["OPEN"] = WebSocket.OPEN] = "OPEN";
+    ConnectionState2[ConnectionState2["CLOSING"] = WebSocket.CLOSING] = "CLOSING";
+    ConnectionState2[ConnectionState2["CLOSED"] = WebSocket.CLOSED] = "CLOSED";
+    return ConnectionState2;
+  })(ConnectionState || {});
+  class ConnectionManager {
+    constructor(options) {
+      this.ws = null;
+      this.isConnecting = false;
+      this.currentRoom = null;
+      this.options = options;
+    }
+    /**
+     * Set disconnect handler
+     */
+    setDisconnectCallback(callback) {
+      this.onDisconnectCallback = callback;
+    }
+    /**
+     * Connect to WebSocket server
+     */
+    async connect() {
       return new Promise((resolve, reject) => {
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
           resolve();
@@ -158,7 +173,7 @@
           const separator = connectionUrl.includes("?") ? "&" : "?";
           connectionUrl = `${connectionUrl}${separator}clientId=${encodeURIComponent(this.options.clientId)}`;
         }
-        logger.info(`🔌 Connecting to ${connectionUrl}`, "client");
+        logger.info(`🔌 Connecting to ${connectionUrl}`, "connection");
         try {
           this.ws = new WebSocket(connectionUrl, this.options.protocols);
           this.setupEventHandlers(resolve, reject);
@@ -169,21 +184,13 @@
       });
     }
     /**
-     * Настройка обработчиков событий WebSocket
+     * Setup WebSocket event handlers
      */
-    setupEventHandlers(resolve, reject) {
+    setupEventHandlers(resolve, _reject) {
       if (!this.ws) return;
       this.ws.onopen = () => {
         this.isConnecting = false;
-        this.isReconnecting = false;
-        this.reconnectConfig.currentAttempt = 0;
-        logger.info("✅ WebSocket connected", "client");
-        this.startPingPong();
-        this.emit("connect", {
-          url: this.options.url,
-          clientId: this.options.clientId,
-          timestamp: Date.now()
-        });
+        logger.info("✅ WebSocket connected", "connection");
         if (this.options.onConnect) {
           const wsEvent = {
             type: "connect",
@@ -196,8 +203,7 @@
       };
       this.ws.onclose = (event) => {
         this.isConnecting = false;
-        this.stopPingPong();
-        logger.warn(`🔌 WebSocket closed: ${event.code} ${event.reason}`, "client");
+        logger.warn(`🔌 WebSocket closed: ${event.code} ${event.reason}`, "connection");
         if (this.options.onDisconnect) {
           const wsEvent = {
             type: "disconnect",
@@ -206,92 +212,13 @@
           };
           this.options.onDisconnect(wsEvent);
         }
-        this.emit("disconnect", {
-          code: event.code,
-          reason: event.reason,
-          wasClean: event.wasClean,
-          timestamp: Date.now()
-        });
-        if (this.reconnectConfig.enabled && !this.isReconnecting) {
-          this.scheduleReconnect();
-        }
-      };
-      this.ws.onmessage = (event) => {
-        try {
-          const message = JSON.parse(event.data);
-          logger.debug(`📨 Message received: ${message.type}`, "client");
-          if (message.type === "welcome") {
-            logger.info("👋 Welcome message received", "client");
-            this.emit("welcome", message);
-            if (this.options.onWelcome) {
-              this.options.onWelcome(message);
-            }
-            return;
-          }
-          if (message.type === "ping") {
-            logger.info("🏓 Ping received from server", "client");
-            this.sendPong();
-            return;
-          }
-          if (message.type === "pong") {
-            this.handlePong();
-            return;
-          }
-          if (message.type === "room_joined") {
-            logger.info("🏠 Room joined message received", "client");
-            this.emit("join_room", { roomId: message.room_id, timestamp: Date.now() });
-            if (this.options.onJoinRoom) {
-              this.options.onJoinRoom({ roomId: message.room_id, timestamp: Date.now() });
-            }
-            return;
-          }
-          if (message.type === "room_left") {
-            logger.info("🚪 Room left message received", "client");
-            this.emit("leave_room", { roomId: message.room_id, timestamp: Date.now() });
-            if (this.options.onLeaveRoom) {
-              this.options.onLeaveRoom({ roomId: message.room_id, timestamp: Date.now() });
-            }
-            return;
-          }
-          if (message.type === "room_message") {
-            logger.info("📨 Room message received", "client");
-            this.emit("message", message);
-            if (this.options.onRoomMessage) {
-              this.options.onRoomMessage(message);
-            }
-            return;
-          }
-          if (message.type === "message_ack") {
-            logger.info("✅ Message acknowledgment received", "client");
-            if (this.options.onMessageAck) {
-              this.options.onMessageAck(message);
-            }
-            return;
-          }
-          if (message.type === "direct_message") {
-            logger.info("📨 Direct message received", "client");
-            this.emit("message", message);
-            if (this.options.onDirectMessage) {
-              this.options.onDirectMessage(message);
-            }
-            return;
-          }
-          if (this.options.onMessage) {
-            const wsEvent = {
-              type: "message",
-              data: message,
-              timestamp: Date.now()
-            };
-            this.options.onMessage(wsEvent);
-          }
-          this.emit("message", message);
-        } catch (error) {
-          logger.error(`❌ Error parsing message: ${error}`, "client");
+        if (this.onDisconnectCallback) {
+          this.onDisconnectCallback();
         }
       };
       this.ws.onerror = (error) => {
         this.isConnecting = false;
-        logger.error(`❌ WebSocket error: ${error}`, "client");
+        logger.error(`❌ WebSocket error: ${error}`, "connection");
         if (this.options.onError) {
           const wsEvent = {
             type: "error",
@@ -300,15 +227,374 @@
           };
           this.options.onError(wsEvent);
         }
-        reject(new Error(`WebSocket connection failed: ${error}`));
+      };
+      this.ws.onmessage = (event) => {
+        if (event.data instanceof ArrayBuffer || event.data instanceof Blob) {
+          logger.debug(`📦 Binary message received: ${event.data instanceof ArrayBuffer ? event.data.byteLength : "blob"} bytes`, "connection");
+          if (this.options.onBinaryMessage) {
+            const wsEvent = {
+              type: "binary_message",
+              data: event.data,
+              timestamp: Date.now()
+            };
+            this.options.onBinaryMessage(wsEvent);
+          }
+        }
       };
     }
     /**
-     * Отправка сообщения
+     * Disconnect from server
+     */
+    disconnect() {
+      logger.info("🔌 Disconnecting from WebSocket server", "connection");
+      if (this.ws) {
+        this.ws.close(1e3, "Client disconnect");
+        this.ws = null;
+      }
+      this.isConnecting = false;
+      this.currentRoom = null;
+    }
+    /**
+     * Get WebSocket connection
+     */
+    getWebSocket() {
+      return this.ws;
+    }
+    /**
+     * Get current connection state
+     */
+    getState() {
+      return this.ws ? this.ws.readyState : ConnectionState.CLOSED;
+    }
+    /**
+     * Check connection
+     */
+    isConnected() {
+      return this.ws ? this.ws.readyState === WebSocket.OPEN : false;
+    }
+    /**
+     * Get connection status
+     */
+    getConnectionStatus() {
+      return {
+        isConnected: this.isConnected(),
+        isConnecting: this.isConnecting,
+        isReconnecting: false,
+        // Managed by ReconnectionManager
+        currentRoom: this.currentRoom,
+        state: this.getState()
+      };
+    }
+    /**
+     * Set current room
+     */
+    setCurrentRoom(roomId) {
+      this.currentRoom = roomId;
+    }
+    /**
+     * Get current room
+     */
+    getCurrentRoom() {
+      return this.currentRoom;
+    }
+  }
+  class RoomManager {
+    constructor(connectionManager, options) {
+      this.connectionManager = connectionManager;
+      this.options = options;
+    }
+    /**
+     * Join room
+     */
+    joinRoom(roomId) {
+      const ws = this.connectionManager.getWebSocket();
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        logger.error("❌ WebSocket not connected", "rooms");
+        return false;
+      }
+      try {
+        const message = {
+          type: "join_room",
+          room_id: roomId,
+          // Use snake_case in root object
+          timestamp: (/* @__PURE__ */ new Date()).toISOString()
+        };
+        ws.send(JSON.stringify(message));
+        this.connectionManager.setCurrentRoom(roomId);
+        logger.info(`🔗 Joined room: ${roomId}`, "rooms");
+        if (this.options.onJoinRoom) {
+          const roomEvent = { roomId, timestamp: Date.now() };
+          this.options.onJoinRoom(roomEvent);
+        }
+        return true;
+      } catch (error) {
+        logger.error(`❌ Error joining room: ${error}`, "rooms");
+        return false;
+      }
+    }
+    /**
+     * Leave room
+     */
+    leaveRoom(roomId) {
+      const ws = this.connectionManager.getWebSocket();
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        logger.error("❌ WebSocket not connected", "rooms");
+        return false;
+      }
+      const targetRoom = roomId || this.connectionManager.getCurrentRoom();
+      if (!targetRoom) {
+        logger.warn("⚠️ Not in any room", "rooms");
+        return false;
+      }
+      try {
+        const message = {
+          type: "leave_room",
+          room_id: targetRoom,
+          // Use snake_case in root object
+          timestamp: (/* @__PURE__ */ new Date()).toISOString()
+        };
+        ws.send(JSON.stringify(message));
+        if (targetRoom === this.connectionManager.getCurrentRoom()) {
+          this.connectionManager.setCurrentRoom(null);
+        }
+        logger.info(`🚪 Left room: ${targetRoom}`, "rooms");
+        if (this.options.onLeaveRoom) {
+          const roomEvent = { roomId: targetRoom, timestamp: Date.now() };
+          this.options.onLeaveRoom(roomEvent);
+        }
+        return true;
+      } catch (error) {
+        logger.error(`❌ Error leaving room: ${error}`, "rooms");
+        return false;
+      }
+    }
+    /**
+     * Get current room
+     */
+    getCurrentRoom() {
+      return this.connectionManager.getCurrentRoom();
+    }
+    /**
+     * Check if in room
+     */
+    isInRoom(roomId) {
+      const currentRoom = this.connectionManager.getCurrentRoom();
+      return roomId ? currentRoom === roomId : currentRoom !== null;
+    }
+  }
+  class MessageManager extends EventEmitter {
+    constructor(connectionManager, options, pingPongManager) {
+      super();
+      this.connectionManager = connectionManager;
+      this.options = options;
+      this.pingPongManager = pingPongManager;
+    }
+    /**
+     * Setup message handler
+     */
+    setupMessageHandler() {
+      const ws = this.connectionManager.getWebSocket();
+      if (!ws) {
+        logger.error("❌ WebSocket not available for message handler", "messages");
+        return;
+      }
+      ws.onmessage = (event) => {
+        try {
+          logger.debug(`📨 Raw message received: ${event.data}`, "messages");
+          const message = JSON.parse(event.data);
+          logger.debug(`📨 Message parsed: ${message.type}`, "messages");
+          this.handleMessage(message);
+        } catch (error) {
+          logger.error(`❌ Error parsing message: ${error}`, "messages");
+        }
+      };
+    }
+    /**
+     * Public method to setup message handler after connection
+     */
+    setupMessageHandlerAfterConnect() {
+      logger.info("🔧 Setting up message handler after connection", "messages");
+      this.setupMessageHandler();
+    }
+    /**
+     * Handle incoming messages
+     */
+    handleMessage(message) {
+      logger.debug(`🔍 Handling message type: ${message.type}`, "messages");
+      switch (message.type) {
+        case "welcome":
+          logger.debug("🎯 Welcome case matched", "messages");
+          this.handleWelcome(message);
+          break;
+        case "ping":
+          this.handlePing(message);
+          break;
+        case "pong":
+          this.handlePong(message);
+          break;
+        case "room_joined":
+          this.handleRoomJoined(message);
+          break;
+        case "room_left":
+          this.handleRoomLeft(message);
+          break;
+        case "room_message":
+          this.handleRoomMessage(message);
+          break;
+        case "message_ack":
+          logger.debug("✅ Message ack case matched", "messages");
+          this.handleMessageAck(message);
+          break;
+        case "direct_message":
+          this.handleDirectMessage(message);
+          break;
+        case "error":
+          this.handleServerError(message);
+          break;
+        default:
+          this.handleGenericMessage(message);
+          break;
+      }
+    }
+    /**
+     * Handle welcome message
+     */
+    handleWelcome(message) {
+      logger.info("👋 Welcome message received", "messages");
+      logger.debug(`👋 Welcome message data: ${JSON.stringify(message)}`, "messages");
+      this.emit("welcome", message);
+      if (this.options.onWelcome) {
+        logger.info("👋 Calling onWelcome callback", "messages");
+        this.options.onWelcome(message);
+      } else {
+        logger.warn("⚠️ onWelcome callback not set", "messages");
+      }
+    }
+    /**
+     * Handle ping message
+     */
+    handlePing(message) {
+      logger.info("🏓 Ping received from server", "messages");
+      if (this.pingPongManager) {
+        this.pingPongManager.handlePingFromServer();
+      }
+      this.emit("ping", message);
+    }
+    /**
+     * Handle pong message
+     */
+    handlePong(message) {
+      if (this.pingPongManager) {
+        this.pingPongManager.handlePongFromServer();
+      }
+      this.emit("pong", message);
+    }
+    /**
+     * Handle room joined message
+     */
+    handleRoomJoined(message) {
+      logger.info("🏠 Room joined message received", "messages");
+      const roomEvent = { roomId: message.room_id, timestamp: Date.now() };
+      this.emit("join_room", roomEvent);
+      if (this.options.onJoinRoom) {
+        this.options.onJoinRoom(roomEvent);
+      }
+    }
+    /**
+     * Handle room left message
+     */
+    handleRoomLeft(message) {
+      logger.info("🚪 Room left message received", "messages");
+      const roomEvent = { roomId: message.room_id, timestamp: Date.now() };
+      this.emit("leave_room", roomEvent);
+      if (this.options.onLeaveRoom) {
+        this.options.onLeaveRoom(roomEvent);
+      }
+    }
+    /**
+     * Handle room message
+     */
+    handleRoomMessage(message) {
+      logger.info("📨 Room message received", "messages");
+      this.emit("room_message", message);
+      if (this.options.onRoomMessage) {
+        this.options.onRoomMessage(message);
+      }
+    }
+    /**
+     * Handle message acknowledgment
+     */
+    handleMessageAck(message) {
+      logger.info("✅ Message acknowledgment received", "messages");
+      logger.debug(`✅ Message ack data: ${JSON.stringify(message)}`, "messages");
+      if (message.message && typeof message.message === "string") {
+        logger.debug(`🔍 Checking message: ${message.message}`, "messages");
+        try {
+          const ackedMessage = JSON.parse(message.message);
+          logger.debug(`🔍 Parsed acked message: ${JSON.stringify(ackedMessage)}`, "messages");
+          if (ackedMessage.type === "pong") {
+            logger.debug("🏓 Pong acknowledgment received", "messages");
+            if (this.pingPongManager) {
+              logger.debug("🏓 Calling handlePongFromServer", "messages");
+              this.pingPongManager.handlePongFromServer();
+            } else {
+              logger.warn("⚠️ PingPongManager not available", "messages");
+            }
+          } else {
+            logger.debug(`✅ Regular message ack for type: ${ackedMessage.type}`, "messages");
+          }
+        } catch (error) {
+          logger.debug(`❌ Error parsing acked message: ${error}`, "messages");
+        }
+      } else {
+        logger.debug("✅ Message ack without message field", "messages");
+      }
+      this.emit("message_ack", message);
+      if (this.options.onMessageAck) {
+        this.options.onMessageAck(message);
+      }
+    }
+    /**
+     * Handle direct message
+     */
+    handleDirectMessage(message) {
+      logger.info("📨 Direct message received", "messages");
+      this.emit("direct_message", message);
+      if (this.options.onDirectMessage) {
+        this.options.onDirectMessage(message);
+      }
+    }
+    /**
+     * Handle server error
+     */
+    handleServerError(message) {
+      logger.error(`❌ Server error: ${message.error} (${message.error_type})`, "messages");
+      this.emit("error", message);
+      if (this.options.onServerError) {
+        this.options.onServerError(message);
+      }
+    }
+    /**
+     * Handle generic message
+     */
+    handleGenericMessage(message) {
+      if (this.options.onMessage) {
+        const wsEvent = {
+          type: "message",
+          data: message,
+          timestamp: Date.now()
+        };
+        this.options.onMessage(wsEvent);
+      }
+      this.emit("message", message);
+    }
+    /**
+     * Send message
      */
     send(data, roomId) {
-      if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-        logger.error("❌ WebSocket not connected", "client");
+      const ws = this.connectionManager.getWebSocket();
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        logger.error("❌ WebSocket not connected", "messages");
         return false;
       }
       try {
@@ -316,263 +602,24 @@
           type: "message",
           data,
           timestamp: (/* @__PURE__ */ new Date()).toISOString(),
-          roomId: roomId || this.currentRoom || void 0
+          room_id: roomId || this.connectionManager.getCurrentRoom() || null
+          // snake_case
         };
-        this.ws.send(JSON.stringify(message));
-        logger.debug(`📤 Message sent: ${JSON.stringify(data).substring(0, 100)}...`, "client");
+        ws.send(JSON.stringify(message));
+        logger.debug(`📤 Message sent: ${JSON.stringify(data).substring(0, 100)}...`, "messages");
         return true;
       } catch (error) {
-        logger.error(`❌ Error sending message: ${error}`, "client");
+        logger.error(`❌ Error sending message: ${error}`, "messages");
         return false;
       }
     }
     /**
-     * Подключение к комнате
-     */
-    joinRoom(roomId) {
-      if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-        logger.error("❌ WebSocket not connected", "client");
-        return false;
-      }
-      try {
-        const message = {
-          type: "join_room",
-          data: { roomId },
-          timestamp: (/* @__PURE__ */ new Date()).toISOString()
-        };
-        this.ws.send(JSON.stringify(message));
-        this.currentRoom = roomId;
-        logger.info(`🔗 Joined room: ${roomId}`, "client");
-        this.emit("join_room", { roomId, timestamp: Date.now() });
-        if (this.options.onJoinRoom) {
-          this.options.onJoinRoom({ roomId, timestamp: Date.now() });
-        }
-        return true;
-      } catch (error) {
-        logger.error(`❌ Error joining room: ${error}`, "client");
-        return false;
-      }
-    }
-    /**
-     * Выход из комнаты
-     */
-    leaveRoom(roomId) {
-      if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-        logger.error("❌ WebSocket not connected", "client");
-        return false;
-      }
-      const targetRoom = roomId || this.currentRoom;
-      if (!targetRoom) {
-        logger.warn("⚠️ Not in any room", "client");
-        return false;
-      }
-      try {
-        const message = {
-          type: "leave_room",
-          data: { roomId: targetRoom },
-          timestamp: (/* @__PURE__ */ new Date()).toISOString()
-        };
-        this.ws.send(JSON.stringify(message));
-        if (targetRoom === this.currentRoom) {
-          this.currentRoom = null;
-        }
-        logger.info(`🚪 Left room: ${targetRoom}`, "client");
-        this.emit("leave_room", { roomId: targetRoom, timestamp: Date.now() });
-        if (this.options.onLeaveRoom) {
-          this.options.onLeaveRoom({ roomId: targetRoom, timestamp: Date.now() });
-        }
-        return true;
-      } catch (error) {
-        logger.error(`❌ Error leaving room: ${error}`, "client");
-        return false;
-      }
-    }
-    /**
-     * Отключение от сервера
-     */
-    disconnect() {
-      logger.info("🔌 Disconnecting from WebSocket server", "client");
-      this.stopPingPong();
-      this.cancelReconnect();
-      if (this.ws) {
-        this.ws.close(1e3, "Client disconnect");
-        this.ws = null;
-      }
-      this.isConnecting = false;
-      this.isReconnecting = false;
-      this.currentRoom = null;
-    }
-    /**
-     * Получение текущего состояния подключения
-     */
-    getState() {
-      return this.ws ? this.ws.readyState : WebSocket.CLOSED;
-    }
-    /**
-     * Проверка подключения
-     */
-    isConnected() {
-      return this.ws ? this.ws.readyState === WebSocket.OPEN : false;
-    }
-    /**
-     * Получение текущей комнаты
-     */
-    getCurrentRoom() {
-      return this.currentRoom;
-    }
-    /**
-     * Запуск ping/pong механизма
-     */
-    startPingPong() {
-      if (!this.pingPongConfig.enabled) return;
-      this.pingTimer = setInterval(() => {
-        this.sendPing();
-      }, this.pingPongConfig.interval);
-    }
-    /**
-     * Остановка ping/pong механизма
-     */
-    stopPingPong() {
-      if (this.pingTimer) {
-        clearInterval(this.pingTimer);
-        this.pingTimer = null;
-      }
-      if (this.pongTimer) {
-        clearTimeout(this.pongTimer);
-        this.pongTimer = null;
-      }
-    }
-    /**
-     * Отправка ping
-     */
-    sendPing() {
-      if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
-      try {
-        const pingMessage = {
-          type: "ping",
-          data: { timestamp: (/* @__PURE__ */ new Date()).toISOString() },
-          timestamp: (/* @__PURE__ */ new Date()).toISOString()
-        };
-        this.ws.send(JSON.stringify(pingMessage));
-        this.pingPongConfig.lastPing = Date.now();
-        this.pongTimer = setTimeout(() => {
-          var _a;
-          logger.warn("⚠️ Pong timeout, connection may be stale", "client");
-          (_a = this.ws) == null ? void 0 : _a.close(1e3, "Pong timeout");
-        }, this.pingPongConfig.timeout);
-        logger.debug("🏓 Ping sent", "client");
-        this.emit("ping", { timestamp: this.pingPongConfig.lastPing });
-        if (this.options.onPing) {
-          this.options.onPing({ timestamp: this.pingPongConfig.lastPing });
-        }
-      } catch (error) {
-        logger.error(`❌ Error sending ping: ${error}`, "client");
-      }
-    }
-    /**
-     * Отправка pong в ответ на ping от сервера
-     */
-    sendPong() {
-      if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
-      try {
-        const pongMessage = {
-          type: "pong",
-          data: { timestamp: (/* @__PURE__ */ new Date()).toISOString() },
-          timestamp: (/* @__PURE__ */ new Date()).toISOString()
-        };
-        this.ws.send(JSON.stringify(pongMessage));
-        logger.debug("🏓 Pong sent to server", "client");
-      } catch (error) {
-        logger.error(`❌ Error sending pong: ${error}`, "client");
-      }
-    }
-    /**
-     * Обработка pong
-     */
-    handlePong() {
-      this.pingPongConfig.lastPong = Date.now();
-      if (this.pongTimer) {
-        clearTimeout(this.pongTimer);
-        this.pongTimer = null;
-      }
-      const latency = this.pingPongConfig.lastPong - this.pingPongConfig.lastPing;
-      logger.debug(`🏓 Pong received, latency: ${latency}ms`, "client");
-      this.emit("pong", { latency, timestamp: this.pingPongConfig.lastPong });
-      if (this.options.onPong) {
-        this.options.onPong({ latency, timestamp: this.pingPongConfig.lastPong });
-      }
-    }
-    /**
-     * Планирование переподключения
-     */
-    scheduleReconnect() {
-      if (this.reconnectConfig.currentAttempt >= this.reconnectConfig.maxAttempts) {
-        logger.error(`❌ Max reconnection attempts reached (${this.reconnectConfig.maxAttempts})`, `client`);
-        return;
-      }
-      this.isReconnecting = true;
-      this.reconnectConfig.currentAttempt++;
-      const delay = this.reconnectConfig.interval * Math.pow(2, this.reconnectConfig.currentAttempt - 1);
-      logger.info(`🔄 Reconnecting in ${delay}ms (attempt ${this.reconnectConfig.currentAttempt}/${this.reconnectConfig.maxAttempts})`, "client");
-      this.emit("reconnect", {
-        attempt: this.reconnectConfig.currentAttempt,
-        maxAttempts: this.reconnectConfig.maxAttempts,
-        delay,
-        timestamp: Date.now()
-      });
-      if (this.options.onReconnect) {
-        this.options.onReconnect({
-          attempt: this.reconnectConfig.currentAttempt,
-          maxAttempts: this.reconnectConfig.maxAttempts,
-          delay,
-          timestamp: Date.now()
-        });
-      }
-      this.reconnectTimer = setTimeout(() => {
-        this.connect().catch((error) => {
-          logger.error(`❌ Reconnection failed: ${error}`, "client");
-          this.scheduleReconnect();
-        });
-      }, delay);
-    }
-    /**
-     * Отмена переподключения
-     */
-    cancelReconnect() {
-      if (this.reconnectTimer) {
-        clearTimeout(this.reconnectTimer);
-        this.reconnectTimer = null;
-      }
-      this.isReconnecting = false;
-    }
-    /**
-     * Обновление конфигурации
-     */
-    updateOptions(newOptions) {
-      this.options = { ...this.options, ...newOptions };
-      if (newOptions.autoReconnect !== void 0) {
-        this.reconnectConfig.enabled = newOptions.autoReconnect;
-      }
-      if (newOptions.reconnectAttempts !== void 0) {
-        this.reconnectConfig.maxAttempts = newOptions.reconnectAttempts;
-      }
-      if (newOptions.reconnectDelay !== void 0) {
-        this.reconnectConfig.interval = newOptions.reconnectDelay;
-      }
-      if (newOptions.pingInterval !== void 0) {
-        this.pingPongConfig.interval = newOptions.pingInterval;
-      }
-      if (newOptions.pongTimeout !== void 0) {
-        this.pingPongConfig.timeout = newOptions.pongTimeout;
-      }
-      logger.info("🔧 WebSocket options updated", "client");
-    }
-    /**
-     * Отправка сообщения в комнату
+     * Send message to room
      */
     sendToRoom(roomId, message) {
-      if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-        logger.error("❌ WebSocket not connected", "client");
+      const ws = this.connectionManager.getWebSocket();
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        logger.error("❌ WebSocket not connected", "messages");
         return false;
       }
       try {
@@ -580,22 +627,24 @@
           type: "room_message",
           data: message,
           timestamp: (/* @__PURE__ */ new Date()).toISOString(),
-          roomId
+          room_id: roomId
+          // Use snake_case for server compatibility
         };
-        this.ws.send(JSON.stringify(wsMessage));
-        logger.debug(`📤 Room message sent to ${roomId}: ${JSON.stringify(message).substring(0, 100)}...`, "client");
+        ws.send(JSON.stringify(wsMessage));
+        logger.debug(`📤 Room message sent to ${roomId}: ${JSON.stringify(message).substring(0, 100)}...`, "messages");
         return true;
       } catch (error) {
-        logger.error(`❌ Error sending room message: ${error}`, "client");
+        logger.error(`❌ Error sending room message: ${error}`, "messages");
         return false;
       }
     }
     /**
-     * Отправка прямого сообщения клиенту по ID
+     * Send direct message to client by ID
      */
     sendDirectMessage(clientId, message) {
-      if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-        logger.error("❌ WebSocket not connected", "client");
+      const ws = this.connectionManager.getWebSocket();
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        logger.error("❌ WebSocket not connected", "messages");
         return false;
       }
       try {
@@ -603,54 +652,445 @@
           type: "direct_message",
           data: message,
           timestamp: (/* @__PURE__ */ new Date()).toISOString(),
-          targetClientId: clientId
+          target_client_id: clientId
+          // Use snake_case for server compatibility
         };
-        this.ws.send(JSON.stringify(wsMessage));
-        logger.debug(`📤 Direct message sent to client ${clientId}: ${message}`, "client");
+        ws.send(JSON.stringify(wsMessage));
+        logger.debug(`📤 Direct message sent to client ${clientId}: ${message}`, "messages");
         return true;
       } catch (error) {
-        logger.error(`❌ Error sending direct message: ${error}`, "client");
+        logger.error(`❌ Error sending direct message: ${error}`, "messages");
         return false;
       }
     }
   }
-  function createWebSocketClient(options) {
-    return new RNodeWebSocketClient(options);
+  class PingPongManager extends EventEmitter {
+    constructor(connectionManager, options) {
+      super();
+      this.pongTimer = null;
+      this.lastPing = 0;
+      this.lastPong = 0;
+      this.pongTimeoutId = null;
+      this.connectionManager = connectionManager;
+      this.options = options;
+    }
+    /**
+     * Start ping/pong mechanism (client only responds to server ping)
+     */
+    start() {
+      logger.debug("🏓 Ping/pong mechanism started (client responds to server pings)", "pingpong");
+    }
+    /**
+     * Stop ping/pong mechanism
+     */
+    stop() {
+      if (this.pongTimer) {
+        clearTimeout(this.pongTimer);
+        this.pongTimer = null;
+      }
+      if (this.pongTimeoutId) {
+        clearTimeout(this.pongTimeoutId);
+        this.pongTimeoutId = null;
+      }
+      logger.debug("🏓 Ping/pong mechanism stopped", "pingpong");
+    }
+    /**
+     * Handle ping from server (client only responds)
+     */
+    handlePingFromServer() {
+      this.lastPing = Date.now();
+      this.sendPong();
+      if (this.options.pongTimeout) {
+        this.pongTimeoutId = setTimeout(() => {
+          logger.warn("⚠️ No ping received from server, connection may be stale", "pingpong");
+          const ws = this.connectionManager.getWebSocket();
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.close(1e3, "No ping from server");
+          }
+        }, this.options.pongTimeout);
+      }
+      logger.debug("🏓 Ping received from server, pong sent", "pingpong");
+      const pingEvent = { timestamp: this.lastPing };
+      this.emit("ping", pingEvent);
+      if (this.options.onPing) {
+        this.options.onPing(pingEvent);
+      }
+    }
+    /**
+     * Send pong in response to ping from server
+     */
+    sendPong() {
+      const ws = this.connectionManager.getWebSocket();
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      try {
+        const pongMessage = {
+          type: "pong",
+          data: { timestamp: (/* @__PURE__ */ new Date()).toISOString() },
+          timestamp: (/* @__PURE__ */ new Date()).toISOString()
+        };
+        ws.send(JSON.stringify(pongMessage));
+        logger.debug("🏓 Pong sent to server", "pingpong");
+      } catch (error) {
+        logger.error(`❌ Error sending pong: ${error}`, "pingpong");
+      }
+    }
+    /**
+     * Handle pong from server (for confirmation)
+     */
+    handlePongFromServer() {
+      this.lastPong = Date.now();
+      if (this.pongTimeoutId) {
+        clearTimeout(this.pongTimeoutId);
+        this.pongTimeoutId = null;
+      }
+      const latency = this.lastPong - this.lastPing;
+      logger.debug(`🏓 Pong received from server, latency: ${latency}ms`, "pingpong");
+      const pongEvent = { latency, timestamp: this.lastPong };
+      this.emit("pong", pongEvent);
+      if (this.options.onPong) {
+        this.options.onPong(pongEvent);
+      }
+    }
+    /**
+     * Get last ping
+     */
+    getLastPing() {
+      return this.lastPing;
+    }
+    /**
+     * Get last pong
+     */
+    getLastPong() {
+      return this.lastPong;
+    }
+    /**
+     * Get current latency
+     */
+    getLatency() {
+      if (this.lastPing === 0 || this.lastPong === 0) return 0;
+      return this.lastPong - this.lastPing;
+    }
+    /**
+     * Check ping/pong activity
+     */
+    isActive() {
+      return this.pongTimeoutId !== null;
+    }
   }
-  const WebSocketUtils = {
+  class ReconnectionManager extends EventEmitter {
+    // Save rooms for restoration
+    constructor(connectionManager, options, roomManager) {
+      super();
+      this.reconnectTimer = null;
+      this.isReconnecting = false;
+      this.currentAttempt = 0;
+      this.previousRooms = [];
+      this.connectionManager = connectionManager;
+      this.roomManager = roomManager || new RoomManager(connectionManager, options);
+      this.options = options;
+    }
     /**
-     * Проверка поддержки WebSocket в браузере
+     * Save current rooms before reconnection
      */
-    isSupported() {
+    saveCurrentRooms() {
+      const currentRoom = this.roomManager.getCurrentRoom();
+      if (currentRoom) {
+        this.previousRooms = [currentRoom];
+        logger.debug(`💾 Saved room for reconnection: ${currentRoom}`, "reconnection");
+      }
+    }
+    /**
+     * Restore rooms after reconnection
+     */
+    async restoreRooms() {
+      if (this.previousRooms.length > 0) {
+        logger.debug(`🔄 Restoring ${this.previousRooms.length} rooms after reconnection`, "reconnection");
+        for (const roomId of this.previousRooms) {
+          try {
+            await this.roomManager.joinRoom(roomId);
+            logger.debug(`✅ Restored room: ${roomId}`, "reconnection");
+          } catch (error) {
+            logger.error(`❌ Failed to restore room ${roomId}: ${error}`, "reconnection");
+          }
+        }
+      }
+    }
+    /**
+     * Schedule reconnection
+     */
+    scheduleReconnect() {
+      if (!this.options.autoReconnect) return;
+      if (this.currentAttempt >= (this.options.reconnectAttempts || 5)) {
+        logger.error(`❌ Max reconnection attempts reached (${this.options.reconnectAttempts})`, "reconnection");
+        return;
+      }
+      this.isReconnecting = true;
+      this.currentAttempt++;
+      this.saveCurrentRooms();
+      const delay = (this.options.reconnectDelay || 1e3) * Math.pow(2, this.currentAttempt - 1);
+      logger.info(`🔄 Reconnecting in ${delay}ms (attempt ${this.currentAttempt}/${this.options.reconnectAttempts})`, "reconnection");
+      const reconnectEvent = {
+        attempt: this.currentAttempt,
+        maxAttempts: this.options.reconnectAttempts || 5,
+        delay,
+        timestamp: Date.now()
+      };
+      this.emit("reconnect", reconnectEvent);
+      if (this.options.onReconnect) {
+        this.options.onReconnect(reconnectEvent);
+      }
+      this.reconnectTimer = setTimeout(() => {
+        this.performReconnect();
+      }, delay);
+    }
+    /**
+     * Execute reconnection
+     */
+    async performReconnect() {
+      try {
+        await this.connectionManager.connect();
+        await this.restoreRooms();
+        this.resetReconnection();
+      } catch (error) {
+        logger.error(`❌ Reconnection failed: ${error}`, "reconnection");
+        this.scheduleReconnect();
+      }
+    }
+    /**
+     * Reset reconnection state
+     */
+    resetReconnection() {
+      this.isReconnecting = false;
+      this.currentAttempt = 0;
+      if (this.reconnectTimer) {
+        clearTimeout(this.reconnectTimer);
+        this.reconnectTimer = null;
+      }
+      logger.info("✅ Reconnection successful", "reconnection");
+    }
+    /**
+     * Cancel reconnection
+     */
+    cancelReconnect() {
+      if (this.reconnectTimer) {
+        clearTimeout(this.reconnectTimer);
+        this.reconnectTimer = null;
+      }
+      this.isReconnecting = false;
+      this.currentAttempt = 0;
+      logger.debug("🛑 Reconnection cancelled", "reconnection");
+    }
+    /**
+     * Check reconnection state
+     */
+    getIsReconnecting() {
+      return this.isReconnecting;
+    }
+    /**
+     * Get current attempt
+     */
+    getCurrentAttempt() {
+      return this.currentAttempt;
+    }
+    /**
+     * Get maximum attempts
+     */
+    getMaxAttempts() {
+      return this.options.reconnectAttempts || 5;
+    }
+    /**
+     * Update reconnection configuration
+     */
+    updateConfig(newOptions) {
+      this.options = { ...this.options, ...newOptions };
+    }
+  }
+  class RNodeWebSocketClient extends EventEmitter {
+    constructor(options) {
+      super();
+      this.options = {
+        autoReconnect: true,
+        reconnectAttempts: 5,
+        reconnectDelay: 1e3,
+        pingInterval: 3e4,
+        pongTimeout: 1e4,
+        ...options
+      };
+      this.connectionManager = new ConnectionManager(this.options);
+      this.roomManager = new RoomManager(this.connectionManager, this.options);
+      this.pingPongManager = new PingPongManager(this.connectionManager, this.options);
+      this.messageManager = new MessageManager(this.connectionManager, this.options, this.pingPongManager);
+      this.reconnectionManager = new ReconnectionManager(this.connectionManager, this.options, this.roomManager);
+      this.setupEventHandlers();
+      this.connectionManager.setDisconnectCallback(() => {
+        if (this.options.autoReconnect) {
+          this.reconnectionManager.scheduleReconnect();
+        }
+      });
+      logger.info("🔌 RNode WebSocket Client initialized", "client");
+    }
+    /**
+     * Setup event handlers from managers
+     */
+    setupEventHandlers() {
+      this.messageManager.on("welcome", (data) => this.emit("welcome", data));
+      this.messageManager.on("ping", (data) => this.emit("ping", data));
+      this.messageManager.on("pong", (data) => this.emit("pong", data));
+      this.messageManager.on("join_room", (data) => this.emit("join_room", data));
+      this.messageManager.on("leave_room", (data) => this.emit("leave_room", data));
+      this.messageManager.on("message", (data) => this.emit("message", data));
+      this.messageManager.on("direct_message", (data) => this.emit("direct_message", data));
+      this.messageManager.on("room_message", (data) => this.emit("room_message", data));
+      this.messageManager.on("message_ack", (data) => this.emit("message_ack", data));
+      this.messageManager.on("error", (data) => this.emit("error", data));
+      this.reconnectionManager.on("reconnect", (data) => this.emit("reconnect", data));
+      this.pingPongManager.on("ping", (data) => this.emit("ping", data));
+      this.pingPongManager.on("pong", (data) => this.emit("pong", data));
+    }
+    /**
+     * Connect to WebSocket server
+     */
+    async connect() {
+      await this.connectionManager.connect();
+      this.messageManager.setupMessageHandlerAfterConnect();
+      this.pingPongManager.start();
+      this.emit("connect", {
+        url: this.options.url,
+        clientId: this.options.clientId,
+        timestamp: Date.now()
+      });
+    }
+    /**
+     * Disconnect from server
+     */
+    disconnect() {
+      logger.info("🔌 Disconnecting from WebSocket server", "client");
+      this.pingPongManager.stop();
+      this.reconnectionManager.cancelReconnect();
+      this.connectionManager.disconnect();
+    }
+    /**
+     * Send message
+     */
+    send(data, roomId) {
+      return this.messageManager.send(data, roomId);
+    }
+    /**
+     * Send message to room
+     */
+    sendToRoom(roomId, message) {
+      return this.messageManager.sendToRoom(roomId, message);
+    }
+    /**
+     * Send direct message to client by ID
+     */
+    sendDirectMessage(clientId, message) {
+      return this.messageManager.sendDirectMessage(clientId, message);
+    }
+    /**
+     * Join room
+     */
+    joinRoom(roomId) {
+      return this.roomManager.joinRoom(roomId);
+    }
+    /**
+     * Leave room
+     */
+    leaveRoom(roomId) {
+      return this.roomManager.leaveRoom(roomId);
+    }
+    /**
+     * Get current connection state
+     */
+    getState() {
+      return this.connectionManager.getState();
+    }
+    /**
+     * Check connection
+     */
+    isConnected() {
+      return this.connectionManager.isConnected();
+    }
+    /**
+     * Get current room
+     */
+    getCurrentRoom() {
+      return this.roomManager.getCurrentRoom();
+    }
+    /**
+     * Get connection status
+     */
+    getConnectionStatus() {
+      const status = this.connectionManager.getConnectionStatus();
+      return {
+        ...status,
+        isReconnecting: this.reconnectionManager.getIsReconnecting()
+      };
+    }
+    /**
+     * Get ping/pong latency
+     */
+    getLatency() {
+      return this.pingPongManager.getLatency();
+    }
+    /**
+     * Update configuration
+     */
+    updateOptions(newOptions) {
+      this.options = { ...this.options, ...newOptions };
+      this.reconnectionManager.updateConfig(newOptions);
+      if (newOptions.pingInterval !== void 0) {
+        this.pingPongManager.stop();
+        this.pingPongManager.start();
+      }
+      logger.info("🔧 WebSocket options updated", "client");
+    }
+    /**
+     * Get statistics
+     */
+    getStats() {
+      return {
+        connection: this.getConnectionStatus(),
+        latency: this.getLatency(),
+        reconnectionAttempts: this.reconnectionManager.getCurrentAttempt(),
+        maxReconnectionAttempts: this.reconnectionManager.getMaxAttempts()
+      };
+    }
+  }
+  class WebSocketUtils {
+    /**
+    * Check WebSocket support in browser
+    */
+    static isSupported() {
       return typeof WebSocket !== "undefined";
-    },
+    }
     /**
-     * Получение состояния подключения в текстовом виде
+     * Get connection state as text
      */
-    getStateString(state) {
+    static getStateString(state) {
       switch (state) {
-        case WebSocket.CONNECTING:
+        case ConnectionState.CONNECTING:
           return "CONNECTING";
-        case WebSocket.OPEN:
+        case ConnectionState.OPEN:
           return "OPEN";
-        case WebSocket.CLOSING:
+        case ConnectionState.CLOSING:
           return "CLOSING";
-        case WebSocket.CLOSED:
+        case ConnectionState.CLOSED:
           return "CLOSED";
         default:
           return "UNKNOWN";
       }
-    },
+    }
     /**
-     * Создание уникального ID для клиента
+     * Create unique client ID
      */
-    generateClientId() {
+    static generateClientId() {
       return `client_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    },
+    }
     /**
-     * Валидация URL WebSocket
+     * Validate WebSocket URL
      */
-    isValidUrl(url) {
+    static isValidUrl(url) {
       try {
         const urlObj = new URL(url);
         return urlObj.protocol === "ws:" || urlObj.protocol === "wss:";
@@ -658,7 +1098,72 @@
         return false;
       }
     }
-  };
+    /**
+     * Create URL with parameters
+     */
+    static buildUrl(baseUrl, params) {
+      const url = new URL(baseUrl);
+      Object.entries(params).forEach(([key, value]) => {
+        url.searchParams.append(key, value);
+      });
+      return url.toString();
+    }
+    /**
+     * Format time
+     */
+    static formatTimestamp(timestamp) {
+      return new Date(timestamp).toISOString();
+    }
+    /**
+     * Check JSON validity
+     */
+    static isValidJSON(str) {
+      try {
+        JSON.parse(str);
+        return true;
+      } catch {
+        return false;
+      }
+    }
+    /**
+     * Safe JSON parsing
+     */
+    static safeJSONParse(str, fallback) {
+      try {
+        return JSON.parse(str);
+      } catch {
+        return fallback;
+      }
+    }
+    /**
+     * Generate random ID
+     */
+    static generateId() {
+      return Math.random().toString(36).substr(2, 9);
+    }
+    /**
+     * Check message type
+     */
+    static isSystemMessage(type) {
+      const systemTypes = ["ping", "pong", "welcome", "room_joined", "room_left", "message_ack"];
+      return systemTypes.includes(type);
+    }
+    /**
+     * Check room type
+     */
+    static isRoomMessage(type) {
+      return type === "room_message" || type === "join_room" || type === "leave_room";
+    }
+    /**
+     * Check direct message type
+     */
+    static isDirectMessage(type) {
+      return type === "direct_message";
+    }
+  }
+  function createWebSocketClient(options) {
+    return new RNodeWebSocketClient(options);
+  }
   if (typeof window !== "undefined") {
     window.RNodeWebSocketClient = RNodeWebSocketClient;
     window.createWebSocketClient = createWebSocketClient;
@@ -671,16 +1176,17 @@
     console.log("   - window.createWebSocketClient():", typeof window.createWebSocketClient);
     console.log("   - window.WebSocketUtils:", typeof window.WebSocketUtils);
     console.log("   - window.WebSocketLogger:", typeof window.WebSocketLogger);
-    try {
-      const testClient = new window.RNodeWebSocketClient({ url: "ws://test" });
-      console.log("✅ RNodeWebSocketClient успешно создан как конструктор");
-    } catch (error) {
-      console.error("❌ RNodeWebSocketClient не является конструктором:", error);
-    }
   }
+  exports2.ConnectionManager = ConnectionManager;
+  exports2.ConnectionState = ConnectionState;
+  exports2.EventEmitter = EventEmitter;
   exports2.LogLevel = LogLevel;
   exports2.Logger = Logger;
+  exports2.MessageManager = MessageManager;
+  exports2.PingPongManager = PingPongManager;
   exports2.RNodeWebSocketClient = RNodeWebSocketClient;
+  exports2.ReconnectionManager = ReconnectionManager;
+  exports2.RoomManager = RoomManager;
   exports2.WebSocketUtils = WebSocketUtils;
   exports2.createWebSocketClient = createWebSocketClient;
   Object.defineProperty(exports2, Symbol.toStringTag, { value: "Module" });

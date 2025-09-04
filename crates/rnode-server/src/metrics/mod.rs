@@ -84,26 +84,6 @@ pub fn record_websocket_connection_end(connection_id: &uuid::Uuid, path: &str, r
     }
 }
 
-pub fn record_websocket_message_sent(message_type: &str, room_id: Option<&str>, path: &str, size: usize) {
-    if METRICS_INITIALIZED.get().is_some() {
-        websocket::record_message_sent(message_type, room_id, path, size);
-    }
-}
-
-pub fn record_websocket_message_received(message_type: &str, room_id: Option<&str>, path: &str, size: usize) {
-    if METRICS_INITIALIZED.get().is_some() {
-        websocket::record_message_received(message_type, room_id, path, size);
-    }
-}
-
-pub fn record_websocket_error(error_type: &str, path: &str, room_id: Option<&str>) {
-    if METRICS_INITIALIZED.get().is_some() {
-        websocket::record_error(error_type, path, room_id);
-    }
-}
-
-
-
 pub fn update_websocket_metrics() {
     if METRICS_INITIALIZED.get().is_some() {
         websocket::update_websocket_metrics();

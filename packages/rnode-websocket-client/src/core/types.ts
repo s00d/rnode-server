@@ -1,3 +1,4 @@
+// Main WebSocket types
 export interface WebSocketOptions {
   url: string;
   protocols?: string | string[];
@@ -9,6 +10,7 @@ export interface WebSocketOptions {
   pongTimeout?: number;
   onConnect?: (event: WebSocketEvent) => void;
   onMessage?: (event: WebSocketEvent) => void;
+  onBinaryMessage?: (event: WebSocketEvent) => void;  // Add binary message handler
   onDisconnect?: (event: WebSocketEvent) => void;
   onError?: (event: WebSocketEvent) => void;
   onWelcome?: (message: WelcomeMessage) => void;
@@ -20,11 +22,13 @@ export interface WebSocketOptions {
   onMessageAck?: (data: MessageAckEvent) => void;
   onRoomMessage?: (data: RoomMessageEvent) => void;
   onDirectMessage?: (data: DirectMessageEvent) => void;
+  onServerError?: (data: ServerErrorEvent) => void;  // Add server error handler
+  onMessageBlocked?: (data: MessageBlockedEvent) => void;  // Add message blocked handler
 }
 
 export interface WebSocketEvent {
   type: string;
-  data?: any;
+  data?: unknown;
   timestamp: number;
 }
 
@@ -33,11 +37,14 @@ export interface WebSocketMessage {
   connection_id?: string;
   client_id?: string;
   path?: string;
-  data?: any;
+  data?: unknown;
   timestamp?: string;
-  [key: string]: any;
+  room_id?: string | null;  // snake_case for server compatibility
+  target_client_id?: string;  // snake_case for server compatibility
+  [key: string]: unknown;
 }
 
+// Specialized message types
 export interface WelcomeMessage {
   type: 'welcome';
   connection_id: string;
@@ -67,6 +74,7 @@ export interface ConnectionInfo {
   lastPing: string;
 }
 
+// Configuration types
 export interface ReconnectConfig {
   enabled: boolean;
   interval: number;
@@ -82,6 +90,7 @@ export interface PingPongConfig {
   lastPong: number;
 }
 
+// Event types
 export interface ReconnectEvent {
   attempt: number;
   maxAttempts: number;
@@ -121,4 +130,40 @@ export interface DirectMessageEvent {
   from_client_id: string;
   timestamp: string;
   type: string;
+}
+
+export interface ServerErrorEvent {
+  error: string;
+  error_type: string;
+  timestamp: string;
+  type: string;
+}
+
+export interface MessageBlockedEvent {
+  originalMessage: string;
+  reason: string;
+  timestamp: string;
+  type: string;
+}
+
+// Connection states
+export enum ConnectionState {
+  CONNECTING = WebSocket.CONNECTING,
+  OPEN = WebSocket.OPEN,
+  CLOSING = WebSocket.CLOSING,
+  CLOSED = WebSocket.CLOSED
+}
+
+// Types for internal use
+export interface ConnectionStatus {
+  isConnected: boolean;
+  isConnecting: boolean;
+  isReconnecting: boolean;
+  currentRoom: string | null;
+  state: ConnectionState;
+}
+
+export interface MessageHandler {
+  type: string;
+  handler: (message: WebSocketMessage) => void;
 }

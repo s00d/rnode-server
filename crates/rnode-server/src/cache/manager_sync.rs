@@ -67,7 +67,7 @@ impl CacheManagerSync {
     {
         debug!("🔍 Getting from cache: {}", key);
         
-        // Проверяем L1 (memory cache)
+        // Check L1 (memory cache)
         match self.memory_cache.get(key, self.get_tags_option(options))? {
             Some(item) => {
                 debug!("✅ L1 cache hit: {}", key);
@@ -78,7 +78,7 @@ impl CacheManagerSync {
             None => {
                 debug!("❌ L1 cache miss: {}", key);
                 
-                // Проверяем L2 (Redis cache)
+                // Check L2 (Redis cache)
                 if let Some(ref redis_cache) = self.redis_cache {
                     match redis_cache.get(key, self.get_tags_option(options))? {
                         Some(item) => {
@@ -86,7 +86,7 @@ impl CacheManagerSync {
                             let value = serde_json::from_str(&item.value)
                                 .map_err(|e| CacheError::DeserializationError(format!("Failed to deserialize: {}", e)))?;
                             
-                            // Копируем в L1
+                            // Copy to L1
                             if let Err(e) = self.memory_cache.set(key.to_string(), item.value, options) {
                                 debug!("⚠️ Failed to copy to L1 cache: {}", e);
                             }
@@ -96,7 +96,7 @@ impl CacheManagerSync {
                         None => {
                             debug!("❌ L2 cache miss: {}", key);
                             
-                            // Проверяем L3 (file cache)
+                            // Check L3 (file cache)
                             if let Some(ref file_cache) = self.file_cache {
                                 match file_cache.get(key, self.get_tags_option(options))? {
                                     Some(item) => {
@@ -104,7 +104,7 @@ impl CacheManagerSync {
                                         let value = serde_json::from_str(&item.value)
                                             .map_err(|e| CacheError::DeserializationError(format!("Failed to deserialize: {}", e)))?;
                                         
-                                        // Копируем в L1 и L2
+                                        // Copy to L1 and L2
                                         if let Err(e) = self.memory_cache.set(key.to_string(), item.value.clone(), options) {
                                             debug!("⚠️ Failed to copy to L1 cache: {}", e);
                                         }
@@ -127,15 +127,15 @@ impl CacheManagerSync {
                         }
                     }
                 } else {
-                                                // Проверяем L3 (file cache) если Redis недоступен
-                            if let Some(ref file_cache) = self.file_cache {
+                                                                    // Check L3 (file cache) if Redis is unavailable
+                    if let Some(ref file_cache) = self.file_cache {
                                 match file_cache.get(key, self.get_tags_option(options))? {
                             Some(item) => {
                                 debug!("✅ L3 cache hit: {}", key);
                                 let value = serde_json::from_str(&item.value)
                                     .map_err(|e| CacheError::DeserializationError(format!("Failed to deserialize: {}", e)))?;
                                 
-                                // Копируем в L1
+                                // Copy to L1
                                 if let Err(e) = self.memory_cache.set(key.to_string(), item.value, options) {
                                     debug!("⚠️ Failed to copy to L1 cache: {}", e);
                                 }
@@ -210,7 +210,7 @@ impl CacheManagerSync {
     pub fn exists(&self, key: &str, options: &CacheOptions) -> CacheResult<bool> {
         debug!("🔍 Checking cache existence: {}", key);
         
-        // Проверяем во всех уровнях
+        // Check all levels
         if self.memory_cache.exists(key, self.get_tags_option(options))? {
             return Ok(true);
         }

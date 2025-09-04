@@ -21,7 +21,7 @@ impl InMemoryCacheSync {
         let store = self.store.lock().unwrap();
         
         if let Some(item) = store.get(key) {
-            // Проверка срока действия
+            // Check expiration
             if let Some(expires_at) = item.expires_at {
                 if Utc::now() > expires_at {
                     debug!("🗑️ Cache item expired: {}", key);
@@ -31,7 +31,7 @@ impl InMemoryCacheSync {
                 }
             }
             
-            // Проверяем теги если указаны
+            // Check tags if specified
             if let Some(requested_tags) = tags {
                 if !requested_tags.iter().all(|tag| item.tags.contains(tag)) {
                     debug!("🏷️ Tags mismatch for key: {}", key);
@@ -68,7 +68,7 @@ impl InMemoryCacheSync {
         let mut store = self.store.lock().unwrap();
         
         if let Some(item) = store.get(key) {
-            // Проверяем теги если указаны
+            // Check tags if specified
             if let Some(requested_tags) = tags {
                 if !requested_tags.iter().all(|tag| item.tags.contains(tag)) {
                     debug!("🏷️ Tags mismatch for delete: {}", key);
@@ -88,7 +88,7 @@ impl InMemoryCacheSync {
         let store = self.store.lock().unwrap();
         
         if let Some(item) = store.get(key) {
-            // Проверяем теги если указаны
+            // Check tags if specified
             if let Some(requested_tags) = tags {
                 Ok(requested_tags.iter().all(|tag| item.tags.contains(tag)))
             } else {

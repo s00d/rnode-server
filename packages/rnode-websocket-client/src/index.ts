@@ -1,84 +1,70 @@
 import { RNodeWebSocketClient } from './client';
-import { Logger, LogLevel } from './logger';
+import { Logger, LogLevel } from './core/logger';
+import { WebSocketUtils } from './utils/websocket';
 import type {
+  WebSocketOptions
+} from './core/types';
+
+// Main exports
+export { RNodeWebSocketClient } from './client';
+export { Logger, LogLevel } from './core/logger';
+export { WebSocketUtils } from './utils/websocket';
+export { EventEmitter } from './core/events';
+
+// Types
+export type {
   WebSocketOptions,
   WebSocketEvent,
   WebSocketMessage,
+  WelcomeMessage,
   RoomInfo,
   ConnectionInfo,
   ReconnectConfig,
-  PingPongConfig
-} from './types';
+  PingPongConfig,
+  ReconnectEvent,
+  RoomEvent,
+  PingEvent,
+  PongEvent,
+  MessageAckEvent,
+  RoomMessageEvent,
+  DirectMessageEvent,
+  ServerErrorEvent,
+  MessageBlockedEvent,
+  ConnectionStatus,
+  MessageHandler
+} from './core/types';
 
-// Создание экземпляра клиента с настройками по умолчанию
-export function createWebSocketClient(options: WebSocketOptions) {
+export { ConnectionState } from './core/types';
+
+// Managers (for internal use)
+export { ConnectionManager } from './connection/manager';
+export { RoomManager } from './connection/rooms';
+export { MessageManager } from './connection/messages';
+export { PingPongManager } from './connection/pingpong';
+export { ReconnectionManager } from './connection/reconnection';
+
+// Create client instance with default settings
+export function createWebSocketClient(options: WebSocketOptions): RNodeWebSocketClient {
   return new RNodeWebSocketClient(options);
 }
 
-// Утилиты для работы с WebSocket
-export const WebSocketUtils = {
-  /**
-   * Проверка поддержки WebSocket в браузере
-   */
-  isSupported(): boolean {
-    return typeof WebSocket !== 'undefined';
-  },
-
-  /**
-   * Получение состояния подключения в текстовом виде
-   */
-  getStateString(state: number): string {
-    switch (state) {
-      case WebSocket.CONNECTING:
-        return 'CONNECTING';
-      case WebSocket.OPEN:
-        return 'OPEN';
-      case WebSocket.CLOSING:
-        return 'CLOSING';
-      case WebSocket.CLOSED:
-        return 'CLOSED';
-      default:
-        return 'UNKNOWN';
-    }
-  },
-
-  /**
-   * Создание уникального ID для клиента
-   */
-  generateClientId(): string {
-    return `client_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  },
-
-  /**
-   * Валидация URL WebSocket
-   */
-  isValidUrl(url: string): boolean {
-    try {
-      const urlObj = new URL(url);
-      return urlObj.protocol === 'ws:' || urlObj.protocol === 'wss:';
-    } catch {
-      return false;
-    }
-  }
-};
-
-// Глобальные объекты для использования на странице
+// Global objects for use on page
 if (typeof window !== 'undefined') {
-  // Глобальный класс WebSocket клиента - убираем двойную обертку
-  (window as any).RNodeWebSocketClient = RNodeWebSocketClient;
+      // Global WebSocket client class
+    (window as any).RNodeWebSocketClient = RNodeWebSocketClient;
   
-  // Глобальная функция создания клиента
-  (window as any).createWebSocketClient = createWebSocketClient;
+      // Global client creation function
+    (window as any).createWebSocketClient = createWebSocketClient;
   
-  // Глобальные утилиты
-  (window as any).WebSocketUtils = WebSocketUtils;
+      // Global utilities
+    (window as any).WebSocketUtils = WebSocketUtils;
   
-  // Глобальный логгер
-  (window as any).WebSocketLogger = Logger;
+      // Global logger
+    (window as any).WebSocketLogger = Logger;
   (window as any).WebSocketLogLevel = LogLevel;
   
-  // Проверяем, что класс действительно доступен как конструктор
-  console.log('🔌 RNode WebSocket Client глобально доступен на странице');
+      // Check that class is actually available as constructor
+    console.log('🔌 RNode WebSocket Client глобально доступен на странице');
   console.log('📖 Доступные глобальные объекты:');
   console.log('   - window.RNodeWebSocketClient:', typeof (window as any).RNodeWebSocketClient);
   console.log('   - window.createWebSocketClient():', typeof (window as any).createWebSocketClient);
@@ -86,9 +72,3 @@ if (typeof window !== 'undefined') {
   console.log('   - window.WebSocketLogger:', typeof (window as any).WebSocketLogger);
 }
 
-// Экспорт для модульных систем
-export {
-  RNodeWebSocketClient,
-  Logger,
-  LogLevel
-};

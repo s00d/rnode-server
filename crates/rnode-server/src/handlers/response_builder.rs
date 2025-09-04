@@ -28,7 +28,7 @@ impl ResponseBuilder {
         debug!("🔍 Setting status: {}", status);
         debug!("🔍 Setting content-type: {}", content_type);
 
-        // Создаем response_builder для совместимости с Axum
+        // Create response_builder for Axum compatibility
         let mut response_builder = axum::response::Response::builder().status(status);
 
         // Устанавливаем content-type из заголовка
@@ -63,7 +63,7 @@ impl ResponseBuilder {
             }
         }
 
-        // Проверяем условие ошибки
+        // Check error condition
         debug!("🔍 Checking error condition - Status: {}, Content-Type: '{}'", status, content_type);
         if status >= 400 && content_type == "text/plain" {
             debug!("⚠️ Error condition met - generating error page");

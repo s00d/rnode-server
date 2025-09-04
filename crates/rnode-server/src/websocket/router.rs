@@ -34,9 +34,9 @@ use crate::websocket::connections::{
     get_connection_room
 };
 
-// Глобальное хранилище для WebSocket отправителей теперь находится в модуле connections
+// Global storage for WebSocket senders is now in the connections module
 
-// Эта функция не используется и удалена для чистоты кода
+// This function is not used and removed for code cleanliness
 
 pub async fn handle_websocket(socket: WebSocket, path: String, handler_id: String, client_id_from_query: Option<String>) -> Result<(), String> {
     let (sender, mut receiver) = socket.split();
@@ -55,7 +55,7 @@ pub async fn handle_websocket(socket: WebSocket, path: String, handler_id: Strin
     // Create connection
     let connection_id = Uuid::new_v4();
     
-    // Используем clientId из query параметров, если он есть, иначе генерируем автоматически
+    // Use clientId from query parameters if available, otherwise generate automatically
     let client_id = if let Some(query_client_id) = client_id_from_query {
         log::debug!("🆔 Using client ID from query params: {}", query_client_id);
         query_client_id
@@ -74,23 +74,23 @@ pub async fn handle_websocket(socket: WebSocket, path: String, handler_id: Strin
 
     // Call WebSocket callbacks BEFORE adding connection and sender
     let connect_result = send_websocket_event("connect", &connection_id, &path, &handler_id, None, Some(&client_id)).await;
-    match connect_result {
-        Ok(Some(_)) => {
-            // Событие разрешено, продолжаем
-            log::debug!("✅ Connect event allowed by callback");
-            
-            // ТОЛЬКО СЕЙЧАС сохраняем соединение в глобальном состоянии
-            add_connection(connection_id, connection.clone()).await;
+            match connect_result {
+            Ok(Some(_)) => {
+                // Event allowed, continue
+                log::debug!("✅ Connect event allowed by callback");
+                
+                // ONLY NOW save connection to global state
+                add_connection(connection_id, connection.clone()).await;
             log::debug!("💾 Connection saved to global state");
             
-            // ТОЛЬКО СЕЙЧАС сохраняем отправителя в глобальном состоянии
-            add_sender(connection_id, tokio::sync::Mutex::new(sender)).await;
+                            // ONLY NOW save sender to global state
+                add_sender(connection_id, tokio::sync::Mutex::new(sender)).await;
             log::debug!("💾 Sender saved to global state");
             
             log::info!("✅ WebSocket connection saved: {} -> {}", client_id, connection_id);
             
-            // Отправляем приветственное сообщение
-            log::debug!("📤 Preparing welcome message...");
+                            // Send welcome message
+                log::debug!("📤 Preparing welcome message...");
             let welcome_msg = format_welcome_message(&connection_id, &client_id, &path);
             
             log::debug!("📤 Welcome message formatted: {}", welcome_msg);
@@ -113,7 +113,7 @@ pub async fn handle_websocket(socket: WebSocket, path: String, handler_id: Strin
         }
     }
     
-    // Запускаем ping/pong в фоне
+                    // Start ping/pong in background (only server initiates ping)
     let ping_connection_id = connection_id;
     let ping_path = path.clone();
     let ping_handler_id = handler_id.clone();
@@ -122,37 +122,44 @@ pub async fn handle_websocket(socket: WebSocket, path: String, handler_id: Strin
         loop {
             interval.tick().await;
             
+            // Check if connection is still active
+            let connection_info = get_connection_info(&ping_connection_id).await;
+            if connection_info.is_none() {
+                log::debug!("🔌 Connection {} no longer exists, stopping ping", ping_connection_id);
+                break;
+            }
+            
             // Call WebSocket callbacks BEFORE sending ping
             let ping_result = send_websocket_event("ping", &ping_connection_id, &ping_path, &ping_handler_id, None, None).await;
             match ping_result {
                 Ok(Some(_)) => {
-                    // Событие разрешено, продолжаем
+                    // Event allowed, continue
                     log::debug!("✅ Ping event allowed by callback");
                     
-                    // ТОЛЬКО СЕЙЧАС отправляем ping
+                    // ONLY NOW send ping
                     if let Err(e) = send_direct_message(&ping_connection_id, &format_ping_message()).await {
                         log::error!("Failed to send ping: {}", e);
-                        break; // Соединение закрыто
+                        break; // Connection closed
                     }
                     
-                    // ТОЛЬКО СЕЙЧАС обновляем last_ping
+                    // ONLY NOW update last_ping
                     update_connection_last_ping(&ping_connection_id).await;
                 }
                 Ok(None) => {
-                    // Событие отменено колбеком - НЕ отправляем ping
+                    // Event cancelled by callback - DO NOT send ping
                     log::info!("🚫 Ping event cancelled by callback");
-                    // Пропускаем этот ping, НЕ отправляем и НЕ обновляем last_ping
+                    // Skip this ping, DO NOT send and DO NOT update last_ping
                 }
                 Err(e) => {
                     log::error!("Failed to send ping event: {}", e);
-                    // При ошибке колбека событие отменяется автоматически
-                    // Пропускаем этот ping, НЕ отправляем и НЕ обновляем last_ping
+                    // On callback error, event is automatically cancelled
+                    // Skip this ping, DO NOT send and DO NOT update last_ping
                 }
             }
         }
     });
     
-    // Основной цикл обработки сообщений
+    // Main message processing loop
     while let Some(msg) = receiver.next().await {
         match msg {
             Ok(Message::Text(text)) => {
@@ -162,20 +169,20 @@ pub async fn handle_websocket(socket: WebSocket, path: String, handler_id: Strin
                 let message_result = send_websocket_event("message", &connection_id, &path, &handler_id, Some(&text), None).await;
                 match message_result {
                     Ok(Some(_)) => {
-                        // Событие разрешено, продолжаем обработку
+                        // Event allowed, continue processing
                         log::debug!("✅ Message event allowed by callback");
                         handle_text_message(&connection_id, &path, &handler_id, &text).await?;
                     }
                     Ok(None) => {
-                        // Событие отменено колбеком
+                        // Event cancelled by callback
                         log::info!("🚫 Message event cancelled by callback");
-                        // Не обрабатываем сообщение
+                        // Do not process message
                     }
                     Err(e) => {
                         log::error!("Failed to call WebSocket message callback: {}", e);
-                        // При ошибке колбека событие отменяется автоматически
-                        // handle_text_message не вызывается
-                        // Не обрабатываем сообщение
+                        // On callback error, event is automatically cancelled
+                        // handle_text_message is not called
+                        // Do not process message
                     }
                 }
             }
@@ -184,31 +191,31 @@ pub async fn handle_websocket(socket: WebSocket, path: String, handler_id: Strin
                 
                 // Record binary message received metric
                 let room_id = get_connection_room(&connection_id).await;
-                crate::metrics::record_websocket_message_received("binary", room_id.as_deref(), &path, data.len());
+                crate::metrics::websocket::record_message_received("binary", room_id.as_deref(), &path, data.len());
                 
                 // Call WebSocket callbacks BEFORE processing binary message
                 let binary_result = send_websocket_event("binary_message", &connection_id, &path, &handler_id, Some(&format!("Binary data: {} bytes", data.len())), None).await;
                 match binary_result {
                     Ok(Some(_)) => {
-                        // Событие разрешено, можно добавить дополнительную обработку
+                        // Event allowed, can add additional processing
                         log::debug!("✅ Binary message event allowed by callback");
                     }
                     Ok(None) => {
-                        // Событие отменено колбеком
+                        // Event cancelled by callback
                         log::info!("🚫 Binary message event cancelled by callback");
-                        // Не обрабатываем бинарное сообщение
+                        // Do not process binary message
                     }
                     Err(e) => {
                         log::error!("Failed to call WebSocket binary message callback: {}", e);
-                        // При ошибке колбека событие отменяется автоматически
-                        crate::metrics::record_websocket_error("binary_message_callback_failed", &path, room_id.as_deref());
-                        // Не обрабатываем бинарное сообщение
+                        // On callback error, event is automatically cancelled
+                        crate::metrics::websocket::record_error("binary_message_callback_failed", &path, room_id.as_deref());
+                        // Do not process binary message
                     }
                 }
             }
             Ok(Message::Pong(_)) => {
                 log::debug!("🏓 Pong received from client");
-                // Обновляем last_ping при получении pong
+                // Update last_ping when receiving pong
                 update_connection_last_ping(&connection_id).await;
             }
             Ok(Message::Close(_)) => {
@@ -218,7 +225,7 @@ pub async fn handle_websocket(socket: WebSocket, path: String, handler_id: Strin
             Err(e) => {
                 log::error!("❌ WebSocket error: {}", e);
                 let room_id = get_connection_room(&connection_id).await;
-                crate::metrics::record_websocket_error("websocket_error", &path, room_id.as_deref());
+                crate::metrics::websocket::record_error("websocket_error", &path, room_id.as_deref());
                 break;
             }
             _ => {}
@@ -263,7 +270,7 @@ pub async fn handle_websocket(socket: WebSocket, path: String, handler_id: Strin
 async fn handle_text_message(connection_id: &Uuid, path: &str, _handler_id: &str, text: &str) -> Result<(), String> {
     // Record message received metric
     let room_id = crate::websocket::connections::get_connection_room(connection_id).await;
-    crate::metrics::record_websocket_message_received("text", room_id.as_deref(), path, text.len());
+    crate::metrics::websocket::record_message_received("text", room_id.as_deref(), path, text.len());
     
     // Парсим сообщение
     if let Ok(data) = serde_json::from_str::<serde_json::Value>(text) {
@@ -271,31 +278,31 @@ async fn handle_text_message(connection_id: &Uuid, path: &str, _handler_id: &str
             Some("join_room") => {
                 if let Err(e) = handle_join_room_message(connection_id, &data).await {
                     log::error!("Join room error: {}", e);
-                    crate::metrics::record_websocket_error("join_room_failed", path, room_id.as_deref());
+                    crate::metrics::websocket::record_error("join_room_failed", path, room_id.as_deref());
                 }
             },
             Some("leave_room") => {
                 if let Err(e) = handle_leave_room_message(connection_id, &data).await {
                     log::error!("Leave room error: {}", e);
-                    crate::metrics::record_websocket_error("leave_room_failed", path, room_id.as_deref());
+                    crate::metrics::websocket::record_error("leave_room_failed", path, room_id.as_deref());
                 }
             },
             Some("room_message") => {
                 if let Err(e) = handle_room_message_message(connection_id, &data).await {
                     log::error!("Room message error: {}", e);
-                    crate::metrics::record_websocket_error("room_message_failed", path, room_id.as_deref());
+                    crate::metrics::websocket::record_error("room_message_failed", path, room_id.as_deref());
                 }
             },
             Some("direct_message") => {
                 if let Err(e) = handle_direct_message_message(connection_id, &data).await {
                     log::error!("Direct message error: {}", e);
-                    crate::metrics::record_websocket_error("direct_message_failed", path, room_id.as_deref());
+                    crate::metrics::websocket::record_error("direct_message_failed", path, room_id.as_deref());
                 }
             },
             Some("ping") => {
                 if let Err(e) = handle_ping_message(connection_id).await {
                     log::error!("Ping error: {}", e);
-                    crate::metrics::record_websocket_error("ping_failed", path, room_id.as_deref());
+                    crate::metrics::websocket::record_error("ping_failed", path, room_id.as_deref());
                 }
             },
             _ => {
@@ -304,13 +311,13 @@ async fn handle_text_message(connection_id: &Uuid, path: &str, _handler_id: &str
                 
                 if let Err(e) = send_direct_message(connection_id, &message_ack).await {
                     log::error!("Failed to send message ack: {}", e);
-                    crate::metrics::record_websocket_error("message_ack_failed", path, room_id.as_deref());
+                    crate::metrics::websocket::record_error("message_ack_failed", path, room_id.as_deref());
                 }
             }
         }
     } else {
         // JSON parsing error
-        crate::metrics::record_websocket_error("json_parse_failed", path, room_id.as_deref());
+        crate::metrics::websocket::record_error("json_parse_failed", path, room_id.as_deref());
     }
     Ok(())
 }
@@ -318,10 +325,8 @@ async fn handle_text_message(connection_id: &Uuid, path: &str, _handler_id: &str
 async fn handle_join_room_message(connection_id: &Uuid, data: &serde_json::Value) -> Result<(), String> {
     log::debug!("🔍 Processing join room message: {}", data);
     
-    // Поддерживаем оба формата: room_id/roomId (включая вложенные в data)
-    let room_id = data.get("room_id").and_then(|r| r.as_str())
-        .or_else(|| data.get("roomId").and_then(|r| r.as_str()))
-        .or_else(|| data.get("data").and_then(|d| d.get("roomId")).and_then(|r| r.as_str()));
+    // Extract room_id
+    let room_id = data.get("room_id").and_then(|r| r.as_str());
     
     log::debug!("🔍 Extracted room_id: {:?}", room_id);
     
@@ -330,11 +335,11 @@ async fn handle_join_room_message(connection_id: &Uuid, data: &serde_json::Value
         let join_result = send_websocket_event("join_room", connection_id, "room", "join", Some(room_id), None).await;
         match join_result {
             Ok(Some(_)) => {
-                // Событие разрешено, продолжаем вход в комнату
+                // Event allowed, continue joining room
                 log::debug!("✅ Join room event allowed by callback");
                 
                 if join_room(connection_id, room_id).await {
-                    // Отправляем подтверждение входа в комнату
+                    // Send room join confirmation
                     let join_success = format_room_joined_message(room_id);
                     
                     if let Err(e) = send_direct_message(connection_id, &join_success).await {
@@ -343,7 +348,7 @@ async fn handle_join_room_message(connection_id: &Uuid, data: &serde_json::Value
                         log::info!("✅ Client {} joined room {}", connection_id, room_id);
                     }
                 } else {
-                    // Отправляем ошибку входа в комнату
+                    // Send room join error
                     let join_error = format_error_message("room_join_error", "Failed to join room");
                     
                     if let Err(e) = send_direct_message(connection_id, &join_error).await {
@@ -351,20 +356,20 @@ async fn handle_join_room_message(connection_id: &Uuid, data: &serde_json::Value
                     }
                 }
             }
-                    Ok(None) => {
-            // Событие отменено колбеком - НЕ входим в комнату
-            log::info!("🚫 Join room event cancelled by callback");
-            return Ok(()); // Завершаем функцию, не входим в комнату
-        }
+                                Ok(None) => {
+                // Event cancelled by callback - DO NOT join room
+                log::info!("🚫 Join room event cancelled by callback");
+                return Ok(()); // End function, do not join room
+            }
         Err(e) => {
             log::error!("Failed to call WebSocket joinRoom callback: {}", e);
-            // При ошибке колбека событие отменяется автоматически
-            // join_room не вызывается
-            return Ok(()); // Завершаем функцию, не входим в комнату
+            // On callback error, event is automatically cancelled
+            // join_room is not called
+            return Ok(()); // End function, do not join room
         }
         }
     } else {
-        // Отправляем ошибку входа в комнату
+        // Send room join error
         let join_error = format_error_message("room_join_error", "Failed to join room");
         
         if let Err(e) = send_direct_message(connection_id, &join_error).await {
@@ -377,24 +382,24 @@ async fn handle_join_room_message(connection_id: &Uuid, data: &serde_json::Value
 async fn handle_direct_message_message(connection_id: &Uuid, data: &serde_json::Value) -> Result<(), String> {
     log::debug!("🔍 Processing direct message: {}", data);
     
-    // Извлекаем targetClientId и сообщение
-    let target_client_id = data.get("targetClientId").and_then(|t| t.as_str());
+    // Extract target_client_id and message
+    let target_client_id = data.get("target_client_id").and_then(|t| t.as_str());
     let message = data.get("data").and_then(|m| m.as_str());
     
     log::debug!("🔍 Extracted target_client_id: {:?}, message: {:?}", target_client_id, message);
     
     if let (Some(target_client_id), Some(message)) = (target_client_id, message) {
-        // Получаем client_id отправителя
+        // Get sender's client_id
         let from_client_id = get_connection_info(connection_id).await.map(|conn| conn.client_id).unwrap_or_default();
         
         log::debug!("📤 Sending direct message from {} to client {}: {}", from_client_id, target_client_id, message);
         
-        // Ищем соединение по client_id
+        // Find connection by client_id
         let connections = crate::websocket::rooms::get_websocket_connections().read().await;
         let target_connection = connections.values().find(|conn| conn.client_id == target_client_id);
         
         if let Some(target_conn) = target_connection {
-            // Формируем сообщение для отправки
+            // Format message for sending
             let direct_message = serde_json::json!({
                 "type": "direct_message",
                 "message": message,
@@ -402,7 +407,7 @@ async fn handle_direct_message_message(connection_id: &Uuid, data: &serde_json::
                 "timestamp": chrono::Utc::now().to_rfc3339()
             });
             
-            // Отправляем сообщение целевому клиенту
+            // Send message to target client
             if let Err(e) = send_direct_message(&target_conn.id, &direct_message).await {
                 log::error!("❌ Failed to send direct message to client {}: {}", target_client_id, e);
             } else {
@@ -411,16 +416,16 @@ async fn handle_direct_message_message(connection_id: &Uuid, data: &serde_json::
         } else {
             log::warn!("⚠️ Target client {} not found", target_client_id);
             
-            // Отправляем ошибку отправителю
+            // Send error to sender
             let error_message = format_error_message("client_not_found", &format!("Client {} not found", target_client_id));
             if let Err(e) = send_direct_message(connection_id, &error_message).await {
                 log::error!("Failed to send error message: {}", e);
             }
         }
     } else {
-        log::error!("❌ Invalid direct message format: targetClientId={:?}, message={:?}", target_client_id, message);
+        log::error!("❌ Invalid direct message format: target_client_id={:?}, message={:?}", target_client_id, message);
         
-        // Отправляем ошибку отправителю
+        // Send error to sender
         let error_message = format_error_message("invalid_format", "Invalid direct message format");
         if let Err(e) = send_direct_message(connection_id, &error_message).await {
             log::error!("Failed to send error message: {}", e);
@@ -432,10 +437,8 @@ async fn handle_direct_message_message(connection_id: &Uuid, data: &serde_json::
 async fn handle_leave_room_message(connection_id: &Uuid, data: &serde_json::Value) -> Result<(), String> {
     log::debug!("🔍 Processing leave room message: {}", data);
     
-    // Поддерживаем оба формата: room_id/roomId (включая вложенные в data)
-    let room_id = data.get("room_id").and_then(|r| r.as_str())
-        .or_else(|| data.get("roomId").and_then(|r| r.as_str()))
-        .or_else(|| data.get("data").and_then(|d| d.get("roomId")).and_then(|r| r.as_str()));
+    // Extract room_id
+    let room_id = data.get("room_id").and_then(|r| r.as_str());
     
     log::debug!("🔍 Extracted room_id: {:?}", room_id);
     
@@ -444,11 +447,11 @@ async fn handle_leave_room_message(connection_id: &Uuid, data: &serde_json::Valu
         let leave_result = send_websocket_event("leave_room", connection_id, "room", "leave", Some(room_id), None).await;
         match leave_result {
             Ok(Some(_)) => {
-                // Событие разрешено, продолжаем выход из комнаты
+                // Event allowed, continue leaving room
                 log::debug!("✅ Leave room event allowed by callback");
                 
                 if leave_room(connection_id, room_id).await {
-                    // Отправляем подтверждение выхода из комнаты
+                    // Send room leave confirmation
                     let leave_success = format_room_left_message(room_id);
                     
                     if let Err(e) = send_direct_message(connection_id, &leave_success).await {
@@ -459,15 +462,15 @@ async fn handle_leave_room_message(connection_id: &Uuid, data: &serde_json::Valu
                 }
             }
             Ok(None) => {
-                // Событие отменено колбеком - НЕ выходим из комнаты
+                // Event cancelled by callback - DO NOT leave room
                 log::info!("🚫 Leave room event cancelled by callback");
-                return Ok(()); // Завершаем функцию, не выходим из комнаты
+                return Ok(()); // End function, do not leave room
             }
             Err(e) => {
                 log::error!("Failed to call WebSocket leaveRoom callback: {}", e);
-                // При ошибке колбека событие отменяется автоматически
-                // leave_room не вызывается
-                return Ok(()); // Завершаем функцию, не выходим из комнаты
+                // On callback error, event is automatically cancelled
+                // leave_room is not called
+                return Ok(()); // End function, do not leave room
             }
         }
     }
@@ -477,20 +480,18 @@ async fn handle_leave_room_message(connection_id: &Uuid, data: &serde_json::Valu
 async fn handle_room_message_message(connection_id: &Uuid, data: &serde_json::Value) -> Result<(), String> {
     log::debug!("🔍 Processing room message: {}", data);
     
-    // Поддерживаем оба формата: room_id/roomId и message/data
-    let room_id = data.get("room_id").and_then(|r| r.as_str())
-        .or_else(|| data.get("roomId").and_then(|r| r.as_str()))
-        .or_else(|| data.get("data").and_then(|d| d.get("roomId")).and_then(|r| r.as_str()));
+    // Extract room_id and message
+    let room_id = data.get("room_id").and_then(|r| r.as_str());
     
-    // Message может быть в поле "message", "data" (если data - строка), или в data.message
+    // Message can be in "message", "data" (if data is string), or in data.message
     let message = data.get("message").and_then(|m| m.as_str())
         .or_else(|| {
-            // Если data - строка, используем её как сообщение
+            // If data is string, use it as message
             if let Some(data_val) = data.get("data") {
                 if data_val.is_string() {
                     data_val.as_str()
                 } else {
-                    // Если data - объект, ищем поле message
+                    // If data is object, look for message field
                     data_val.get("message").and_then(|m| m.as_str())
                 }
             } else {
@@ -501,12 +502,12 @@ async fn handle_room_message_message(connection_id: &Uuid, data: &serde_json::Va
     log::debug!("🔍 Extracted room_id: {:?}, message: {:?}", room_id, message);
     
     if let (Some(room_id), Some(message)) = (room_id, message) {
-        // Получаем client_id отправителя
+        // Get sender's client_id
         let from_client_id = get_connection_info(connection_id).await.map(|conn| conn.client_id).unwrap_or_default();
         
         log::debug!("📤 Broadcasting message from {} to room {}: {}", from_client_id, room_id, message);
         
-        // Отправляем сообщение всем в комнате
+        // Send message to everyone in room
         if let Err(e) = broadcast_to_room(room_id, &format_room_message(room_id, message, &from_client_id)).await {
             log::error!("❌ Failed to broadcast room message: {}", e);
         } else {
@@ -521,31 +522,31 @@ async fn handle_room_message_message(connection_id: &Uuid, data: &serde_json::Va
 async fn handle_ping_message(connection_id: &Uuid) -> Result<(), String> {
     // Call WebSocket callbacks BEFORE processing ping
     let ping_result = send_websocket_event("ping", connection_id, "ping", "ping", None, None).await;
-    match ping_result {
-        Ok(Some(_)) => {
-            // Событие разрешено, продолжаем обработку
-            log::debug!("✅ Ping event allowed by callback");
-            
-            // Обновляем last_ping
-            update_connection_last_ping(connection_id).await;
-            
-            // Отправляем pong обратно
-            let pong_message = format_pong_message();
+            match ping_result {
+            Ok(Some(_)) => {
+                // Event allowed, continue processing
+                log::debug!("✅ Ping event allowed by callback");
+                
+                // Update last_ping
+                update_connection_last_ping(connection_id).await;
+                
+                // Send pong back
+                let pong_message = format_pong_message();
             
             if let Err(e) = send_direct_message(connection_id, &pong_message).await {
                 log::error!("Failed to send pong message: {}", e);
             }
         }
         Ok(None) => {
-            // Событие отменено колбеком - НЕ обрабатываем ping
+            // Event cancelled by callback - DO NOT process ping
             log::info!("🚫 Ping event cancelled by callback");
-            return Ok(()); // Завершаем функцию, не обрабатываем ping
+            return Ok(()); // End function, do not process ping
         }
         Err(e) => {
             log::error!("Failed to call WebSocket ping callback: {}", e);
-            // При ошибке колбека событие отменяется автоматически
-            // update_connection_last_ping и send_direct_message не вызываются
-            return Ok(()); // Завершаем функцию, не обрабатываем ping
+            // On callback error, event is automatically cancelled
+            // update_connection_last_ping and send_direct_message are not called
+            return Ok(()); // End function, do not process ping
         }
     }
     Ok(())

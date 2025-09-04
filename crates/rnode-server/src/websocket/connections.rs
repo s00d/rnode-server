@@ -193,7 +193,7 @@ pub async fn send_direct_message(connection_id: &Uuid, message: &serde_json::Val
         // Record message sent metric
         let connection_info = get_connection_info(connection_id).await;
         if let Some(conn) = connection_info {
-            crate::metrics::record_websocket_message_sent(message_type, conn.room_id.as_deref(), &conn.path, message_size);
+            crate::metrics::websocket::record_message_sent(message_type, conn.room_id.as_deref(), &conn.path, message_size);
         }
         
         Ok(())
@@ -235,7 +235,7 @@ pub async fn send_websocket_event(event_type: &str, connection_id: &Uuid, path: 
     log::debug!("🔌 send_websocket_event called: type={}, connection_id={}, path={}, data={:?}, client_id={:?}", 
                 event_type, connection_id, path, data, client_id);
     
-    // Проверяем, включено ли событие для данного пути
+    // Check if event is enabled for this path
     let routes = crate::websocket::get_websocket_routes();
     let routes_map = routes.read().await;
     
@@ -366,7 +366,7 @@ pub async fn send_websocket_event(event_type: &str, connection_id: &Uuid, path: 
                 log::debug!("🔍 Parsed result: shouldCancel={:?}, modifiedEvent={:?}", 
                            result_data.get("shouldCancel"), result_data.get("modifiedEvent"));
                 
-                // Проверяем shouldCancel и modifiedEvent
+                // Check shouldCancel and modifiedEvent
                 if let Some(should_cancel) = result_data.get("shouldCancel").and_then(|v| v.as_bool()) {
                     if should_cancel {
                         log::info!("🚫 Event cancelled by JavaScript callback");

@@ -12,8 +12,79 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="4d8c55b6-5a63-439f-adcf-d024569129f5" name="Changes" comment="update">
-      <change beforePath="$PROJECT_DIR$/.github/workflows/release.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/release.yml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/connection/manager.d.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/connection/manager.d.ts.map" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/connection/messages.d.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/connection/messages.d.ts.map" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/connection/pingpong.d.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/connection/pingpong.d.ts.map" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/connection/reconnection.d.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/connection/reconnection.d.ts.map" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/connection/rooms.d.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/connection/rooms.d.ts.map" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/core/events.d.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/core/events.d.ts.map" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/core/logger.d.ts.map" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/core/types.d.ts.map" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/utils/websocket.d.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/utils/websocket.d.ts.map" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/src/connection/manager.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/src/connection/messages.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/src/connection/pingpong.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/src/connection/reconnection.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/src/connection/rooms.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/src/core/events.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/src/utils/websocket.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/cache/file_sync.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/cache/file_sync.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/cache/manager_sync.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/cache/manager_sync.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/cache/memory_sync.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/cache/memory_sync.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/cache/neon_wrappers.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/cache/neon_wrappers.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/cache/redis_sync.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/cache/redis_sync.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/handlers/dynamic_handler.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/handlers/dynamic_handler.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/handlers/javascript_bridge.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/handlers/javascript_bridge.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/handlers/response_builder.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/handlers/response_builder.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/metrics/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/metrics/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/request.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/request.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/server.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/server.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/static_files/fallback.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/static_files/fallback.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/websocket/connections.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/websocket/connections.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/websocket/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/websocket/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/websocket/router.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/websocket/router.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/rnode-server/src/websocket/upgrade.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/rnode-server/src/websocket/upgrade.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/architecture/websocket-optimization.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/websocket/client.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/websocket/client.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/websocket/websocket.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/websocket/websocket.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/client.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/client.d.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/client.d.ts.map" beforeDir="false" afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/client.d.ts.map" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/index.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/index.d.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/index.d.ts.map" beforeDir="false" afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/index.d.ts.map" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/logger.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/core/logger.d.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/logger.d.ts.map" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/rnode-websocket-client.es.js" beforeDir="false" afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/rnode-websocket-client.es.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/rnode-websocket-client.es.js.map" beforeDir="false" afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/rnode-websocket-client.es.js.map" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/rnode-websocket-client.iife.js" beforeDir="false" afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/rnode-websocket-client.iife.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/rnode-websocket-client.iife.js.map" beforeDir="false" afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/rnode-websocket-client.iife.js.map" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/rnode-websocket-client.umd.js" beforeDir="false" afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/rnode-websocket-client.umd.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/rnode-websocket-client.umd.js.map" beforeDir="false" afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/rnode-websocket-client.umd.js.map" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/types.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/core/types.d.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/packages/rnode-websocket-client/dist/types.d.ts.map" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/packages/rnode-websocket-client/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/packages/rnode-websocket-client/src/client.ts" beforeDir="false" afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/src/client.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/packages/rnode-websocket-client/src/globals.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/src/globals.d.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/packages/rnode-websocket-client/src/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/src/index.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/packages/rnode-websocket-client/src/logger.ts" beforeDir="false" afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/src/core/logger.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/packages/rnode-websocket-client/src/types.ts" beforeDir="false" afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/src/core/types.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/packages/rnode-websocket-client/tsconfig.json" beforeDir="false" afterPath="$PROJECT_DIR$/packages/rnode-websocket-client/tsconfig.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/playground/websocket-client/websocket-client.js" beforeDir="false" afterPath="$PROJECT_DIR$/playground/websocket-client/websocket-client.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/templates/components.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/templates/components/footer.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/templates/components/header.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/templates/index.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/templates/layouts/base.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/templates/macros.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/templates/style.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/templates/user_profile.html" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -129,15 +200,7 @@
       <workItem from="1756577197892" duration="1601000" />
       <workItem from="1756579296550" duration="3976000" />
       <workItem from="1756584051753" duration="1037000" />
-      <workItem from="1756585274949" duration="41128000" />
-    </task>
-    <task id="LOCAL-00037" summary="fix">
-      <option name="closed" value="true" />
-      <created>1756125183657</created>
-      <option name="number" value="00037" />
-      <option name="presentableId" value="LOCAL-00037" />
-      <option name="project" value="LOCAL" />
-      <updated>1756125183657</updated>
+      <workItem from="1756585274949" duration="46465000" />
     </task>
     <task id="LOCAL-00038" summary="fix">
       <option name="closed" value="true" />
@@ -523,7 +586,15 @@
       <option name="project" value="LOCAL" />
       <updated>1756895748053</updated>
     </task>
-    <option name="localTasksCounter" value="86" />
+    <task id="LOCAL-00086" summary="update">
+      <option name="closed" value="true" />
+      <created>1756908390008</created>
+      <option name="number" value="00086" />
+      <option name="presentableId" value="LOCAL-00086" />
+      <option name="project" value="LOCAL" />
+      <updated>1756908390008</updated>
+    </task>
+    <option name="localTasksCounter" value="87" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

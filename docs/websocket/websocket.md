@@ -160,6 +160,11 @@ interface WebSocketOptions {
   onPing?: (data: WebSocketEventData) => WebSocketEventResult | void;
   onPong?: (data: WebSocketEventData) => WebSocketEventResult | void;
   onBinaryMessage?: (data: WebSocketEventData) => WebSocketEventResult | void;
+  onWelcome?: (data: WebSocketEventData) => WebSocketEventResult | void;
+  onMessageAck?: (data: WebSocketEventData) => WebSocketEventResult | void;
+  onRoomMessage?: (data: WebSocketEventData) => WebSocketEventResult | void;
+  onDirectMessage?: (data: WebSocketEventData) => WebSocketEventResult | void;
+  onServerError?: (data: WebSocketEventData) => WebSocketEventResult | void;
 }
 ```
 
@@ -173,6 +178,13 @@ interface WebSocketEventData {
   data?: any;
   timestamp?: string;
   client_id?: string;
+  room_id?: string;
+  target_client_id?: string;
+  from_client_id?: string;
+  message?: string;
+  error?: string;
+  error_type?: string;
+  type?: string;
 }
 ```
 
@@ -195,6 +207,7 @@ interface WebSocketRoom {
   description?: string;
   maxConnections?: number;
   connections: string[];
+  connectionsCount?: number;
   metadata: Record<string, string>;
   createdAt: string;
 }
@@ -238,7 +251,12 @@ app.websocket('/full-chat', {
   onLeaveRoom: (data) => { /* ... */ },
   onPing: (data) => { /* ... */ },
   onPong: (data) => { /* ... */ },
-  onBinaryMessage: (data) => { /* ... */ }
+  onBinaryMessage: (data) => { /* ... */ },
+  onWelcome: (data) => { /* ... */ },
+  onMessageAck: (data) => { /* ... */ },
+  onRoomMessage: (data) => { /* ... */ },
+  onDirectMessage: (data) => { /* ... */ },
+  onServerError: (data) => { /* ... */ }
 });
 
 // Optimized configuration - only essential events
@@ -275,6 +293,13 @@ All callback functions receive a `WebSocketEventData` object and can return a `W
 - `onPing` - Called when a ping is received
 - `onPong` - Called when a pong is received
 - `onBinaryMessage` - Called when binary data is received
+- `onWelcome` - Called when welcome message is sent to client
+- `onMessageAck` - Called when message acknowledgment is received
+- `onRoomMessage` - Called when room message is received
+- `onDirectMessage` - Called when direct message is received
+- `onServerError` - Called when server error occurs
+
+**Note:** The `onMessageBlocked` event is only available on the client side and is triggered when the server blocks a message based on callback return values.
 
 ### Event Control
 
@@ -311,6 +336,10 @@ app.websocket('/chat', {
   onError: (data) => {
     console.error('WebSocket error:', data);
     // Log error, notify admin, etc.
+  },
+  onServerError: (data) => {
+    console.error('Server error:', data.error);
+    // Handle server-specific errors
   }
 });
 ```
@@ -383,6 +412,8 @@ app.setLogLevel('debug');
 
 ## HTTP API Endpoints
 
+**Note:** RNode Server uses Axum-style route parameters with curly braces `{paramName}` instead of Express-style `:paramName`.
+
 ### Room Management
 
 ```javascript
@@ -397,7 +428,7 @@ app.get('/websocket/rooms', (req, res) => {
 });
 
 // Get specific room
-app.get('/websocket/rooms/:roomId', (req, res) => {
+app.get('/websocket/rooms/{roomId}', (req, res) => {
   const roomInfo = app.getRoomInfo(req.params.roomId);
   if (roomInfo) {
     res.json({ success: true, room: roomInfo });
@@ -414,21 +445,21 @@ app.post('/websocket/rooms', (req, res) => {
 });
 
 // Send message to room
-app.post('/websocket/rooms/:roomId/message', (req, res) => {
+app.post('/websocket/rooms/{roomId}/message', (req, res) => {
   const { message } = req.getBodyAsJson();
   const success = app.sendRoomMessage(req.params.roomId, message);
   res.json({ success });
 });
 
 // Join room
-app.post('/websocket/rooms/:roomId/join', (req, res) => {
+app.post('/websocket/rooms/{roomId}/join', (req, res) => {
   const { connectionId } = req.getBodyAsJson();
   const success = app.joinRoom(connectionId, req.params.roomId);
   res.json({ success });
 });
 
 // Leave room
-app.post('/websocket/rooms/:roomId/leave', (req, res) => {
+app.post('/websocket/rooms/{roomId}/leave', (req, res) => {
   const { connectionId } = req.getBodyAsJson();
   const success = app.leaveRoom(connectionId, req.params.roomId);
   res.json({ success });
@@ -439,7 +470,7 @@ app.post('/websocket/rooms/:roomId/leave', (req, res) => {
 
 ```javascript
 // Get client information
-app.get('/websocket/clients/:connectionId', (req, res) => {
+app.get('/websocket/clients/{connectionId}', (req, res) => {
   const clientInfo = app.getClientInfo(req.params.connectionId);
   if (clientInfo) {
     res.json({ success: true, client: clientInfo });
@@ -449,10 +480,79 @@ app.get('/websocket/clients/:connectionId', (req, res) => {
 });
 
 // Get client rooms
-app.get('/websocket/clients/:connectionId/rooms', (req, res) => {
+app.get('/websocket/clients/{connectionId}/rooms', (req, res) => {
   const rooms = app.getUserRooms(req.params.connectionId);
   res.json({ success: true, rooms, count: rooms.length });
 });
+```
+
+## Message Types
+
+### Welcome Message
+```json
+{
+  "type": "welcome",
+  "connection_id": "uuid-string",
+  "client_id": "client_123",
+  "path": "/chat",
+  "timestamp": "2024-01-01T00:00:00Z"
+}
+```
+
+### Room Message
+```json
+{
+  "type": "room_message",
+  "message": "Hello room!",
+  "room_id": "room_123",
+  "from_client_id": "client_456",
+  "timestamp": "2024-01-01T00:00:00Z"
+}
+```
+
+### Direct Message
+```json
+{
+  "type": "direct_message",
+  "message": "Private message",
+  "from_client_id": "client_123",
+  "timestamp": "2024-01-01T00:00:00Z"
+}
+```
+
+### Message Acknowledgment
+```json
+{
+  "type": "message_ack",
+  "message": "Original message content",
+  "timestamp": "2024-01-01T00:00:00Z"
+}
+```
+
+### Error Message
+```json
+{
+  "type": "error",
+  "error": "Error description",
+  "error_type": "validation_error",
+  "timestamp": "2024-01-01T00:00:00Z"
+}
+```
+
+### Ping/Pong Messages
+```json
+{
+  "type": "ping",
+  "timestamp": "2024-01-01T00:00:00Z"
+}
+```
+
+```json
+{
+  "type": "pong",
+  "latency": 15,
+  "timestamp": "2024-01-01T00:00:00Z"
+}
 ```
 
 ## Best Practices
@@ -471,7 +571,7 @@ app.get('/websocket/clients/:connectionId/rooms', (req, res) => {
 
 ### Error Handling
 
-1. **Always Handle Errors**: Define `onError` callback for error handling
+1. **Always Handle Errors**: Define `onError` and `onServerError` callbacks for error handling
 2. **Validate Input**: Validate message content in `onMessage` callback
 3. **Graceful Degradation**: Handle errors gracefully without crashing
 
@@ -483,6 +583,6 @@ app.get('/websocket/clients/:connectionId/rooms', (req, res) => {
 
 ## Related
 
-- [API Reference](./websocket.md) - Complete WebSocket API documentation
+- [WebSocket Client](./client.md) - Client-side implementation
 - [Architecture](./websocket-optimization.md) - System design overview
 - [Performance](../monitoring/) - Monitoring and optimization guides

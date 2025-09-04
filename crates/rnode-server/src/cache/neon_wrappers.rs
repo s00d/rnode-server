@@ -41,7 +41,7 @@ pub fn cache_get_wrapper(mut cx: FunctionContext) -> JsResult<JsValue> {
     
     let mut tags: Option<Vec<String>> = None;
     
-    // Проверяем второй параметр - может быть tags (array)
+    // Check second parameter - may be tags (array)
     if cx.len() > 1 {
         if let Ok(tags_array) = cx.argument::<JsArray>(1) {
             let tags_vec: Vec<String> = tags_array.to_vec(&mut cx)?
@@ -76,14 +76,14 @@ pub fn cache_set_wrapper(mut cx: FunctionContext) -> JsResult<JsBoolean> {
     let key = cx.argument::<JsString>(0)?.value(&mut cx);
     let value = cx.argument::<JsString>(1)?.value(&mut cx);
     
-    // Получаем tags как обязательный третий параметр
+    // Get tags as required third parameter
     let tags_array = cx.argument::<JsArray>(2)?;
     let tags: Vec<String> = tags_array.to_vec(&mut cx)?
         .into_iter()
         .map(|v| v.downcast::<JsString, _>(&mut cx).unwrap().value(&mut cx))
         .collect();
     
-    // Получаем ttl как обязательный четвертый параметр
+    // Get ttl as required fourth parameter
     let ttl_value = cx.argument::<JsNumber>(3)?;
     let ttl_val = ttl_value.value(&mut cx) as u64;
     let ttl: Option<u64> = if ttl_val > 0 {
@@ -113,7 +113,7 @@ pub fn cache_delete_wrapper(mut cx: FunctionContext) -> JsResult<JsBoolean> {
     
     let mut tags: Option<Vec<String>> = None;
     
-    // Проверяем второй параметр - может быть tags (array)
+    // Check second parameter - may be tags (array)
     if cx.len() > 1 {
         if let Ok(tags_array) = cx.argument::<JsArray>(1) {
             let tags_vec: Vec<String> = tags_array.to_vec(&mut cx)?
@@ -145,7 +145,7 @@ pub fn cache_exists_wrapper(mut cx: FunctionContext) -> JsResult<JsBoolean> {
     
     let mut tags: Option<Vec<String>> = None;
     
-    // Проверяем второй параметр - может быть tags (array)
+    // Check second parameter - may be tags (array)
     if cx.len() > 1 {
         if let Ok(tags_array) = cx.argument::<JsArray>(1) {
             let tags_vec: Vec<String> = tags_array.to_vec(&mut cx)?

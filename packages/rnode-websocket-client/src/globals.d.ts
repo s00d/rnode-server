@@ -1,4 +1,4 @@
-// Глобальные типы для браузера
+// Global types for browser
 declare global {
   interface Window {
     RNodeWebSocketClient: any;
@@ -9,5 +9,5 @@ declare global {
   }
 }
 
-// Экспорт для модуля
+// Export for module
 export {};

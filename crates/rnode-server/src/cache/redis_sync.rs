@@ -39,8 +39,8 @@ impl RedisCacheSync {
                 let item: CacheItem<String> = serde_json::from_str(&data)
                     .map_err(|e| CacheError::DeserializationError(format!("Failed to deserialize cache item: {}", e)))?;
                 
-                // Проверяем срок действия
-                if let Some(expires_at) = item.expires_at {
+                        // Check expiration
+        if let Some(expires_at) = item.expires_at {
                     if Utc::now() > expires_at {
                         debug!("🗑️ Redis cache item expired: {}", key);
                         self.delete(key, None)?;
@@ -48,8 +48,8 @@ impl RedisCacheSync {
                     }
                 }
                 
-                // Проверяем теги если указаны
-                if let Some(requested_tags) = tags {
+                        // Check tags if specified
+        if let Some(requested_tags) = tags {
                     if !requested_tags.iter().all(|tag| item.tags.contains(tag)) {
                         debug!("🏷️ Tags mismatch for Redis key: {}", key);
                         return Ok(None);
@@ -122,7 +122,7 @@ impl RedisCacheSync {
         let mut conn = self.get_connection()?;
         let full_key = self.get_full_key(key);
         
-        // Проверяем теги если указаны
+        // Check tags if specified
         if let Some(requested_tags) = tags {
             if let Some(data) = self.get(key, None)?.map(|item| item.value) {
                 let item: CacheItem<String> = serde_json::from_str(&data)
@@ -160,7 +160,7 @@ impl RedisCacheSync {
         let exists = result > 0;
         
         if exists {
-            // Проверяем теги если указаны
+            // Check tags if specified
             if let Some(requested_tags) = tags {
                 if let Some(data) = self.get(key, None)?.map(|item| item.value) {
                     let item: CacheItem<String> = serde_json::from_str(&data)

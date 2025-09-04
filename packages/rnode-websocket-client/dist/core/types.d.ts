@@ -9,6 +9,7 @@ export interface WebSocketOptions {
     pongTimeout?: number;
     onConnect?: (event: WebSocketEvent) => void;
     onMessage?: (event: WebSocketEvent) => void;
+    onBinaryMessage?: (event: WebSocketEvent) => void;
     onDisconnect?: (event: WebSocketEvent) => void;
     onError?: (event: WebSocketEvent) => void;
     onWelcome?: (message: WelcomeMessage) => void;
@@ -20,10 +21,12 @@ export interface WebSocketOptions {
     onMessageAck?: (data: MessageAckEvent) => void;
     onRoomMessage?: (data: RoomMessageEvent) => void;
     onDirectMessage?: (data: DirectMessageEvent) => void;
+    onServerError?: (data: ServerErrorEvent) => void;
+    onMessageBlocked?: (data: MessageBlockedEvent) => void;
 }
 export interface WebSocketEvent {
     type: string;
-    data?: any;
+    data?: unknown;
     timestamp: number;
 }
 export interface WebSocketMessage {
@@ -31,9 +34,11 @@ export interface WebSocketMessage {
     connection_id?: string;
     client_id?: string;
     path?: string;
-    data?: any;
+    data?: unknown;
     timestamp?: string;
-    [key: string]: any;
+    room_id?: string | null;
+    target_client_id?: string;
+    [key: string]: unknown;
 }
 export interface WelcomeMessage {
     type: 'welcome';
@@ -107,5 +112,34 @@ export interface DirectMessageEvent {
     from_client_id: string;
     timestamp: string;
     type: string;
+}
+export interface ServerErrorEvent {
+    error: string;
+    error_type: string;
+    timestamp: string;
+    type: string;
+}
+export interface MessageBlockedEvent {
+    originalMessage: string;
+    reason: string;
+    timestamp: string;
+    type: string;
+}
+export declare enum ConnectionState {
+    CONNECTING,
+    OPEN,
+    CLOSING,
+    CLOSED
+}
+export interface ConnectionStatus {
+    isConnected: boolean;
+    isConnecting: boolean;
+    isReconnecting: boolean;
+    currentRoom: string | null;
+    state: ConnectionState;
+}
+export interface MessageHandler {
+    type: string;
+    handler: (message: WebSocketMessage) => void;
 }
 //# sourceMappingURL=types.d.ts.map

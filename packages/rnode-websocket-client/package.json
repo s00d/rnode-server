@@ -28,6 +28,8 @@
     "dev": "vite",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
+    "typecheck:strict": "tsc --noEmit --strict",
+    "typecheck:watch": "tsc --noEmit --watch",
     "clean": "rm -rf dist",
     "prepublishOnly": "npm run build"
   },

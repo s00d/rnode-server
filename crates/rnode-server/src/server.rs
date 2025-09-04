@@ -28,7 +28,7 @@ async fn request_response_layer(
     req: AxumRequest<Body>,
     next: Next,
 ) -> Result<axum::response::Response, axum::http::StatusCode> {
-    // Проверяем, является ли это multipart запросом
+    // Check if this is a multipart request
     let content_type = req
         .headers()
         .get("content-type")
@@ -36,31 +36,31 @@ async fn request_response_layer(
         .unwrap_or("")
         .to_string();
 
-    // Для multipart запросов не потребляем тело здесь
+    // For multipart requests, do not consume body here
     if content_type.contains("multipart/form-data") {
-        // Создаем Request объект из axum Request без парсинга тела
+        // Create Request object from axum Request without parsing body
         let request = Request::from_axum_request(&req);
         
-        // Сохраняем в extensions для передачи дальше
+        // Save in extensions for further transmission
         let mut req = req;
         req.extensions_mut().insert(request);
         
-        // Передаем запрос дальше без изменения тела
+        // Pass request further without changing body
         Ok(next.run(req).await)
     } else {
-        // Для остальных запросов парсим тело как обычно
+        // For other requests, parse body as usual
         let (parts, body) = req.into_parts();
 
-        // Извлекаем тело запроса
+        // Extract request body
         let body_bytes = axum::body::to_bytes(body, usize::MAX).await.ok();
 
-        // Создаем новый запрос из частей
+        // Create new request from parts
         let mut req = AxumRequest::from_parts(parts, Body::empty());
 
-        // Создаем Request объект из axum Request
+        // Create Request object from axum Request
         let mut request = Request::from_axum_request(&req);
 
-        // Парсим тело запроса если оно есть
+        // Parse request body if it exists
         if let Some(body_bytes) = body_bytes {
             use crate::request_parser::RequestParser;
             let (parsed_body, files) =
@@ -69,10 +69,10 @@ async fn request_response_layer(
             request.files = files;
         }
 
-        // Сохраняем в extensions для передачи дальше
+        // Save in extensions for further transmission
         req.extensions_mut().insert(request);
 
-        // Передаем запрос дальше
+        // Pass request further
         Ok(next.run(req).await)
     }
 }
@@ -125,7 +125,7 @@ pub fn start_listen(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     std::thread::spawn(move || {
         // let rt = tokio::runtime::Runtime::new().unwrap();
         let rt = tokio::runtime::Builder::new_multi_thread()
-            .worker_threads(num_cpus::get()) // кол-во потоков = кол-во ядер
+            .worker_threads(num_cpus::get()) // number of threads = number of cores
             .enable_all()
             .build()
             .unwrap();

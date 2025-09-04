@@ -26,7 +26,7 @@ pub struct HttpMessage {
 }
 
 impl HttpMessage {
-    /// Создает новый экземпляр HttpMessage для запроса
+    /// Creates a new HttpMessage instance for request
     pub fn new_request(data: Map<String, Value>) -> Self {
         let headers = data
             .get("headers")
@@ -390,9 +390,9 @@ impl HttpMessage {
         map
     }
 
-    /// Создает HttpMessage из axum Request (для layer системы)
+    /// Creates HttpMessage from axum Request (for layer system)
     pub fn from_axum_request(req: &axum::extract::Request) -> Self {
-        // Извлекаем базовую информацию
+        // Extract basic information
         let method = req.method().to_string();
         let path = req.uri().path().to_string();
         let content_type = req
@@ -402,7 +402,7 @@ impl HttpMessage {
             .unwrap_or("")
             .to_string();
 
-        // Извлекаем cookies
+        // Extract cookies
         let mut cookies_map = Map::new();
 
         // Обрабатываем все заголовки cookie (может быть несколько)
@@ -435,11 +435,11 @@ impl HttpMessage {
             }
         }
 
-        // Извлекаем IP из заголовков
+        // Extract IP from headers
         let (ip, ips, ip_source) = Self::extract_ip_from_headers(&headers_map);
 
-        // Извлекаем статус из заголовков (если есть)
-        let mut status = 200; // По умолчанию 200 OK
+        // Extract status from headers (if available)
+        let mut status = 200; // Default 200 OK
         if let Some(status_header) = req.headers().get("status") {
             if let Ok(status_str) = status_header.to_str() {
                 if let Ok(status_code) = status_str.parse::<u16>() {
@@ -449,7 +449,7 @@ impl HttpMessage {
             }
         }
 
-        // Извлекаем query параметры
+        // Extract query parameters
         let mut query_params = Map::new();
         if let Some(query) = req.uri().query() {
             for pair in query.split('&') {
@@ -490,7 +490,7 @@ impl HttpMessage {
     }
 
     pub fn update_request_field(request: &mut HttpMessage, key: &str, value: &serde_json::Value) {
-        // Создаем временный объект с обновленным полем
+        // Create temporary object with updated field
         let mut temp_data = request.to_json_map();
         temp_data.insert(key.to_string(), value.clone());
 

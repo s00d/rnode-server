@@ -53,7 +53,7 @@ use neon::context::Context;
 pub fn register_websocket(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let path = cx.argument::<JsString>(0)?.value(&mut cx);
     
-    // Получаем список включенных событий (опционально)
+    // Get list of enabled events (optional)
     let enabled_events_json = cx.argument::<JsString>(1).ok().map(|s| s.value(&mut cx));
     
     let enabled_events = if let Some(json_str) = enabled_events_json {
@@ -82,7 +82,7 @@ pub fn create_room(mut cx: FunctionContext) -> JsResult<JsString> {
     let name = cx.argument::<JsString>(0)?.value(&mut cx);
     let _description = cx.argument::<JsString>(1).ok().map(|s| s.value(&mut cx));
     
-    // Безопасно получаем max_connections с проверкой типа
+    // Safely get max_connections with type checking
     let _max_connections = if let Some(arg) = cx.argument_opt(2) {
         if arg.is_a::<JsNumber, _>(&mut cx) {
             match arg.downcast::<JsNumber, _>(&mut cx) {
