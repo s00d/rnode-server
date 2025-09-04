@@ -10,3 +10,4 @@ text
 docs/.vitepress/cache
 docs/.vitepress/dist
 docs/.vitepress/node_modules
+test-cache
