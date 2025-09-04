@@ -1,7 +1,7 @@
 {
   "name": "@rnode-server/linux-arm64-gnu",
   "description": "Prebuilt binary package for `rnode-server` on `linux-arm64-gnu`.",
-  "version": "0.7.11",
+  "version": "0.7.12",
   "os": [
     "linux"
   ],
